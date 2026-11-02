@@ -61,17 +61,19 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     canvas.width = canvas.height = height.width = height.height = n;
     const ctx = canvas.getContext('2d'), hc = height.getContext('2d');
     const data = ctx.createImageData(n, n), hd = hc.createImageData(n, n);
-    const base = { stone: [192, 182, 163], sand: [192, 176, 145], asphalt: [69, 71, 70], grass: [100, 115, 74] }[kind];
+    const base = { limestone:[232,225,210], stone: [192, 182, 163], sand: [192, 176, 145], asphalt: [69, 71, 70], grass: [100, 115, 74] }[kind];
     const tile = Array.from({ length: 64 }, () => (random() - .5) * 19);
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
       const i = (y * n + x) * 4, noise = (random() - .5), row = Math.floor(y / 64), xx = (x + (row % 2) * 64) % n;
-      const seam = kind === 'stone' && (xx % 128 < 2 || y % 64 < 2);
-      const tileValue = kind === 'stone' ? tile[row * 4 + Math.floor(xx / 128)] : 0;
+      const masonry=kind==='stone'||kind==='limestone';
+      const seam = masonry && (xx % 128 < (kind==='limestone'?1:2) || y % 64 < (kind==='limestone'?1:2));
+      const tileValue = masonry ? tile[row * 4 + Math.floor(xx / 128)]*(kind==='limestone'?.38:1) : 0;
       const cloud = kind === 'grass' ? 0 : Math.sin(x * Math.PI * 8 / n) * Math.cos(y * Math.PI * 6 / n);
       const delta = noise * (kind === 'grass' ? 28 : 13) + tileValue + cloud * 2.5;
-      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * .77 : base[k] + delta;
+      const pore=kind==='limestone'&&random()>.986;
+      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.77) : base[k] + delta*(kind==='limestone'?.55:1)-(pore?13:0);
       data.data[i + 3] = 255;
-      const v = seam ? 46 : 155 + noise * (kind === 'asphalt' ? 75 : 22);
+      const v = seam ? (kind==='limestone'?105:46) : pore?95:155 + noise * (kind === 'asphalt' ? 75 : 22);
       hd.data.set([v, v, v, 255], i);
     }
     ctx.putImageData(data, 0, 0); hc.putImageData(hd, 0, 0);
@@ -83,7 +85,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     map.colorSpace = THREE.SRGBColorSpace;
     return { map, bump };
   }
-  const sets = { stone: textureSet('stone', 1102), sand: textureSet('sand', 931), asphalt: textureSet('asphalt', 83), grass: textureSet('grass', 742) };
+  const sets = { limestone:textureSet('limestone',4163), stone: textureSet('stone', 1102), sand: textureSet('sand', 931), asphalt: textureSet('asphalt', 83), grass: textureSet('grass', 742) };
 
   // World projection keeps paving at the same physical scale on scaled/extruded meshes.
   function surface(kind, { color = '#ffffff', roughness = .85, scale = .25, bump = .025, detail = 1 } = {}) {
@@ -130,8 +132,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
   const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
-  const facadeStone = surface('stone', { scale: .38, roughness: .84, bump: .005, detail: .56 });
-  const waterfrontStone = surface('stone', { scale: .38, roughness: .85, bump: .003, detail: .28 });
+  const facadeStone = surface('limestone', { scale: .24, roughness: .84, bump: .018, detail: .8 });
+  const waterfrontStone = surface('limestone', { scale: .24, roughness: .85, bump: .018, detail: .8 });
   const neutral = (source, color, roughness) => {
     const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
     materials.push(m); return m;
@@ -166,10 +168,10 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     renderer.toneMappingExposure = enabled ? (district ? 1.02 : .99) : original.exposure;
     scene.environment = enabled ? envTarget.texture : original.env;
     hemi.color.copy(enabled ? new THREE.Color('#dae2e5') : original.hemi);
-    hemi.groundColor.copy(enabled ? new THREE.Color('#a3947b') : original.ground);
-    hemi.intensity = enabled ? (district ? .72 : 1.1) : original.hi;
+    hemi.groundColor.copy(enabled ? new THREE.Color('#b0a18d') : original.ground);
+    hemi.intensity = enabled ? (district ? .88 : 1.1) : original.hi;
     sun.color.copy(enabled ? new THREE.Color('#ffe5bd') : original.sun);
-    sun.intensity = enabled ? (district ? 3.3 : 2.65) : original.si;
+    sun.intensity = enabled ? (district ? 3.15 : 2.65) : original.si;
     sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
     sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
     sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color('#e0e1d8') : original.horizon);

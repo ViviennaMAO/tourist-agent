@@ -47,15 +47,58 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     add(new THREE.DodecahedronGeometry(.25+random()*.16,0).scale(1,.6,.8),rocks,x+.18,.2,z+.15,random()*6.28);
     box(stone,x,1.015,-4.9,.68,.1,.48);
   }
-  // Pilot quay: coursed stone facing and a damp base replace oversized faceted
-  // boulders here. The existing shore and island navigation remain unchanged.
+  // Three irregular courses of rough limestone sit below a separate cut-stone
+  // coping. Vertex colour carries mineral variation and the darker wet toe.
   if (exclusions.length) {
-    const wetStone=material('#8a8879',.94), lightStone=material('#bcb19a',.88);
-    for(let row=0;row<3;row++) for(let j=0;j<36;j++) {
-      const width=26/36, x=-33+(j+.5)*width;
-      box(row===0?wetStone:(j+row)%4===0?lightStone:stone,x,.23+row*.31,-4.84+(random()-.5)*.035,width-.018,.295,.42);
+    const quarry=material('#ffffff',.96,{vertexColors:true});
+    quarry.userData.pilotRevetment=true;
+    quarry.onBeforeCompile=shader=>{
+      shader.vertexShader='varying vec3 quarryPosition;\n'+shader.vertexShader;
+      shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nquarryPosition=position;');
+      shader.fragmentShader=`varying vec3 quarryPosition;
+        float quarryHash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
+        float quarryNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+          return mix(mix(mix(quarryHash(i),quarryHash(i+vec3(1,0,0)),f.x),mix(quarryHash(i+vec3(0,1,0)),quarryHash(i+vec3(1,1,0)),f.x),f.y),
+          mix(mix(quarryHash(i+vec3(0,0,1)),quarryHash(i+vec3(1,0,1)),f.x),mix(quarryHash(i+vec3(0,1,1)),quarryHash(i+vec3(1,1,1)),f.x),f.y),f.z);}
+        `+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+        float quarryGrain=quarryNoise(quarryPosition*29.);
+        diffuseColor.rgb*=.88+.22*quarryGrain;
+      `);
+      shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+        float relief=quarryGrain*.018+quarryNoise(quarryPosition*9.)*.035;
+        vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition);
+        vec3 rx=cross(dy,normal),ry=cross(normal,dx);float det=dot(dx,rx);
+        normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
+      `);
+    };
+    quarry.customProgramCacheKey=()=> 'pilot-quarry-v1';
+    for(let row=0;row<3;row++) {
+      let edge=-33;
+      while(edge<-7) {
+        const width=Math.min(.52+random()*.57,-7-edge),x=edge+width/2;
+        edge+=width;
+        const g=new THREE.BoxGeometry(2,2,2,3,2,2);
+        const a=g.attributes.position,colors=[];
+        const tint=new THREE.Color(['#a3957e','#b5a68b','#c4b49a','#bbaa90'][Math.floor(random()*4)]);
+        for(let j=0;j<a.count;j++) {
+          const point=new THREE.Vector3().fromBufferAttribute(a,j);
+          const core=point.clone().clampScalar(-.82,.82);
+          point.sub(core).normalize().multiplyScalar(.18).add(core);
+          const px=point.x,py=point.y,pz=point.z;
+          // Coordinate-based displacement keeps coincident vertices together.
+          const n=Math.sin(px*31.7+py*53.3+pz*19.1+x*7.1);
+          const yy=.18+row*.29+py*.22;
+          a.setXYZ(j,px*(width-.018)*.5+n*.018,py*(.135+Math.sin(x*3)*.012)+n*.009,pz*(.24+row*.025)+n*.055);
+          const c=tint.clone().multiplyScalar((yy<.22?.64:yy<.36?.82:1)*(.9+n*.10));
+          colors.push(c.r,c.g,c.b);
+        }
+        g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.computeVertexNormals();
+        add(g,quarry,x,.18+row*.29,-4.68+(random()-.5)*.08);
+      }
     }
-    for(let j=0;j<32;j++) box(lightStone,-33+(j+.5)*26/32,1.06,-4.91,26/32-.018,.12,.6);
+    const coping=material('#d0c4ad',.86);
+    for(let j=0;j<32;j++) box(coping,-33+(j+.5)*26/32,1.06,-4.91,26/32-.018,.12,.6);
   }
   // Small raised beds with actual individual leaves and flowering clusters.
   function foliage(x,y,z,r,flowers=false,fine=false,dense=false) {
@@ -88,7 +131,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         // Small three-bract blossoms sit above foliage, interspersed with buds.
         for(let petal=0;petal<3;petal++) {
           const a=petal*Math.PI*2/3;
-          const g=new THREE.CircleGeometry((dense?.05:.035)+random()*.015,3).rotateX(-Math.PI*.43);
+          const g=new THREE.CircleGeometry((dense?.045:.03)+random()*.025,5).scale(1,.76,1).rotateX(-Math.PI*(.28+random()*.25));
           add(g,blossom,px+Math.cos(a)*.035,y+h+.065,pz+Math.sin(a)*.035,a);
         }
         add(new THREE.TetrahedronGeometry(.018,0),bloom[1],px,y+h+.073,pz);
@@ -101,7 +144,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     box(stone,x,y+.24,z,w,.48,d); box(soil,x,y+.485,z,w-.18,.015,d-.18);
     for(const sign of [-1,1]) box(stone,x,y+.49,z+sign*(d/2-.045),w,.08,.09);
     const n=Math.ceil((w-.5)/.34);
-    for (let i=0;i<n;i++) foliage(x-w/2+.3+(w-.6)*i/(n-1),y+.52,z+(random()-.5)*.12,.26,flowers);
+    for (let i=0;i<n;i++) foliage(x-w/2+.3+(w-.6)*i/(n-1),y+.48+random()*.12,z+(random()-.5)*.25,.23+random()*.09,flowers);
   }
   for (const x of [-43,-36,-29,-12,12,21,29,38,44]) bed(x,-6.8,3.2,.85);
   for (const [x,z] of [[-27,-20],[-15,-20],[15,-20],[27,-20],[-28,-34],[28,-38],[-10,-45],[10,-45]]) bed(x,z,2.4,1.1);
@@ -113,7 +156,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       if(!reserve(x,z,2.3,.85)) continue;
       box(stone,x,y+.19,z,2.3,.38,.85);
       box(soil,x,y+.39,z,2.12,.015,.67);
-      for(let j=0;j<7;j++) foliage(x-.9+j*.3,y+.42,z,.27,true,false,true);
+      for(let j=0;j<7;j++) foliage(x-.9+j*.3,y+.40+random()*.13,z+(random()-.5)*.22,.26+random()*.08,true,false,true);
     }
     // Roof planters and cascading bougainvillea are attached only to buildings
     // which were actually placed; the building already owns their collision.
@@ -125,8 +168,8 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       for(let j=0;j<8;j++) {
         const z=b.z-.45+j*.3;
         foliage(innerX,y+.34,z,.30,true,false,true);
-        if(j%2===0) for(let drop=0;drop<4;drop++) {
-          foliage(innerX+(left?1:-1)*(.28+drop*.07),y+.14-drop*.23,z,.22,true,true,true);
+        if(j%2===0) for(let drop=0,n=3+Math.floor(random()*3);drop<n;drop++) {
+          foliage(innerX+(left?1:-1)*(.28+drop*.07),y+.14-drop*.20,z+(random()-.5)*.16,.17+random()*.07,true,true,true);
         }
       }
     }

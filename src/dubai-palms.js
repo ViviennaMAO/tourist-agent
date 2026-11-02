@@ -63,12 +63,14 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   // Ringed, tapered trunk follows the source curve and touches the same ground.
   const trunkPositions = [], trunkColors = [], trunkIndices = [], rings = 48, sides = 9;
   for (let j = 0; j <= rings; j++) {
-    const t = j / rings, radius = (.18 - .07 * t) * (j % 2 ? .94 : 1.04);
-    const color = new THREE.Color(district ? (j%2 ? '#625142' : '#877157') : j % 2 ? '#938269' : '#ab987a');
+    const t = j / rings, radius = district ? .12+.075*(1-t)+.075*Math.exp(-t*13) : (.18-.07*t)*(j%2?.94:1.04);
+    const color = new THREE.Color(district ? '#87745d' : j % 2 ? '#938269' : '#ab987a');
     for (let k = 0; k <= sides; k++) {
       const a = k / sides * Math.PI * 2;
-      trunkPositions.push(.8 * t * t + Math.cos(a) * radius, 3.6 * t, Math.sin(a) * radius);
-      trunkColors.push(color.r, color.g, color.b);
+      const relief=district?1+.055*Math.sin(a*3+j*1.7):1;
+      trunkPositions.push(.8*t*t+Math.cos(a)*radius*relief,3.6*t,Math.sin(a)*radius*relief);
+      const shade=district?.87+.13*Math.sin(a*2+j*.8):1;
+      trunkColors.push(color.r*shade,color.g*shade,color.b*shade);
       if (j < rings && k < sides) { const i = j * (sides + 1) + k, n = i + sides + 1; trunkIndices.push(i, n, i + 1, i + 1, n, n + 1); }
     }
   }
@@ -80,12 +82,13 @@ export function createDubaiPalms({ THREE, city, district = false }) {
     // Overlapping cut petiole bases break the smooth ring silhouette of the
     // trunk. They share its vertex-colour batch, so cost no extra draw calls.
     const bark=[trunk];
-    for(let row=1;row<32;row++) for(let k=0;k<7;k++) {
-      const t=row/34,a=k/7*Math.PI*2+row*.44,r=.18-.07*t;
-      const g=new THREE.ConeGeometry(.034,.115,4).scale(1,1,.32).rotateX(.22).rotateZ(Math.PI).rotateY(a);
+    for(let row=1;row<32;row++) for(let k=0;k<11;k++) {
+      const t=(row+(random()-.5)*.4)/34,a=k/11*Math.PI*2+row*.44+(random()-.5)*.24,r=.12+.075*(1-t)+.075*Math.exp(-t*13);
+      const g=new THREE.OctahedronGeometry(1,0).scale(.045+random()*.017,.063+random()*.023,.019+random()*.009).rotateY(Math.PI/2-a);
       g.deleteAttribute('uv');
+      g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));
       g.translate(.8*t*t+Math.cos(a)*r,3.6*t,Math.sin(a)*r);
-      const c=new THREE.Color('#80684d').multiplyScalar(.8+random()*.4);
+      const c=new THREE.Color('#786047').multiplyScalar(.75+random()*.45);
       g.setAttribute('color',new THREE.Float32BufferAttribute(Array.from({length:g.attributes.position.count},()=>[c.r,c.g,c.b]).flat(),3));bark.push(g);
     }
     trunk=mergeGeometries(bark);bark.forEach(g=>g.dispose());
