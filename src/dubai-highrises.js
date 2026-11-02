@@ -1,15 +1,13 @@
+import { towerMassing, slopedCrown } from './tower-massing.js';
 /** Footprint-contained office towers. All pieces join the district's existing
  * material batches; no per-window objects survive into the render loop. */
-export function appendDubaiHighrise({ b, h, index, finishes, box }) {
+export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) {
   const { wall, trim, metal, skylineGlass, glass, amberGlass, roof, recess } = finishes;
   const spandrel=finishes.skylineSpandrel||glass;
-  const { w, d } = b, variant = index % 3, lobby = 2.35;
+  const { w, d } = b, lobby = 2.35;
+  const metalFinish = finishes.skylineMetal || metal;
+  const { family: variant, name, tiers } = towerMassing(w, d, h, index, lobby);
   const crown = h - .72;
-  const tiers = variant === 0
-    ? [[lobby, h * .68, .91, .91, 0], [h * .68, h * .85, .76, .76, 0], [h * .85, crown, .57, .62, 0]]
-    : variant === 1
-      ? [[lobby, h * .82, .87, .9, 0], [h * .82, crown, .68, .72, 0]]
-      : [[lobby, h * .58, .92, .87, 0], [h * .58, h * .8, .76, .79, w * .065], [h * .8, crown, .59, .67, w * .12]];
   let floorCount = 0, paneCount = 0;
   // Open colonnade: recessed glazing leaves a real sheltered lobby threshold.
   box(trim, 0, .09, 0, w - .04, .18, d - .04);
@@ -45,10 +43,10 @@ export function appendDubaiHighrise({ b, h, index, finishes, box }) {
     box(material, ox + u * c + v * s, y, -u * s + v * c, bw, bh, bd, a);
   }
   for (let tier = 0; tier < tiers.length; tier++) {
-    const [bottom, top, sx, sz, ox] = tiers[tier], width = w * sx, depth = d * sz;
+    const { bottom, top, w: width, d: depth, x: ox } = tiers[tier];
     const height = top - bottom;
     box(skylineGlass, ox, (top + bottom) / 2, 0, width - .1, height, depth - .1);
-    const floors = Math.max(1, Math.round(height / 1.22)), fh = height / floors;
+    const floors = Math.max(1, Math.round(height / 1.05)), fh = height / floors;
     floorCount += floors;
     for (let side = 0; side < 4; side++) {
       const span = side % 2 ? depth : width;
@@ -57,47 +55,59 @@ export function appendDubaiHighrise({ b, h, index, finishes, box }) {
       for (let f = 0; f < floors; f++) {
         const y = bottom + f * fh;
         // Spandrel panels and a projecting drip edge make each slab legible.
-        face(spandrel, 0, y + .09, .035, span - .13, .14, .055);
-        face(metal, 0, y + .025, .015, span - .1, .04, .045);
-        face(metal, 0, y + fh * .77, .027, span - .13, .018, .025);
+        face(spandrel, 0, y + .055, .035, span - .13, .08, .032);
+        face(metalFinish, 0, y + .018, .025, span - .1, .022, .028);
         for (let j = 0; j < cols; j++) {
           const u = -(span - .2) / 2 + (j + .5) * bay;
           // Sparse occupied offices; broad reflections remain the dominant read.
-          if ((j * 13 + f * 7 + side * 3 + index * 5) % 23 === 0) {
-            face(amberGlass, u, y + fh * .56, .047, bay - .055, fh - .29, .018);
+          if ((j * 13 + f * 7 + side * 3 + index * 5) % 59 === 0) {
+            face(spandrel, u, y + fh * .56, .047, bay - .055, fh - .22, .018);
           }
           paneCount++;
         }
       }
       for (let j = 0; j <= cols; j++) {
         const u = -(span - .2) / 2 + j * bay;
-        face(metal, u, (top + bottom) / 2, .025, .024, height, .055);
+        face(metalFinish, u, (top + bottom) / 2, .025, variant === 3 ? .032 : .016, height, variant === 3 ? .075 : .032);
       }
       // Paired stone corner blades give the second family a framed silhouette.
       if (variant === 1 && side % 2 === 0) for (const sign of [-1, 1]) {
         face(trim, sign * (span / 2 - .14), (top + bottom) / 2, .085, .12, height, .17);
       }
-      face(trim, 0, top - .055, .06, span, .11, .12);
+      face(metalFinish, 0, top - .03, .06, span - .06, .06, .055);
     }
     box(roof, ox, top - .045, 0, width - .16, .09, depth - .16);
     if (tier < tiers.length - 1) {
       // Inset glass balustrades on the exposed setback terraces, with real gaps.
       for (let side = 0; side < 4; side++) {
         const span = side % 2 ? depth : width;
-        facade(side, width, depth, ox, glass, 0, top + .19, .13, span - .32, .35, .025);
-        facade(side, width, depth, ox, metal, 0, top + .38, .13, span - .3, .025, .035);
+        facade(side, width, depth, ox, skylineGlass, 0, top + .12, .13, span - .32, .21, .02);
+        facade(side, width, depth, ox, metalFinish, 0, top + .24, .13, span - .3, .018, .025);
       }
     }
   }
-  // Ventilated mechanical crown, rather than a flat brown roof lid.
-  const last = tiers[tiers.length - 1], cw = w * last[2] * .75, cd = d * last[3] * .75, cx = last[4];
-  box(recess, cx, crown + .27, 0, cw - .12, .54, cd - .12);
-  for (let side = 0; side < 4; side++) {
-    const span = side % 2 ? cd : cw;
-    for (let j = 0; j < 6; j++) facade(side, cw, cd, cx, roof, 0, crown + .08 + j * .085, .02, span, .035, .055);
+  const last = tiers.at(-1), cw = last.w * .74, cd = last.d * .74, cx = last.x;
+  if (variant === 4 && THREE && add) {
+    add(slopedCrown(THREE, last.w - .12, last.d - .12, h, .86).translate(cx, 0, 0), skylineGlass);
+    // A narrow raised spine catches the sun along the high side of the cap.
+    box(metalFinish, cx - last.w / 2 + .09, h - .15, 0, .045, .12, last.d - .13);
+  } else if (variant === 1 || variant === 3) {
+    // Flush screened crowns and paired fins replace the ubiquitous roof box.
+    box(spandrel, cx, crown + .29, 0, last.w - .12, .58, last.d - .12);
+    for (const side of [-1, 1]) {
+      box(variant === 1 ? trim : metalFinish, cx + side * (last.w / 2 - .1), crown + .32, 0, .09, .64, last.d - .1);
+    }
+    box(metalFinish, cx, h - .055, 0, last.w - .1, .05, last.d - .1);
+  } else {
+    // Equipment recesses remain under a light screen, contained in the roof.
+    box(recess, cx, crown + .25, 0, cw - .12, .5, cd - .12);
+    for (let side = 0; side < 4; side++) {
+      const span = side % 2 ? cd : cw;
+      for (let j = 0; j < 4; j++) facade(side, cw, cd, cx, metalFinish, 0, crown + .1 + j * .12, .02, span, .025, .035);
+    }
+    box(trim, cx, h - .13, 0, cw + .05, .08, cd + .05);
+    box(roof, cx, h - .055, 0, cw - .12, .03, cd - .12);
   }
-  box(trim, cx, h - .13, 0, cw + .08, .12, cd + .08);
-  box(roof, cx, h - .055, 0, cw - .12, .03, cd - .12);
-  return { towerFamily: ['terraced', 'framed', 'offset'][variant], floors: floorCount,
+  return { towerFamily: name, floors: floorCount,
     windowBays: paneCount, lobbyDepth: .71, crownHeight: .72, setbacks: tiers.length - 1 };
 }

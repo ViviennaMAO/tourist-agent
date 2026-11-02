@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {createContactNormals,createContactShadows} from '../src/contact-shadows.js';
 import {createDubaiBackdrop} from '../src/dubai-backdrop.js';
 import {createCityReflections} from '../src/city-reflections.js';
+import {installSkylineAtmosphere} from '../src/skyline-atmosphere.js';
 import {installCurtainWallFinish} from '../src/curtain-wall.js';
 
 test('contact normal pass preserves cutouts, hidden objects and source resources even if drawing fails',()=>{
@@ -40,6 +41,11 @@ test('inland skyline adds bounded staggered buildings and restores only its own 
     assert.ok(b.h>=8&&b.h<=20);
   }
   assert.ok(new Set(backdrop.footprints.map(b=>b.h)).size>8);
+  assert.equal(new Set(backdrop.footprints.map(b=>b.family)).size,5);
+  assert.ok(new Set(backdrop.footprints.map(b=>b.z)).size>18);
+  for(const [i,a] of backdrop.footprints.entries())for(const b of backdrop.footprints.slice(i+1)) {
+    assert.ok(Math.abs(a.x-b.x)>=(a.w+b.w)/2+.9||Math.abs(a.z-b.z)>=(a.d+b.d)/2+.9);
+  }
   for(const mesh of backdrop.root.children) {
     for(const a of Object.values(mesh.geometry.attributes))assert.ok(a.array.every(Number.isFinite));
     const p=mesh.geometry.attributes.position;
@@ -94,4 +100,19 @@ test('contact filtering follows camera/viewport changes and restores renderer af
   assert.equal(target,originalTarget);assert.equal(renderer.autoClear,true);assert.equal(renderer.shadowMap.autoUpdate,true);
   assert.equal(color.getHexString(),'365478');assert.equal(alpha,.4);assert.equal(mesh.material,source);
   shadows.dispose();shadows.dispose();mesh.geometry.dispose();source.dispose();
+});
+
+
+test('skyline air preserves curtain-wall and reflection callbacks before tone mapping',()=>{
+  const material=new THREE.MeshStandardMaterial();
+  material.onBeforeCompile=shader=>{shader.uniforms.original={value:1};};
+  installCurtainWallFinish(material);installSkylineAtmosphere(material,.32);
+  const shader={uniforms:{},vertexShader:THREE.ShaderLib.standard.vertexShader,fragmentShader:THREE.ShaderLib.standard.fragmentShader};
+  material.onBeforeCompile(shader,{});
+  assert.equal(shader.uniforms.original.value,1);
+  assert.equal(shader.uniforms.skylineAirStrength.value,.32);
+  assert.match(shader.fragmentShader,/curtainVariation/);
+  const air=shader.fragmentShader.indexOf('outgoingLight = mix');
+  assert.ok(air>0&&air<shader.fragmentShader.indexOf('#include <tonemapping_fragment>'));
+  material.dispose();
 });

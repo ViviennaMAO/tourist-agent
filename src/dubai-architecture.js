@@ -2,6 +2,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { appendDubaiHighrise } from './dubai-highrises.js';
 import { appendDubaiVilla } from './dubai-villas.js';
 import { installCurtainWallFinish } from './curtain-wall.js';
+import { installSkylineAtmosphere } from './skyline-atmosphere.js';
 
 /** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
  * All details are opaque PBR meshes, merged by finish. Existing actors still own
@@ -68,12 +69,14 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   }
   if(skylineGlass){
     skylineGlass.userData.reflectionZone='skyline';
-    skylineGlass.color.set('#9bafb8');skylineGlass.metalness=.72;
-    skylineGlass.roughness=.09;skylineGlass.envMapIntensity=1.5;
+    skylineGlass.color.set('#829ead');skylineGlass.metalness=.62;
+    skylineGlass.roughness=.12;skylineGlass.envMapIntensity=1.35;
     installCurtainWallFinish(skylineGlass);
   }
-  const skylineSpandrel=district?finish('#637b83',.26,.48,{envMapIntensity:1.15}):null;
+  const skylineSpandrel=district?finish('#718996',.32,.36,{envMapIntensity:.9}):null;
   if(skylineSpandrel){skylineSpandrel.userData.cityGlass=true;skylineSpandrel.userData.reflectionZone='skyline';}
+  const skylineMetal = district ? finish('#71838d', .34, .55) : null;
+  for (const m of [skylineGlass, skylineSpandrel, skylineMetal].filter(Boolean)) installSkylineAtmosphere(m);
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   let transform = new THREE.Matrix4();
@@ -95,11 +98,12 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     // backdrop leave the landmark legible. Horizontal collision footprints stay.
     const h = !district ? b.h : traditional
       ? Math.min(Math.max(b.h, 5.8), 6.2 + (buildingIndex % 5) * .4)
-      : Math.min(b.h, 12 + (buildingIndex % 5) * 1.3);
+      : Math.min(b.h, 10.8 + (buildingIndex % 5) * 1.1);
     design.set(b, { treatment: traditional ? 'limestone' : 'glass', facadeHeight: h, originalHeight: b.h });
     if (!traditional) {
-      Object.assign(design.get(b), appendDubaiHighrise({ b, h, index: buildingIndex,
-        finishes: { wall, trim, metal, skylineGlass, skylineSpandrel, glass, amberGlass, roof, recess }, box }));
+      Object.assign(design.get(b), appendDubaiHighrise({ THREE, b, h, index: buildingIndex,
+        finishes: { wall, trim, metal, skylineGlass, skylineSpandrel, skylineMetal, glass, amberGlass, roof, recess }, box,
+        add(geometry, material) { geometry.applyMatrix4(transform); batches.get(material).push(geometry); } }));
       return;
     }
     if (district) {

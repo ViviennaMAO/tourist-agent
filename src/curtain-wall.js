@@ -14,11 +14,11 @@ export function installCurtainWallFinish(material) {
       `+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       vec3 curtainFace=abs(normalize(cross(dFdx(curtainPosition),dFdy(curtainPosition))));
-      curtainUv=vec2(curtainFace.x>curtainFace.z?curtainPosition.z:curtainPosition.x,curtainPosition.y)/vec2(.6,1.22);
+      curtainUv=vec2(curtainFace.x>curtainFace.z?curtainPosition.z:curtainPosition.x,curtainPosition.y)/vec2(.6,1.05);
       curtainVariation=curtainHash(floor(curtainUv));
       // Suppress per-pane variation once a pane falls below a few pixels.
       float curtainDetail=1.-smoothstep(.18,.8,max(fwidth(curtainUv.x),fwidth(curtainUv.y)));
-      diffuseColor.rgb*=1.+(curtainVariation-.5)*.12*curtainDetail;
+      diffuseColor.rgb*=1.+(curtainVariation-.5)*.07*curtainDetail;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
       roughnessFactor=clamp(roughnessFactor+(curtainVariation-.5)*.035*curtainDetail,.065,1.);
@@ -26,13 +26,13 @@ export function installCurtainWallFinish(material) {
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
       // A shallow, smooth bow breaks the perfect shared mirror plane without
       // turning window edges into a noisy normal map.
-      float bow=sin(curtainUv.x*6.283185)*sin(curtainUv.y*6.283185)*.0018*curtainDetail;
+      float bow=sin(curtainUv.x*6.283185)*sin(curtainUv.y*6.283185)*.0007*curtainDetail;
       vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition);
       vec3 rx=cross(dy,normal),ry=cross(normal,dx);
       float det=dot(dx,rx);
       normal=normalize(abs(det)*normal-sign(det)*(dFdx(bow)*rx+dFdy(bow)*ry));
     `);
   };
-  material.customProgramCacheKey=()=>key+'-curtain-wall-v1';
+  material.customProgramCacheKey=()=>key+'-curtain-wall-v2';
   material.needsUpdate=true;
 }
