@@ -79,3 +79,34 @@ body.overview #hudQuests { display:none; }
   body.explore #card { right:70px; bottom:210px; width:260px; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+
+/* Eva's supplied character design: full guide portrait on desktop, compact
+   portrait in the same introduction on phones. Layout stays in normal flow. */
+.gp-card.gp-city-intro { display:grid; grid-template-columns:224px minmax(0,1fr); gap:24px; width:min(840px,calc(100% - 32px)); padding:28px; border:1px solid #c7b88c; }
+.eva-guide { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:0; }
+.gp-eva-frame { width:100%; }
+.gp-city-intro .gp-eva { display:block; position:static; width:100%; height:auto; max-height:390px; object-fit:contain; filter:drop-shadow(0 6px 12px #0002); }
+.eva-guide-copy { text-align:center; color:#f2ead7; }
+.eva-guide-copy strong { display:block; margin-top:8px; font:500 26px/1.2 Georgia,serif; letter-spacing:.06em; }
+.eva-guide-copy span { display:block; font-size:11px; letter-spacing:.12em; color:#d4c6a3; margin-top:5px; }
+.gp-city-intro .eva-guide-copy p { color:#e8e5d9; margin:12px 0 0; font-size:12px; }
+.gp-city-content { min-width:0; }
+.gp-city-intro h2 { padding-right:16px; line-height:1.35; }
+.gp-city-intro h2 small { display:block; margin:6px 0 0; color:#cabb96; font-size:11px; letter-spacing:.12em; }
+.gp-city-intro p { color:#e5e7df; }
+.gp-city-intro .gp-sub,.gp-city-intro .gp-items { color:#d7d9cb; }
+.gp-city-intro .gp-sub b { color:#e5ce94; }
+.gp-city-intro .gp-items figure { color:inherit; }
+.gp-city-intro .gp-x { z-index:1; }
+@media(max-width:640px) {
+  .gp-card.gp-city-intro { grid-template-columns:minmax(0,1fr); gap:16px; padding:18px; max-height:calc(100% - 24px); }
+  .eva-guide { flex-direction:row; justify-content:flex-start; gap:16px; padding-right:22px; }
+  .gp-eva-frame { position:relative; width:80px; height:88px; flex:none; overflow:hidden; border-radius:12px; background:#ded6bb; }
+  .gp-city-intro .gp-eva { position:absolute; width:230px; max-width:none; height:345px; max-height:none; left:50%; top:-2px; transform:translateX(-46%); filter:none; }
+  .eva-guide-copy { text-align:left; }
+  .eva-guide-copy strong { font-size:23px; margin:0; }
+  .gp-city-intro .eva-guide-copy p { margin-top:8px; }
+  .gp-city-intro h2 { font-size:20px; }
+  .gp-city-intro .gp-items { gap:6px; }
+}
+#gpanel > .gp-guide { height:auto; max-height:34vh; object-fit:contain; object-position:bottom; }

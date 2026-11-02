@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import evaGuideUrl from './assets/eva-guide-v1.png';
 import { createRealism } from './realism.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -2991,20 +2992,7 @@ function cityShot(c) {
   const url = shoot(look.clone().add(V3(d * 0.32, d * 0.6, d * 0.92)), look, 520, 260, 42);
   GUI.shots.set(c.id, url); return url;
 }
-// 向导立绘：同一个黄裙子小女孩，单独渲染成透明底 PNG（挥手）
-function guideImg() {
-  if (GUI.guide) return GUI.guide;
-  const R = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
-  R.setSize(360, 480, false); R.setClearColor(0x000000, 0);
-  R.outputColorSpace = THREE.SRGBColorSpace; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.12;
-  const sc = new THREE.Scene(), sun = new THREE.DirectionalLight('#fff6e8', 2.4); sun.position.set(3, 6, 8);
-  sc.add(new THREE.HemisphereLight('#ffffff', '#c9d8ee', 1.5), sun);
-  const g = makeGirl(); g.animate(0, 0, 0); g.arms[1].rotation.z = 2.5; g.arms[1].rotation.x = -0.2; g.root.rotation.y = -0.3; sc.add(g.root);
-  const cam = new THREE.PerspectiveCamera(30, 360 / 480, 0.1, 100); cam.position.set(0, 1.9, 7); cam.lookAt(0, 1.73, 0);
-  R.render(sc, cam); GUI.guide = R.domElement.toDataURL('image/png');
-  R.dispose(); R.forceContextLoss();
-  return GUI.guide;
-}
+// Eva is an authored transparent guide portrait, bundled independently of player/NPC models.
 function makeAvatar() {
   const f = V3(Math.sin(EX.yaw), 0, Math.cos(EX.yaw)), head = girl.root.position.clone().add(V3(0, 2.42, 0));
   $('hudAvatar').src = shoot(head.clone().addScaledVector(f, 2.7).add(V3(0, 0.3, 0)), head, 140, 140, 30);
@@ -3044,9 +3032,6 @@ function questGo(act) {
 function showPop(html, { blank = false, onClose } = {}) {
   GUI.pop = { blank, onClose }; EX.keys.clear();
   const el = $('gpop'); el.innerHTML = html; el.style.display = 'flex';
-  // 向导站在卡片左下角、探出卡片外：按卡片的实际位置摆
-  const eva = el.querySelector('.gp-eva'), card = el.querySelector('.gp-card');
-  if (eva && card) { const r = card.getBoundingClientRect(), s = stageEl.getBoundingClientRect(); el.appendChild(eva); Object.assign(eva.style, { position: 'absolute', left: (r.left - s.left - 34) + 'px', top: (r.bottom - s.top - 250) + 'px' }); }
 }
 function closePop() { const p = GUI.pop; if (!p) return; GUI.pop = null; $('gpop').style.display = 'none'; $('gpop').innerHTML = ''; p.onClose && p.onClose(); }
 function rewardPop(title, sub, items, onClose) {
@@ -3057,13 +3042,13 @@ const COUPON_HTML = '<div class="coupon"><b>8折</b><span>门票券</span></div>
 function giveCoupon(n = 1) { store.set(COUPON_KEY, store.get(COUPON_KEY, 0) + n); hudRefresh(); }
 function cityIntro(c, onClose) {
   const ls = cityLMs(c.id), n = ls.filter(lit).length;
-  showPop(`<div class="gp-card"><img class="gp-eva" src="${guideImg()}" alt=""><div class="gp-bubble">Hello!<small>跟我一起逛${c.city.nameZh}吧</small></div><button class="gp-x" aria-label="关闭">×</button>
+  showPop(`<div class="gp-card gp-city-intro"><aside class="eva-guide" aria-label="导游 Eva"><div class="gp-eva-frame"><img class="gp-eva" src="${evaGuideUrl}" width="1024" height="1536" alt="导游 Eva：黑色微卷发，奶黄色连衣裙" decoding="async"></div><div class="eva-guide-copy"><strong>Eva</strong><span>你的城市导游</span><p>跟我一起逛${c.city.nameZh}吧。</p></div></aside><button class="gp-x" aria-label="关闭">×</button><div class="gp-city-content">
     <h2>欢迎来到${c.city.nameZh}<small>${c.city.name} · ${String(c.city.index).padStart(2, '0')}/11</small></h2>
     <img class="gp-photo" src="${cityShot(c)}" alt="${c.city.nameZh}">
     <p>${CITY_DESC[c.id] || ''}</p>
     <div class="gp-sub">城市印记 <b>${n}/${ls.length}</b> · 走近地标即可点亮，点图标直达</div>
     <div class="gp-items">${ls.map(L => `<figure class="${lit(L) ? '' : 'off'}" data-k="${lmKey(L)}"><img src="${thumbOf(L)}" alt=""><figcaption>${L.cfg.zh}</figcaption></figure>`).join('')}</div>
-    <div class="gp-btns"><button class="alt" data-go="shop">🎫 门票商城</button><button class="ok" data-go="close">开始探索</button></div></div>`, { onClose });
+    <div class="gp-btns"><button class="alt" data-go="shop">🎫 门票商城</button><button class="ok" data-go="close">开始探索</button></div></div></div>`, { onClose });
 }
 function rewardToast(img, title, sub) {
   const el = $('rtoast'); el.innerHTML = `${img ? `<img src="${img}" alt="">` : ''}<div><b>${title}</b><small>${sub}</small></div>`;
@@ -3121,7 +3106,7 @@ function renderPanel() {
       `<p class="gp-note" style="text-align:center">走近地标即可点亮；点击任意藏品直达它的位置</p>`;
   }
   $('gpanel').innerHTML = `<header><span class="bgw">${shop ? 'TICKETS' : 'COLLECTION'}</span><h2>${shop ? '门票商城' : '藏品展厅'}</h2><div class="pcur">${curHTML()}</div><button class="close" aria-label="返回">➜</button></header>
-    <div class="gp-body"><nav>${tabs}</nav><main>${main}</main></div><img class="gp-guide" src="${guideImg()}" alt="">${shop && !topup ? `<button class="buy" ${P.sel ? '' : 'disabled'}>购买</button>` : ''}`;
+    <div class="gp-body"><nav>${tabs}</nav><main>${main}</main></div><img class="gp-guide" src="${evaGuideUrl}" width="1024" height="1536" alt="导游 Eva" decoding="async">${shop && !topup ? `<button class="buy" ${P.sel ? '' : 'disabled'}>购买</button>` : ''}`;
 }
 
 // 模拟玩家：四个配色不同的小女孩在当前城市里闲逛
