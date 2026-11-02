@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tourist Agent · 十一城自由探索</title>
+<link rel="stylesheet" href="/src/base.css">
+<link rel="stylesheet" href="/src/style-overrides.css">
+</head>
+<body class="explore">
+<div id="app">
+  <div id="stage">
+    <div id="loading" hidden></div>
+    <div id="toast" class="glass"></div>
+    <div id="card" class="glass" role="dialog" aria-label="地标信息">
+      <button class="x" id="cardX" aria-label="关闭">×</button>
+      <div class="city" id="cardCity"></div><h3 id="cardName"></h3><div class="zh" id="cardZh"></div>
+      <p id="cardDesc"></p>
+      <button class="ticket" id="cardTicket">🎫 购买门票</button>
+
+    </div>
+    <div id="tix" role="dialog" aria-label="购买门票"><div class="tix-panel glass"><button class="x" id="tixX" aria-label="关闭">×</button><div id="tixBody"></div></div></div>
+    <div id="cityBanner" class="glass"></div>
+    <div id="cityChips" class="glass"></div>
+    <div id="dpad"><button data-k="u" aria-label="上">▲</button><button data-k="l" aria-label="左">◀</button><button data-k="run" aria-label="奔跑">跑</button><button data-k="r" aria-label="右">▶</button><button data-k="d" aria-label="下">▼</button></div>
+    <div id="worldHint" class="glass">点击城市，开始探索</div>
+    <div id="hint">WASD 行走 · Shift 奔跑 · M 地图</div>
+    <!-- 游戏界面（自由探索） -->
+    <div id="hud">
+      <div id="tags"></div>
+      <div id="hudProfile">
+        <div class="av"><img id="hudAvatar" alt=""><span class="lv" id="hudLv">1</span></div>
+        <div class="meta"><div class="id">旅行者<span id="hudId"></span></div><div class="row2"><span id="hudClock">--:--:--</span><span id="hudLoc">📍 迪拜</span></div></div>
+      </div>
+      <div id="hudCur">
+        <div class="gcur stampcur" title="城市印记：走近地标点亮"><i class="ic stamp">印</i><span id="hudStamps">0/0</span></div>
+        <div class="gcur" title="PWV 演示余额 · 不产生真实付款"><i class="ic pwv">PWV</i><span id="hudPwv">0</span><button class="add" id="hudTop" aria-label="充值">+</button></div>
+        <button id="hudMenu" aria-label="菜单">☰</button>
+      </div>
+      <div id="hudMenuPop" class="glass"></div>
+      <div id="hudSide">
+        <button data-act="shop"><i>🎫</i>门票</button>
+        <button data-act="coll"><i>🏛</i>藏品</button>
+        <button data-act="map"><i>🗺</i>地图</button>
+        <button data-act="mine"><i>📋</i>订单</button>
+      </div>
+      <div id="hudQuests"></div>
+      <button id="hudGo">GO<small id="hudGoTo"></small></button>
+    </div>
+    <div id="rtoast"></div>
+    <div id="gpanel"></div>
+    <div id="gpop"></div>
+    <div id="gameLoad"><div class="gl-inner">
+      <img class="gl-logo" src="https://resources.parallelworld.com/assets/media/icon_logo.png" alt="">
+      <div class="gl-title">TOURIST AGENT<span>十一城自由探索 · 写实微缩世界</span></div>
+      <div class="gl-bar"><i id="glFill"></i><b id="glPct">0%</b></div>
+      <div class="gl-tip" id="glTip"></div>
+      <button id="glGo" disabled>加载中…</button>
+    </div></div>
+    <div id="bar" hidden><button id="music">音乐</button><button id="myTix">我的门票</button><select id="city" aria-label="切换城市"></select></div>
+  </div>
+
+</div>
+<audio id="bgm" loop preload="none"></audio>
+
+<script type="module" src="/src/game.js"></script>
+</body>
+</html>

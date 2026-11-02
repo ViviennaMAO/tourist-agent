@@ -1,0 +1,187 @@
+/** Round 1: reversible lighting + Dubai surface study. No gameplay mutations.
+ * Textures are deterministic, authored procedural materials (not scanned assets).
+ * Shared source materials are never mutated: other cities retain their surfaces.
+ */
+export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sky }) {
+  const qs = new URLSearchParams(location.search);
+  let enabled = qs.get('look') !== 'original';
+  const textures = [], materials = [], swaps = [], extras = [], colors = [];
+  const original = {
+    exposure: renderer.toneMappingExposure, env: scene.environment,
+    hemi: hemi.color.clone(), ground: hemi.groundColor.clone(), hi: hemi.intensity,
+    sun: sun.color.clone(), si: sun.intensity,
+    top: sky.material.uniforms.top.value.clone(), mid: sky.material.uniforms.mid.value.clone(),
+    horizon: sky.material.uniforms.hor.value.clone(), fog: scene.fog.color.clone()
+  };
+  const rng = seed => () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+
+  function textureSet(kind, seed) {
+    const n = 512, random = rng(seed), canvas = document.createElement('canvas'), height = document.createElement('canvas');
+    canvas.width = canvas.height = height.width = height.height = n;
+    const ctx = canvas.getContext('2d'), hc = height.getContext('2d');
+    const data = ctx.createImageData(n, n), hd = hc.createImageData(n, n);
+    const base = { stone: [192, 182, 163], sand: [192, 176, 145], asphalt: [69, 71, 70], grass: [100, 115, 74] }[kind];
+    const tile = Array.from({ length: 64 }, () => (random() - .5) * 19);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const i = (y * n + x) * 4, noise = (random() - .5), row = Math.floor(y / 64), xx = (x + (row % 2) * 64) % n;
+      const seam = kind === 'stone' && (xx % 128 < 2 || y % 64 < 2);
+      const tileValue = kind === 'stone' ? tile[row * 4 + Math.floor(xx / 128)] : 0;
+      const cloud = kind === 'grass' ? 0 : Math.sin(x * Math.PI * 8 / n) * Math.cos(y * Math.PI * 6 / n);
+      const delta = noise * (kind === 'grass' ? 28 : 13) + tileValue + cloud * 2.5;
+      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * .77 : base[k] + delta;
+      data.data[i + 3] = 255;
+      const v = seam ? 46 : 155 + noise * (kind === 'asphalt' ? 75 : 22);
+      hd.data.set([v, v, v, 255], i);
+    }
+    ctx.putImageData(data, 0, 0); hc.putImageData(hd, 0, 0);
+    const map = new THREE.CanvasTexture(canvas), bump = new THREE.CanvasTexture(height);
+    for (const t of [map, bump]) {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); textures.push(t);
+    }
+    map.colorSpace = THREE.SRGBColorSpace;
+    return { map, bump };
+  }
+  const sets = { stone: textureSet('stone', 1102), sand: textureSet('sand', 931), asphalt: textureSet('asphalt', 83), grass: textureSet('grass', 742) };
+
+  // World projection keeps paving at the same physical scale on scaled/extruded meshes.
+  function surface(kind, { color = '#ffffff', roughness = .85, scale = .25, bump = .025 } = {}) {
+    const mat = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, envMapIntensity: .3 });
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.taColor = { value: sets[kind].map };
+      sh.uniforms.taHeight = { value: sets[kind].bump };
+      sh.uniforms.taScale = { value: scale };
+      sh.uniforms.taBump = { value: bump };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 taWorld;');
+      sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+        vec4 taP = vec4(transformed, 1.0);
+        #ifdef USE_INSTANCING
+          taP = instanceMatrix * taP;
+        #endif
+        taWorld = (modelMatrix * taP).xyz;`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 taWorld;
+        uniform sampler2D taColor, taHeight;
+        uniform float taScale, taBump;
+        vec2 taUV;
+        vec3 taBumpNormal(vec3 N, float H) {
+          vec3 dx = dFdx(-vViewPosition), dy = dFdy(-vViewPosition);
+          vec3 a = cross(dy, N), b = cross(N, dx);
+          float det = dot(dx, a);
+          vec3 grad = sign(det) * (dFdx(H) * a + dFdy(H) * b);
+          return normalize(abs(det) * N - grad);
+        }`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        vec3 taN = abs(normalize(cross(dFdx(taWorld), dFdy(taWorld))));
+        taUV = (taN.y > .5 ? taWorld.xz : (taN.x > taN.z ? taWorld.zy : taWorld.xy)) * taScale;
+        diffuseColor.rgb *= texture2D(taColor, taUV).rgb;`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        normal = taBumpNormal(normal, texture2D(taHeight, taUV).r * taBump);`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = clamp(roughnessFactor + (texture2D(taHeight, taUV).r - .5) * .16, .1, 1.0);`);
+    };
+    mat.customProgramCacheKey = () => 'ta-surface-v1-' + kind;
+    materials.push(mat); return mat;
+  }
+  const stone = surface('stone', { scale: .25, roughness: .8, bump: .024 }); // slab = 1 x .5 world units
+  const sand = surface('sand', { scale: .3, bump: .013 });
+  const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
+  const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
+  const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
+  const neutral = (source, color, roughness) => {
+    const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
+    materials.push(m); return m;
+  };
+  const replacement = new Map([
+    [M.stone, stone], [M.sidewalk, stone], [M.concrete, stone], [M.rim, stone],
+    [M.sand, sand], [M.dune, sand], [M.sandSide, sideStone],
+    [M.grass, grass], [M.grassSide, neutral(M.grassSide, '#626c47', .96)],
+    [M.asphalt, asphalt], [M.lake, neutral(M.lake, '#547e83', .23)],
+    [M.dash, neutral(M.dash, '#ddd8c8', .88)],
+    [M.concreteSide, sideStone], [M.rimWall, sideStone],
+    [M.leaves, neutral(M.leaves, '#c0c0a7', .91)], [M.trunk, neutral(M.trunk, '#b1a599', .92)]
+  ]);
+
+  // A low-resolution authored daylight environment: no external HDRI dependency.
+  const ec = document.createElement('canvas'); ec.width = 512; ec.height = 256;
+  const eg = ec.getContext('2d'), gradient = eg.createLinearGradient(0, 0, 0, 256);
+  gradient.addColorStop(0, '#9fb4c3'); gradient.addColorStop(.45, '#e5e8e4');
+  gradient.addColorStop(.52, '#c8c3b3'); gradient.addColorStop(1, '#8d887b');
+  eg.fillStyle = gradient; eg.fillRect(0, 0, 512, 256);
+  const glow = eg.createRadialGradient(145, 65, 2, 145, 65, 60);
+  glow.addColorStop(0, 'rgba(255,250,230,1)'); glow.addColorStop(1, 'rgba(255,250,230,0)');
+  eg.fillStyle = glow; eg.fillRect(0, 0, 512, 256);
+  const equirect = new THREE.CanvasTexture(ec); equirect.colorSpace = THREE.SRGBColorSpace;
+  equirect.mapping = THREE.EquirectangularReflectionMapping;
+  const pmrem = new THREE.PMREMGenerator(renderer), envTarget = pmrem.fromEquirectangular(equirect);
+  pmrem.dispose(); equirect.dispose();
+
+  function applyEnvironment() {
+    renderer.toneMappingExposure = enabled ? .99 : original.exposure;
+    scene.environment = enabled ? envTarget.texture : original.env;
+    hemi.color.copy(enabled ? new THREE.Color('#dae2e5') : original.hemi);
+    hemi.groundColor.copy(enabled ? new THREE.Color('#a3947b') : original.ground);
+    hemi.intensity = enabled ? 1.1 : original.hi;
+    sun.color.copy(enabled ? new THREE.Color('#fff1dc') : original.sun);
+    sun.intensity = enabled ? 2.65 : original.si;
+    sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
+    sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
+    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color('#e0e1d8') : original.horizon);
+    scene.fog.color.copy(enabled ? new THREE.Color('#e0e1d8') : original.fog);
+  }
+  function enhanceCity(c) {
+    if (c.id !== 'dubai') return;
+    c.w.root.traverse(o => {
+      if (!o.isMesh) return;
+      const before = o.material;
+      const after = Array.isArray(before) ? before.map(m => replacement.get(m) || m) : replacement.get(before) || before;
+      if (Array.isArray(before) ? after.some((m, i) => m !== before[i]) : after !== before) {
+        swaps.push({ mesh: o, before, after }); o.material = enabled ? after : before;
+      }
+    });
+    // Neutralize instance palette locally; source arrays and other cities remain intact.
+    for (const name of ['leaves', 'bush', 'canopy', 'tower', 'roof']) {
+      const mesh = c.w.ctx.pools[name]?.m;
+      if (!mesh?.instanceColor) continue;
+      const before = mesh.instanceColor.array.slice(), after = before.slice();
+      const palette = name === 'tower' ? ['#7d969d', '#acb4ad', '#a99e85', '#b7afa1'] : name === 'roof' ? ['#c6b9a0', '#afa38c'] : name === 'canopy' ? ['#e1d8c5', '#c9b99b'] : ['#6f8152', '#536b45', '#879465', '#5e704a'];
+      for (let i = 0; i < mesh.count; i++) new THREE.Color(palette[i % palette.length]).toArray(after, i * 3);
+      colors.push({ mesh, before, after });
+      mesh.instanceColor.array.set(enabled ? after : before); mesh.instanceColor.needsUpdate = true;
+    }
+    // Paving at the existing lake perimeter: stays inside its reserved footprint.
+    // This is a thin surface, not a new collision obstacle or a changed route.
+    const paving = new THREE.Mesh(new THREE.RingGeometry(10.04, 11.48, 96).rotateX(-Math.PI / 2), stone);
+    paving.name = 'Dubai limestone promenade'; paving.position.set(0, 1.281, -33); paving.receiveShadow = true;
+    c.w.root.add(paving); extras.push(paving); paving.visible = enabled;
+    // A narrow outer coping helps the transition read in oblique views.
+    const coping = new THREE.Mesh(new THREE.RingGeometry(11.35, 11.48, 96).rotateX(-Math.PI / 2), sideStone);
+    coping.position.set(0, 1.286, -33); coping.receiveShadow = true; c.w.root.add(coping); extras.push(coping); coping.visible = enabled;
+  }
+  const dir = new THREE.Vector3(-.64, .88, .5).normalize();
+  const originalDir = new THREE.Vector3(Math.cos(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180), Math.sin(55 * Math.PI / 180), Math.sin(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180));
+  function update({ target, overview = false }) {
+    const span = overview ? 300 : Math.min(125, Math.max(48, camera.position.distanceTo(target) * .75));
+    const texel = span * 2 / sun.shadow.mapSize.x;
+    sun.target.position.set(Math.round(target.x / texel) * texel, 0, Math.round(target.z / texel) * texel);
+    sun.position.copy(sun.target.position).addScaledVector(enabled ? dir : originalDir, 220);
+    const sc = sun.shadow.camera;
+    if (Math.abs(sc.right - span) > 1) {
+      Object.assign(sc, { left: -span, right: span, top: span, bottom: -span, near: 1, far: 650 }); sc.updateProjectionMatrix();
+    }
+    sun.shadow.normalBias = .025; sun.shadow.bias = -.00012;
+    const h = Math.max(0, camera.position.y);
+    scene.fog.near = 240 + h * 1.6; scene.fog.far = 920 + h * 3.2;
+  }
+  function setEnabled(value) {
+    enabled = !!value; applyEnvironment();
+    for (const s of swaps) s.mesh.material = enabled ? s.after : s.before;
+    for (const c of colors) { c.mesh.instanceColor.array.set(enabled ? c.after : c.before); c.mesh.instanceColor.needsUpdate = true; }
+    extras.forEach(o => o.visible = enabled);
+  }
+  applyEnvironment();
+  return { enhanceCity, update, setEnabled, get enabled() { return enabled; }, dispose() {
+    setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
+    textures.forEach(t => t.dispose()); materials.forEach(m => m.dispose()); envTarget.dispose();
+  } };
+}

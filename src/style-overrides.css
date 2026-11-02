@@ -1,0 +1,81 @@
+/* Quiet travel UI, with enough contrast over both sky and shaded streets. */
+:root { --panel: rgba(33,43,42,.86); --panel-solid:#24312e; --text:#f7f4ec; --muted:#c4cbbf; --hl:#d5c69e; }
+html,body { background:#c7d1d0; }
+button { -webkit-tap-highlight-color:transparent; }
+button:focus-visible,select:focus-visible { outline:3px solid #eee1bc; outline-offset:3px; }
+[hidden] { display:none!important; }
+.glass { border-color:rgba(239,230,208,.23); border-radius:12px; box-shadow:0 6px 20px #17272214; }
+#hudProfile .av { background:#c7ba99; box-shadow:0 2px 12px #28362d28; }
+#hudProfile .lv { background:#68745a; }
+#hudProfile .meta,.gcur,#hudMenu { background:rgba(35,48,44,.85); }
+#hudClock,#hudLoc,#hudProfile .id span { color:#e0d5b9; }
+.ic.stamp { background:#7d8c76; box-shadow:none; }
+.ic.pwv { background:#c1ab78; box-shadow:none; }
+.gcur .add { background:#d1c19b; color:#26352d; }
+#hudSide { gap:8px; }
+#hudSide button,#hudSide [data-act=shop],#hudSide [data-act=coll] {
+  background:rgba(39,53,47,.89); border:1px solid #ded4ba88; box-shadow:0 3px 12px #26342c26;
+  text-shadow:none; border-radius:12px;
+}
+#hudSide button:hover { background:#4f6251; }
+#hudQuests button { background:rgba(35,48,44,.84); border:1px solid #cfc6af30; border-radius:10px; }
+#hudQuests i { background:#687359; border-color:#c6b997; }
+#hudQuests b { color:#e3d2a6; }
+#hudGo { background:#536e56; border:3px solid #efe6cf; box-shadow:0 4px 20px #18271d33; animation:none; text-shadow:none; }
+#hudGo small { background:#283b32e6; color:#eee6d4; }
+#dpad button { background:rgba(40,56,48,.82); border:1px solid #e6dec366; border-radius:12px; }
+#dpad [data-k=run] { background:#819076; color:#fff; }
+body.explore #cityChips { background:rgba(34,46,42,.84); padding:5px; border-color:#d4c8a755; }
+#cityChips button { background:transparent; color:#e9e5d9; border-radius:8px; }
+#cityChips button.on,#cityChips #mapBtn { background:#c7b68f; color:#26362e; }
+body.explore #hint { background:#ece8d7dc; color:#334338; font-size:11px; }
+#card .city,#card .zh { color:#dfc99b; }
+#card p { color:#ece9df; }
+#card button.ticket,.tix-main { background:#cabb94; color:#27372d; }
+.ntag { background:#6a6f55df; }.ntag.me { background:#435f4ae8; }
+#gameLoad { align-items:center; background:radial-gradient(ellipse at 50% 34%,#d8d7c8 0,#a8b9b7 45%,#6d8986 100%); }
+#gameLoad::before { background:linear-gradient(180deg,transparent 0,#172d2a88 100%); }
+.gl-inner { margin:0; max-width:550px; }
+.gl-logo { width:64px; height:64px; filter:saturate(.55); box-shadow:0 5px 20px #23372c2b; }
+.gl-title { font-size:clamp(24px,4vw,38px); font-weight:650; letter-spacing:.18em; text-shadow:none; }
+.gl-title span { color:#eeeadb; letter-spacing:.18em; margin-top:14px; font-weight:400; font-size:13px; }
+.gl-bar { height:6px; margin:32px 0 18px; box-shadow:none; overflow:visible; }
+.gl-bar i { background:#e3d5af; }.gl-bar b { top:10px; font-size:10px; }
+.gl-tip { margin-top:34px; color:#f3efe2; font-size:12px; }
+#glGo { margin-top:26px; background:#304d40; color:#f5efdf; border:1px solid #e0d4b78c; border-radius:8px; box-shadow:none; animation:none; font-weight:500; letter-spacing:.08em; }
+#glGo:disabled { color:#e7e4d9; background:#465f5580; }
+#gpanel { background:linear-gradient(145deg,#3b4d43,#1f2e27); }
+#gpanel header h2 { font-style:normal; text-shadow:none; color:#e3d0a4; }
+#gpanel nav button.on,.sc .kd { background:#78846b; box-shadow:none; }
+.sc,.tp button { background:#34463b; }
+.gp-card { background:#354a3f; border-color:#c7b88c; }
+.gp-card h2 { color:#e5d4ac; }.gp-card .gp-btns .ok { background:#b9c5ac; color:#23382b; }
+#reviewPanel { position:absolute; top:auto; left:18px; bottom:58px; z-index:40; width:286px; max-height:calc(100% - 130px); overflow:auto; padding:14px; border:1px solid #d7cdb899; border-radius:12px; background:#172922ed; color:#f3efe4; font-size:12px; box-shadow:0 8px 30px #0002; }
+#reviewPanel strong { font-size:13px; font-weight:600; }
+.reviewBtns { display:flex; gap:6px; margin-top:9px; }
+.reviewBtns button { flex:1; border:1px solid #d7ccb155; background:#ffffff0c; color:inherit; border-radius:6px; padding:8px 4px; cursor:pointer; font:inherit; }
+.reviewBtns button[aria-pressed=true] { background:#c8b791; color:#21392b; }
+#reviewStatus { display:block; white-space:pre-line; margin-top:10px; font:10px/1.7 ui-monospace,monospace; color:#dce4d7; }
+body.review #hudQuests,body.review #hint,body.review #dpad { display:none; }
+body.overview #hudQuests { display:none; }
+@media(max-width:600px) {
+  body.explore:not(.overview):not(.review) #dpad { display:block; }
+  body.overview #worldHint { top:66px; max-width:calc(100% - 100px); font-size:11px; }
+  #hudProfile { left:10px; top:10px; }
+  #hudProfile .av { width:44px; height:44px; }
+  #hudProfile .id span,#hudClock { display:none; }
+  #hudProfile .meta { padding:5px 8px; }
+  #hudProfile .row2 { font-size:11px; margin-top:4px; }
+  #hudCur { right:10px; top:12px; gap:5px; }
+  #hudSide { top:64px; right:10px; }
+  #hudQuests { top:72px; width:172px; }
+  #hudQuests button { font-size:10px; padding:4px; }
+  #hudQuests i { width:22px; height:22px; border-width:1px; }
+  #hudGo { right:18px; bottom:26px; width:66px; height:66px; font-size:24px; }
+  #dpad { transform:scale(.83); transform-origin:left bottom; bottom:18px; left:12px; }
+  body.explore #cityChips { bottom:158px; }
+  #reviewPanel { left:10px; bottom:10px; width:250px; max-height:270px; padding:10px; }
+  body.review #cityChips { bottom:300px; }
+  body.explore #card { right:70px; bottom:210px; width:260px; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
