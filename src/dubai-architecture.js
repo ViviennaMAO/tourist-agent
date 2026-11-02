@@ -42,6 +42,18 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   const roof = finish('#9b9688', .94);
   const recess = finish(district ? '#262b28' : '#4b4b43', .95);
   const wood = district ? finish('#514032', .82) : null;
+  if (wood) {
+    wood.onBeforeCompile = shader => {
+      shader.vertexShader = 'varying vec3 vTimber;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvTimber = position;');
+      shader.fragmentShader = 'varying vec3 vTimber;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        float grain = sin(vTimber.y * 69.0 + sin(vTimber.x * 4.3 + vTimber.z * 3.0) * 3.0);
+        diffuseColor.rgb *= 0.88 + 0.12 * grain;
+      `);
+    };
+    wood.customProgramCacheKey = () => 'dubai-timber-grain-v1';
+  }
   const skylineGlass = district ? finish('#72898a', .23, .42, { envMapIntensity: 1.35 }) : null;
   const amberGlass = district ? finish('#514a3d', .26, .2, { emissive:'#bd8743', emissiveIntensity:.08 }) : null;
   const lanternGlass = district ? finish('#ffe1a0', .4, 0, { emissive:'#ffca7d', emissiveIntensity:.7 }) : null;

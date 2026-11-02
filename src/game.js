@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import evaGuideUrl from './assets/eva-guide-v1.png';
-import evaFaceUrl from './assets/eva-face-albedo-v1.png';
-import { createEvaCharacter } from './eva-character.js';
+import evaSpriteUrl from './assets/eva-sprite-atlas-v1.png';
+import { createEvaSprite } from './eva-sprite.js';
 import { createRealism } from './realism.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -1905,7 +1904,7 @@ const CMDS = {
     const bridge = flag === 'bridge', pier = flag === 'pier', rail = flag === 'rail', dx = B[0] - A[0], dz = B[1] - A[1], L = Math.hypot(dx, dz), th = Math.atan2(-dz, dx);
     const hw = pier ? 1.4 : rail ? 1.8 : 2.3;
     // e0/e1：两端在转角、丁字口与别的路相接时向外多铺半个路宽（编译完由 joinRoads 填入），补齐转角缺口
-    const rec = { A, B, hw, kind: pier ? 'pier' : rail ? 'rail' : 'road', e0: 0, e1: 0 }; ctx.roads.push(rec);
+    const rec = { A, B, hw, bridge, kind: pier ? 'pier' : rail ? 'rail' : 'road', e0: 0, e1: 0 }; ctx.roads.push(rec);
     const g = new THREE.Group(); g.position.set(A[0], 0, A[1]); g.rotation.y = th; ctx.root.add(g);
     const side = new THREE.Mesh(G.box, pier ? M.wood : rail ? M.gravel : bridge ? M.white : M.sidewalk), asph = new THREE.Mesh(G.box, rail ? M.sleeper : M.asphalt);
     side.receiveShadow = asph.receiveShadow = true; side.castShadow = bridge || pier;
@@ -1919,6 +1918,7 @@ const CMDS = {
     }
     const P = ctx.pools.dash, dashes = [];
     if (!pier && !rail) for (let d = 1.6; d < L - 1; d += 3) dashes.push({ i: P.alloc(), d });
+    rec.dashes = dashes;
     const dur = 1.3, cos = Math.cos(th), sin = Math.sin(th);
     return {
       dur, adv: 0.6, anim: 'lay',
@@ -2680,17 +2680,17 @@ function renderCityOptions() {
 renderCityOptions();
 
 /* =====================================================================
-   8. 自由探索：新 Eva 立体角色在十一城之间旅行
+   8. 自由探索：Eva 图片角色在十一城之间旅行
    角色依据设定图：黑色中长波浪发（中分）、绿瞳、红唇、奶黄色方领泡泡袖高腰中长裙、米白玛丽珍鞋
    ===================================================================== */
-const evaFaceTexture = new THREE.TextureLoader().load(evaFaceUrl, () => {
+const evaAtlasTexture = new THREE.TextureLoader().load(evaSpriteUrl, () => {
   if (GUI.ready) makeAvatar();
 });
-evaFaceTexture.colorSpace = THREE.SRGBColorSpace;
-evaFaceTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-function makeGirl(look = {}) {
-  return createEvaCharacter({ THREE, faceTexture: evaFaceTexture, look,
-    detail: Object.keys(look).length ? 'medium' : 'high' });
+evaAtlasTexture.colorSpace = THREE.SRGBColorSpace;
+evaAtlasTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+function makeGirl() { return createEvaSprite({ THREE, atlasTexture:evaAtlasTexture }); }
+function evaGuideMarkup(className) {
+  return `<svg class="${className}" viewBox="125 0 335 1024" role="img" aria-label="导游 Eva：黑色卷发、珍珠耳饰和奶黄色连衣裙"><image href="${evaSpriteUrl}" width="1536" height="1024"/></svg>`;
 }
 
 const EX = { on: EXPLORE, keys: new Set(), pos: V3(), y: 1, yaw: 0, city: null, auto: null, t0: performance.now() };
@@ -2876,6 +2876,11 @@ const lmByKey = k => ALL_LM.find(L => lmKey(L) === k);
 
 // 截图：用主渲染器在画布左下角画一帧小图再读出来，紧接着画回正常画面（屏幕上不会闪）
 const shotCam = new THREE.PerspectiveCamera(35, 1, 0.5, 6000);
+// Update atlas UVs before Three uploads geometry, including the first avatar shot.
+function prepareCharacterViews(viewCamera) {
+  girl?.updateView(viewCamera);
+  for (const npc of GUI.npcs) npc.g.updateView(viewCamera);
+}
 function shoot(pos, look, w, h, fov = 35) {
   const pr = renderer.getPixelRatio(), cv = renderer.domElement, W = Math.min(cv.width, Math.round(w * pr)), H = Math.min(cv.height, Math.round(h * pr));
   shotCam.fov = fov; shotCam.aspect = w / h; shotCam.updateProjectionMatrix(); shotCam.position.copy(pos); shotCam.lookAt(look);
@@ -2885,6 +2890,7 @@ function shoot(pos, look, w, h, fov = 35) {
     // Collection cards can photograph a city hidden from the player's camera.
     updateCityVisibility(shotCam, look);
     renderer.setScissorTest(true); renderer.setViewport(0, 0, W / pr, H / pr); renderer.setScissor(0, 0, W / pr, H / pr);
+    prepareCharacterViews(shotCam);
     renderer.render(scene, shotCam);
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     c.getContext('2d').drawImage(cv, 0, cv.height - H, W, H, 0, 0, w, h);
@@ -2895,6 +2901,7 @@ function shoot(pos, look, w, h, fov = 35) {
     world.cities.forEach((c, i) => {
       c.w.root.visible = visibility[i][0]; c.landmarkGroup.visible = visibility[i][1];
     });
+    prepareCharacterViews(camera);
     renderer.render(scene, camera);
   }
 }
@@ -2964,7 +2971,7 @@ const COUPON_HTML = '<div class="coupon"><b>8折</b><span>门票券</span></div>
 function giveCoupon(n = 1) { store.set(COUPON_KEY, store.get(COUPON_KEY, 0) + n); hudRefresh(); }
 function cityIntro(c, onClose) {
   const ls = cityLMs(c.id), n = ls.filter(lit).length;
-  showPop(`<div class="gp-card gp-city-intro"><aside class="eva-guide" aria-label="导游 Eva"><div class="gp-eva-frame"><img class="gp-eva" src="${evaGuideUrl}" width="1024" height="1536" alt="导游 Eva：黑色微卷发，奶黄色连衣裙" decoding="async"></div><div class="eva-guide-copy"><strong>Eva</strong><span>你的城市导游</span><p>跟我一起逛${c.city.nameZh}吧。</p></div></aside><button class="gp-x" aria-label="关闭">×</button><div class="gp-city-content">
+  showPop(`<div class="gp-card gp-city-intro"><aside class="eva-guide" aria-label="导游 Eva"><div class="gp-eva-frame">${evaGuideMarkup("gp-eva")}</div><div class="eva-guide-copy"><strong>Eva</strong><span>你的城市导游</span><p>跟我一起逛${c.city.nameZh}吧。</p></div></aside><button class="gp-x" aria-label="关闭">×</button><div class="gp-city-content">
     <h2>欢迎来到${c.city.nameZh}<small>${c.city.name} · ${String(c.city.index).padStart(2, '0')}/11</small></h2>
     <img class="gp-photo" src="${cityShot(c)}" alt="${c.city.nameZh}">
     <p>${CITY_DESC[c.id] || ''}</p>
@@ -3028,10 +3035,10 @@ function renderPanel() {
       `<p class="gp-note" style="text-align:center">走近地标即可点亮；点击任意藏品直达它的位置</p>`;
   }
   $('gpanel').innerHTML = `<header><span class="bgw">${shop ? 'TICKETS' : 'COLLECTION'}</span><h2>${shop ? '门票商城' : '藏品展厅'}</h2><div class="pcur">${curHTML()}</div><button class="close" aria-label="返回">➜</button></header>
-    <div class="gp-body"><nav>${tabs}</nav><main>${main}</main></div><img class="gp-guide" src="${evaGuideUrl}" width="1024" height="1536" alt="导游 Eva" decoding="async">${shop && !topup ? `<button class="buy" ${P.sel ? '' : 'disabled'}>购买</button>` : ''}`;
+    <div class="gp-body"><nav>${tabs}</nav><main>${main}</main></div>${evaGuideMarkup("gp-guide")}${shop && !topup ? `<button class="buy" ${P.sel ? '' : 'disabled'}>购买</button>` : ''}`;
 }
 
-// 模拟玩家：四个配色不同的小女孩在当前城市里闲逛
+// 模拟玩家：四个使用 Eva 图片形象的角色在当前城市里闲逛
 function npcPlace(n, c) {
   for (let k = 0; k < 60; k++) {
     const a = Math.random() * 6.283, r = 8 + Math.random() * 40, x = c.H.x + Math.cos(a) * r, z = c.H.z + Math.sin(a) * r, w = walkable(x, z);
@@ -3166,6 +3173,7 @@ function setReviewCamera(kind) {
     street: { p: [-8, 12, 0], q: [-23, 3, -25], name: '西侧街区' },
     arcade: { p: [-11, 6, -18], q: [-23, 3.4, -25], name: '立面细节' },
     garden: { p: [-25, 3.6, -1], q: [-29, 1.9, -10], name: '花园细节' },
+    road: { p: [-34, 3.8, -11], q: [-34, 1.4, -23], name: '街道细节' },
     district: { p: [-22, 40, 78], q: [-9, 18, -28], name: '滨海街区' }
   };
   const shot = shots[kind];
@@ -3177,17 +3185,17 @@ function setReviewCamera(kind) {
 function setReviewCharacter(view) {
   setReviewCamera('street'); review.character = true;
   EX.yaw = 0; girl.root.rotation.y = 0;
-  controls.minDistance = 2; controls.maxPolarAngle = 1.52;
-  const offset = view === 'back' ? V3(0,2.3,-6.4) : view === 'side' ? V3(6.4,2.3,0) : V3(0,2.3,6.4);
-  camera.position.copy(EX.pos).add(offset); controls.target.copy(EX.pos).add(V3(0,1.65,0));
+  controls.minDistance = view === 'portrait' ? .75 : 2; controls.maxPolarAngle = 1.52;
+  const offset = view === 'portrait' ? V3(0,2.86,1.65) : view === 'back' ? V3(0,2.3,-6.4) : view === 'side' ? V3(6.4,2.3,0) : V3(0,2.3,6.4);
+  camera.position.copy(EX.pos).add(offset); controls.target.copy(EX.pos).add(V3(0,view === 'portrait' ? 2.79 : 1.65,0));
   camera.lookAt(controls.target); controls.update();
-  review.camera = 'Eva · ' + ({front:'正面',side:'侧面',back:'背面'}[view]);
+  review.camera = 'Eva · ' + ({front:'正面',side:'侧面',back:'背面',portrait:'面部特写'}[view]);
 }
 function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第五轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第五轮 · 建筑与植物</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第六轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第六轮 · 街道与建筑</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   $('reviewLook').textContent = review.enabled ? 'After · 写实材质' : 'Before · 基础材质';
   $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
@@ -3206,7 +3214,7 @@ function setupReview() {
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   };
   const updateDistrictButton = () => {
-    $('reviewDistrict').textContent = realism.districtEnabled ? '第五轮 · 建筑与植物' : '第二轮 · 局部样本';
+    $('reviewDistrict').textContent = realism.districtEnabled ? '第六轮 · 街道与建筑' : '第二轮 · 局部样本';
     $('reviewDistrict').setAttribute('aria-pressed', String(realism.districtEnabled));
   };
   updateDistrictButton();
@@ -3231,7 +3239,7 @@ function updateReview() {
   if (!REVIEW) return;
   const ok = ALL_LM.filter(l => l.loaded).length, failed = ALL_LM.filter(l => l.failed).length;
   const xyz = v => v.toArray().map(n => n.toFixed(1)).join(', ');
-  $('reviewStatus').textContent = `角色：Eva 立体模型 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
+  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
 }
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
@@ -3250,6 +3258,7 @@ function frame(now) {
   exploreStep(frozenReview ? 0 : dt, frozenReview ? 180000 : now);
   updateCityVisibility(camera, controls.target, EX.overview);
   realism.update({ target: controls.target, overview: EX.overview, time: review.time });
+  prepareCharacterViews(camera);
   renderer.render(scene, camera);
   fpsN++;
   if (now - fpsT > 500) {

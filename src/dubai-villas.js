@@ -63,6 +63,20 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
       for(const yy of [bottom,top,bottom+wh*.76]) box(wood,x,yy,shopZ+.025,opening,.04,.065);
       box(wood,x,(top+bottom)/2,shopZ+.03,.028,wh,.065);
       box(metal,x+.07,bottom+.85,shopZ+.08,.018,.18,.02);
+      // Raised timber kick panels, bronze pulls and pleated ivory curtains give
+      // the recessed openings a domestic scale without filling the arcade.
+      for(const sign of [-1,1]) {
+        const px=x+sign*opening*.24, pw=opening*.4;
+        box(wood,px,bottom+.27,shopZ+.035,pw,.46,.045);
+        for(const yy of [bottom+.08,bottom+.46]) box(metal,px,yy,shopZ+.062,pw-.055,.012,.012);
+        box(metal,x+sign*.065,bottom+.91,shopZ+.084,.018,.17,.022);
+        if(bottom>1 || (j+index)%3===0) for(let pleat=0;pleat<4;pleat++) {
+          const cx=x+sign*(opening*.43-pleat*.041);
+          box(pleat%2?trim:wall,cx,bottom+wh*.57,shopZ+.018+pleat%2*.009,.044,wh*.67,.017);
+        }
+      }
+      box(trim,x,top+.015,shopZ+.045,opening+.04,.055,.085);
+
     }
     for(let j=0;j<=cols;j++) box(wall,-w/2+edge+bay*j,(bottom+top)/2,shopZ-.03,pier,top-bottom,.24);
   }

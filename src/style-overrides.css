@@ -103,7 +103,7 @@ body.overview #hudQuests { display:none; }
   .gp-card.gp-city-intro { grid-template-columns:minmax(0,1fr); gap:16px; padding:18px; max-height:calc(100% - 24px); }
   .eva-guide { flex-direction:row; justify-content:flex-start; gap:16px; padding-right:22px; }
   .gp-eva-frame { position:relative; width:80px; height:88px; flex:none; overflow:hidden; border-radius:12px; background:#ded6bb; }
-  .gp-city-intro .gp-eva { position:absolute; width:230px; max-width:none; height:345px; max-height:none; left:50%; top:-2px; transform:translateX(-46%); filter:none; }
+  .gp-city-intro .gp-eva { position:absolute; width:115px; max-width:none; height:352px; max-height:none; left:50%; top:-2px; transform:translateX(-50%); filter:none; }
   .eva-guide-copy { text-align:left; }
   .eva-guide-copy strong { font-size:23px; margin:0; }
   .gp-city-intro .eva-guide-copy p { margin-top:8px; }
