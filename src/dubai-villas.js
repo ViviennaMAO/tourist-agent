@@ -35,7 +35,19 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
       for(let j=0;j<n;j++) {
         const u=-span/2+spacing*(j+.5), flank=(spacing-ww)/2;
         for(const sign of [-1,1]) face(wall,u+sign*(ww/2+flank/2),(sill+head)/2,.13,flank,head-sill,.24);
-        face(glass,u,(sill+head)/2,.27,ww,head-sill,.02);
+        face((j+side+index)%4===0?amberGlass:glass,u,(sill+head)/2,.27,ww,head-sill,.02);
+        // Narrow stone returns, a deep shadow at the sill, and stepped drip
+        // mouldings break the flat window rectangle at pedestrian distance.
+        for(const sign of [-1,1])face(trim,u+sign*(ww/2+.025),(sill+head)/2,.17,.05,head-sill+.1,.19);
+        face(recess,u,sill-.012,.22,ww,.028,.11);
+        face(trim,u,head+.12,.17,ww+.23,.035,.32);
+        face(trim,u,sill-.09,.14,ww+.1,.025,.22);
+        // A few occupied-looking windows have folded drapes; other panes stay
+        // open to daylight reflection, avoiding identical repeated treatment.
+        if((j+index+side)%3!==1)for(const sign of [-1,1])for(let pleat=0;pleat<3;pleat++) {
+          face(pleat%2?trim:wall,u+sign*(ww*.41-pleat*.03),(sill+head)/2,.249+pleat%2*.007,.033,head-sill-.06,.012);
+        }
+        if((j+index+side)%5===2)for(let slat=0;slat<5;slat++)face(wood,u,head-.065-slat*.055,.245,ww-.04,.023,.02);
         for(const sign of [-1,1]) face(wood,u+sign*ww/2,(sill+head)/2,.22,.045,head-sill,.07);
         face(wood,u,(sill+head)/2,.22,.025,head-sill,.055);
         for(const y of [sill,head,sill+(head-sill)*.72]) face(wood,u,y,.22,ww,.035,.055);

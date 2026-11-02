@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import evaSpriteUrl from './assets/eva-sprite-atlas-v1.png';
 import { createEvaSprite } from './eva-sprite.js';
+import { spaceDubaiTraffic } from './dubai-vehicles.js';
 import { createRealism } from './realism.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -1447,7 +1448,7 @@ class Ctx {
   constructor(root, seed, city, LMc) {
     this.root = root; this.rng = mulberry32(hashSeed(String(seed)));
     this.city = city; this.LM = LMc;
-    this.buildings = []; this.palms = [];
+    this.buildings = []; this.palms = []; this.vehicles = [];
     this.camKeys = []; this.orbit = null; this.T = 50; this.title = null;
     this.roads = []; this.circles = []; this.rects = []; this.fronds = []; this.crescent = null;
     this.raised = [];   // 抬高地块：{ test(x,z), y }，决定树、楼落在多高
@@ -2110,20 +2111,23 @@ const CMDS = {
     for (let i = 0; i < n; i++) {
       let u = ctx.rng(), li = 0; for (; li < loops.length - 1 && u > loops[li].k; li++) u -= loops[li].k;
       const ib = P.carBody.alloc(); P.carTop.alloc(); P.carBody.color(ib, i === 0 ? new THREE.Color('#FF7A1A') : ctx.pick(PAL.car));
-      cars.push({ i: ib, loop: loops[li], off: ctx.r(0, loops[li].tot), v: i === 0 ? 16 : ctx.r(8, 12), st: s + i / n * 1.2 });
+      cars.push({ i: ib, pose:new THREE.Matrix4(), loop: loops[li], off: ctx.r(0, loops[li].tot), v: i === 0 ? 16 : ctx.r(8, 12), st: s + i / n * 1.2 });
     }
+    if (ctx.city.id === 'dubai') spaceDubaiTraffic(cars, loops[0]);
+    ctx.vehicles.push(...cars);
     return {
       dur: 1.6, adv: 0.3, anim: 'path', bbox: paths.flat().reduce((b, [x, z]) => b.expandByPoint(V3(x, 1, z)).expandByPoint(V3(x, 3, z)), new THREE.Box3()),
       actors: [{
         apply(t) {
           for (const c of cars) {
             const p = prog(t, c.st, 0.4); if (p <= 0) { P.carBody.hide(c.i); P.carTop.hide(c.i); continue; }
-            let d = ((c.off + amb(t - s) * c.v) % c.loop.tot + c.loop.tot) % c.loop.tot, sg = c.loop.segs[0];
+            c.distance = amb(t - s) * c.v;
+            let d = ((c.off + c.distance) % c.loop.tot + c.loop.tot) % c.loop.tot, sg = c.loop.segs[0];
             for (const q of c.loop.segs) if (d >= q.s0 && d < q.s0 + q.len) { sg = q; break; }
             const u = (d - sg.s0) / sg.len, dx = (sg.b[0] - sg.a[0]) / sg.len, dz = (sg.b[1] - sg.a[1]) / sg.len;
             const x = sg.a[0] + (sg.b[0] - sg.a[0]) * u - dz * 0.8, z = sg.a[1] + (sg.b[1] - sg.a[1]) * u + dx * 0.8;
             const k = easeOutBack(p, 2);
-            mat(x, 1.66, z, Math.atan2(dx, dz), k, k, k); P.carBody.set(c.i, _m); P.carTop.set(c.i, _m);
+            mat(x, 1.66, z, Math.atan2(dx, dz), k, k, k); c.pose.copy(_m); P.carBody.set(c.i, _m); P.carTop.set(c.i, _m);
           }
         }
       }]
@@ -3191,12 +3195,27 @@ function setReviewCharacter(view) {
   camera.lookAt(controls.target); controls.update();
   review.camera = 'Eva · ' + ({front:'正面',side:'侧面',back:'背面',portrait:'面部特写'}[view]);
 }
+function setReviewVehicle() {
+  setReviewCamera('road');
+  review.time = 180; review.frozen = true; world.render(review.time);
+  const city = world.cities.find(c => c.id === 'dubai'), car = city.w.ctx.vehicles[0];
+  if (!car) return;
+  const origin = new THREE.Vector3().setFromMatrixPosition(car.pose);
+  city.w.root.localToWorld(origin);
+  const rotation = new THREE.Quaternion().setFromRotationMatrix(car.pose);
+  camera.position.copy(origin).add(V3(3,1.7,4.1).applyQuaternion(rotation));
+  controls.target.copy(origin).add(V3(0,.45,0));
+  controls.minDistance = 2; camera.lookAt(controls.target); controls.update();
+  review.camera = '车辆细节';
+  $('reviewFreeze').textContent = '继续环境动画'; $('reviewFreeze').setAttribute('aria-pressed','true');
+}
 function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第六轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第六轮 · 街道与建筑</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第七轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第七轮 · 车辆与门窗</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
+  $('reviewVehicle').onclick = setReviewVehicle;
   $('reviewLook').textContent = review.enabled ? 'After · 写实材质' : 'Before · 基础材质';
   $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   panel.querySelectorAll('[data-shot]').forEach(b => b.onclick = () => setReviewCamera(b.dataset.shot));
@@ -3214,7 +3233,7 @@ function setupReview() {
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   };
   const updateDistrictButton = () => {
-    $('reviewDistrict').textContent = realism.districtEnabled ? '第六轮 · 街道与建筑' : '第二轮 · 局部样本';
+    $('reviewDistrict').textContent = realism.districtEnabled ? '第七轮 · 车辆与门窗' : '第二轮 · 局部样本';
     $('reviewDistrict').setAttribute('aria-pressed', String(realism.districtEnabled));
   };
   updateDistrictButton();
@@ -3239,7 +3258,7 @@ function updateReview() {
   if (!REVIEW) return;
   const ok = ALL_LM.filter(l => l.loaded).length, failed = ALL_LM.filter(l => l.failed).length;
   const xyz = v => v.toArray().map(n => n.toFixed(1)).join(', ');
-  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
+  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.vehicles != null ? s.vehicles + ' 辆车' : s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
 }
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);

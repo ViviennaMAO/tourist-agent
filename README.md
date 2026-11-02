@@ -58,7 +58,9 @@ The concept reference remains an art-direction target, not a screenshot or an ac
 
 ## Visual review
 
-Open `/?review=1`. Choose 全岛 / 广场 / 近景 / 街区 / 滨海, freeze the environment at 180 seconds, and switch Before / After without moving the camera. 第六轮 · 街道与建筑 switches between the new district and round 2. 几何精修 switches back to round 1. `?review=1&district=off` starts at round 2; `?review=1&detail=off` starts at round 1. The panel reports load failures, runtime errors, camera/character positions and renderer metrics. Ordinary players do not see these controls.
+Round 7 adds 18 detailed Dubai sedans with rotating wheels, lights, mirrors and subdued paint; evenly spaced two-way traffic uses the existing mainland loop. Villa windows gain stone returns, stepped sills, curtains and partial blinds. See [round 7 validation and limitations](docs/round-7-vehicles-windows.md). Eva remains the illustrated character from round 6.
+
+Open `/?review=1`. Choose 全岛 / 广场 / 近景 / 街区 / 滨海, freeze the environment at 180 seconds, and switch Before / After without moving the camera. 第七轮 · 车辆与门窗 switches between the new district and round 2. 车辆细节 inspects a real traffic car at time 180. 几何精修 switches back to round 1. `?review=1&district=off` starts at round 2; `?review=1&detail=off` starts at round 1. The panel reports load failures, runtime errors, camera/character positions and renderer metrics. Ordinary players do not see these controls.
 
 ## Source and assets
 

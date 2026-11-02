@@ -38,7 +38,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   const ivory = limestone('#f3ebdb'), warm = limestone(district ? '#e5dac6' : '#d4cabb');
   const trim = finish('#d8cfbc', .77);
   const metal = finish('#5c5140', .36, .72);
-  const glass = finish('#334b53', .19, .38, { envMapIntensity: 1.25 });
+  const glass = finish(district ? '#40524c' : '#334b53', district ? .16 : .19, district ? .52 : .38, { envMapIntensity: district ? 1.7 : 1.25 });
   const roof = finish('#9b9688', .94);
   const recess = finish(district ? '#262b28' : '#4b4b43', .95);
   const wood = district ? finish('#514032', .82) : null;
@@ -55,7 +55,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     wood.customProgramCacheKey = () => 'dubai-timber-grain-v1';
   }
   const skylineGlass = district ? finish('#72898a', .23, .42, { envMapIntensity: 1.35 }) : null;
-  const amberGlass = district ? finish('#514a3d', .26, .2, { emissive:'#bd8743', emissiveIntensity:.08 }) : null;
+  const amberGlass = district ? finish('#6b5b43', .2, .3, { envMapIntensity:1.3, emissive:'#bd8743', emissiveIntensity:.07 }) : null;
   const lanternGlass = district ? finish('#ffe1a0', .4, 0, { emissive:'#ffca7d', emissiveIntensity:.7 }) : null;
   const plantGreen = district ? finish('#496c39', .94) : null;
   const flowers = district ? finish('#bd527b', .9) : null;

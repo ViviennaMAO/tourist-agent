@@ -1,3 +1,4 @@
+import { createDubaiVehicles } from './dubai-vehicles.js';
 import { createDubaiStreets } from './dubai-streets.js';
 import { createDubaiArchitecture } from './dubai-architecture.js';
 import { createDubaiPalms } from './dubai-palms.js';
@@ -123,7 +124,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
   const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
-  const facadeStone = surface('stone', { scale: .38, roughness: .84, bump: .006, detail: .72 });
+  const facadeStone = surface('stone', { scale: .38, roughness: .84, bump: .005, detail: .56 });
   const neutral = (source, color, roughness) => {
     const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
     materials.push(m); return m;
@@ -196,7 +197,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     const coping = new THREE.Mesh(new THREE.RingGeometry(11.35, 11.48, 96).rotateX(-Math.PI / 2), sideStone);
     coping.position.set(0, 1.286, -33); coping.receiveShadow = true; c.w.root.add(coping); extras.push(coping); coping.visible = enabled;
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
-    districtStudies.push(createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture }), createDubaiLandmarks({ THREE, city: c }));
+    districtStudies.push(createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture }), createDubaiLandmarks({ THREE, city: c }));
     lakeSwaps.push(...swaps.filter(s => s.before === M.lake));
     syncStudies();
   }
