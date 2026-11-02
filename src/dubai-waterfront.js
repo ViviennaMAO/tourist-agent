@@ -21,6 +21,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const amberGlass = finish('#8f7958', .25, { emissive: '#d39b53', emissiveIntensity: .1 });
   const lanternGlass = finish('#ffdf9e', .4, { emissive: '#ffbd68', emissiveIntensity: 1.2 });
   const plantGreen = finish('#566638'), flowers = finish('#b85177');
+  for(const m of [glass,shopGlass,amberGlass])m.userData.cityGlass=true;
   const finishes = { wall, trim, metal, glass, shopGlass, roof, recess, wood, amberGlass, lanternGlass, plantGreen, flowers };
   let transform = new THREE.Matrix4();
   function add(g, m) {

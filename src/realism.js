@@ -6,6 +6,9 @@ import { createDubaiPalms } from './dubai-palms.js';
 import { createDubaiLandscape } from './dubai-landscape.js';
 import { createWaterStudy } from './water-study.js';
 import { createDubaiLandmarks } from './dubai-landmarks.js';
+import { createDubaiBackdrop } from './dubai-backdrop.js';
+import { createContactShadows } from './contact-shadows.js';
+import { createCityReflections } from './city-reflections.js';
 import leafUrl from './assets/ficus-leaf-v1.png';
 
 /** Reversible lighting, surfaces and local Dubai geometry studies.
@@ -18,6 +21,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   let refinementEnabled = qs.get('detail') !== 'off';
   const refinements = [], districtStudies = [], lakeSwaps = [];
   let districtEnabled = qs.get('district') !== 'off';
+  let contactEnabled=qs.get('ao')!=='off',reflectionsEnabled=qs.get('reflections')!=='off',skylineEnabled=qs.get('skyline')!=='off';
+  let contact=null,probe=null,backdrop=null,dubai=null,nearDubai=false;
   const waterStudy = createWaterStudy({ THREE, seaMat, lagoonMat });
   const textures = [], materials = [], swaps = [], extras = [], colors = [];
   const leafTexture=new THREE.TextureLoader().load(leafUrl);
@@ -172,6 +177,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   }
   function enhanceCity(c) {
     if (c.id !== 'dubai') return;
+    dubai=c;
     c.w.root.traverse(o => {
       if (!o.isMesh) return;
       const before = o.material;
@@ -201,6 +207,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
     const waterfront = createDubaiWaterfront({ THREE, city:c, stoneMaterial:waterfrontStone });
     districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints }), createDubaiLandmarks({ THREE, city: c }));
+    backdrop=createDubaiBackdrop({THREE,city:c});districtStudies.push(backdrop);
+    probe=createCityReflections({renderer,scene,city:c});
     lakeSwaps.push(...swaps.filter(s => s.before === M.lake));
     syncStudies();
   }
@@ -210,6 +218,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     // Must follow the source actors: they restore the original instances each frame.
     refinements.forEach(r => r.apply(time));
     districtStudies.forEach(r => r.apply(time));
+    nearDubai=!!dubai&&!overview&&Math.hypot(target.x-dubai.w.root.position.x,target.z-dubai.w.root.position.z)<110&&camera.position.distanceTo(target)<120;
+    if(nearDubai)probe?.captureIfNeeded();
     const span = overview ? 300 : Math.min(125, Math.max(24, camera.position.distanceTo(target) * .65));
     const texel = span * 2 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, 0, Math.round(target.z / texel) * texel);
@@ -235,6 +245,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     districtStudies.forEach(r => r.setEnabled(false));
     const active = enabled && refinementEnabled;
     (districtEnabled ? districtStudies : refinements).forEach(r => r.setEnabled(active));
+    if(backdrop)backdrop.setEnabled(active&&districtEnabled&&skylineEnabled);
+    probe?.setEnabled(active&&districtEnabled&&reflectionsEnabled);
     waterStudy.setEnabled(active && districtEnabled);
     for (const s of lakeSwaps) s.mesh.material = active && districtEnabled ? waterStudy.lakeMaterial : (enabled ? s.after : s.before);
     applyEnvironment();
@@ -246,11 +258,25 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   }
   applyEnvironment();
   return { enhanceCity, update, setEnabled, setRefinementEnabled, setDistrictEnabled,
+    render(){
+      const reset=renderer.info.autoReset;renderer.info.autoReset=false;renderer.info.reset();
+      try {
+        renderer.render(scene,camera);
+        if(enabled&&refinementEnabled&&districtEnabled&&nearDubai&&contactEnabled){
+          contact??=createContactShadows({renderer,scene,camera});contact.render();
+        }
+      } finally {renderer.info.autoReset=reset;}
+    },
+    get contactEnabled(){return contactEnabled;},setContactEnabled(v){contactEnabled=!!v;},
+    get reflectionsEnabled(){return reflectionsEnabled;},setReflectionsEnabled(v){reflectionsEnabled=!!v;syncStudies();},
+    get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();},
+    get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&nearDubai?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?probe?.status||'准备中':'关'}`;},
     get districtEnabled() { return districtEnabled; },
     get refinementEnabled() { return refinementEnabled; },
     get refinementStats() { return (districtEnabled ? districtStudies : refinements).map(r => r.stats); },
     get enabled() { return enabled; }, dispose() {
     setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
+    contact?.dispose();probe?.dispose();
     refinements.forEach(r => r.dispose()); districtStudies.forEach(r => r.dispose()); waterStudy.dispose();
     sky.material.fragmentShader = skyFragment; delete sky.material.uniforms.taAtmosphere; sky.material.needsUpdate = true;
     textures.forEach(t => t.dispose()); materials.forEach(m => m.dispose()); envTarget.dispose();

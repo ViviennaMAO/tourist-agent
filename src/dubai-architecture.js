@@ -60,6 +60,16 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   const lanternGlass = district ? finish('#ffe1a0', .4, 0, { emissive:'#ffca7d', emissiveIntensity:.7 }) : null;
   const plantGreen = district ? finish('#496c39', .94) : null;
   const flowers = district ? finish('#bd527b', .9) : null;
+  for(const m of [glass,skylineGlass,amberGlass].filter(Boolean)) {
+    m.userData.cityGlass=true;
+    m.roughness=m===skylineGlass?.13:.14;
+    m.envMapIntensity=m===skylineGlass?1.45:1.25;
+  }
+  if(skylineGlass){
+    skylineGlass.userData.reflectionZone='skyline';
+    skylineGlass.color.set('#9bafb8');skylineGlass.metalness=.72;
+    skylineGlass.roughness=.09;skylineGlass.envMapIntensity=1.5;
+  }
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   let transform = new THREE.Matrix4();
