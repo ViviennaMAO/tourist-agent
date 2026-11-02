@@ -52,6 +52,13 @@ test('pilot furniture respects both shops and leaves routes from shore spawn to 
   assert.ok(rects.some(r=>r.x===-25&&r.z===-10.4),'west café must actually be placed');
   assert.ok(rects.some(r=>r.x===-15&&r.z===-10.4),'east café must actually be placed');
   for(const x of [-25,-15]) assert.ok(rects.some(r=>r.x===x&&r.z===-12.55),'rear flower borders must actually be placed');
+  const pink=landscape.root.children.find(m=>m.material.color?.getHexString()==='b7446e').geometry.attributes.position;
+  for(const b of pilot.footprints){
+    const sign=b.x<-20?1:-1,edge=b.x+sign*b.w/2,roof=1+(sign===1?5.8:6.1);
+    let visibleBracts=0;
+    for(let i=0;i<pink.count;i++)if(sign*(pink.getX(i)-edge)>.015&&pink.getY(i)<roof&&pink.getY(i)>roof-1.5&&Math.abs(pink.getZ(i)-b.z)<b.d/2)visibleBracts++;
+    assert.ok(visibleBracts>30,'trailing flowers must reach beyond the actual facade, not disappear inside the building');
+  }
   // The rough quay and five-sided flowers add a bounded batch of geometry.
   assert.ok(landscape.stats.triangles<170000,`pilot foliage and revetment budget exceeded: ${landscape.stats.triangles}`);
   const quay=landscape.root.children.find(m=>m.material.userData.pilotRevetment);

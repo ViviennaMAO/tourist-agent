@@ -1,3 +1,4 @@
+import { quayCells, quayContour, createQuayStone } from './quay-stones.js';
 import { createFountainSpray, fountainPoint } from './fountain-spray.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -49,7 +50,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     add(new THREE.DodecahedronGeometry(.25+random()*.16,0).scale(1,.6,.8),rocks,x+.18,.2,z+.15,random()*6.28);
     box(stone,x,1.015,-4.9,.68,.1,.48);
   }
-  // Three irregular courses of rough limestone sit below a separate cut-stone
+  // Fitted irregular fieldstones sit below a separate cut-stone
   // coping. Vertex colour carries mineral variation and the darker wet toe.
   if (exclusions.length) {
     const quarry=material('#ffffff',.96,{vertexColors:true});
@@ -65,7 +66,9 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         `+shader.fragmentShader;
       shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
         float quarryGrain=quarryNoise(quarryPosition*29.);
-        diffuseColor.rgb*=.88+.22*quarryGrain;
+        float waterline=.22+sin(quarryPosition.x*5.3)*.025;
+        float wet=1.-smoothstep(waterline-.07,waterline+.18,quarryPosition.y);
+        diffuseColor.rgb*=(.92+.15*quarryGrain)*mix(1.,.56,wet);
       `);
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
         float relief=quarryGrain*.018+quarryNoise(quarryPosition*9.)*.035;
@@ -74,44 +77,26 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
       `);
     };
-    quarry.customProgramCacheKey=()=> 'pilot-quarry-v1';
-    for(let row=0;row<3;row++) {
-      let edge=-33;
-      while(edge<-7) {
-        const width=Math.min(.52+random()*.57,-7-edge),x=edge+width/2;
-        edge+=width;
-        const g=new THREE.BoxGeometry(2,2,2,3,2,2);
-        const a=g.attributes.position,colors=[];
-        const tint=new THREE.Color(['#a3957e','#b5a68b','#c4b49a','#bbaa90'][Math.floor(random()*4)]);
-        for(let j=0;j<a.count;j++) {
-          const point=new THREE.Vector3().fromBufferAttribute(a,j);
-          const core=point.clone().clampScalar(-.82,.82);
-          point.sub(core).normalize().multiplyScalar(.18).add(core);
-          const px=point.x,py=point.y,pz=point.z;
-          // Coordinate-based displacement keeps coincident vertices together.
-          const n=Math.sin(px*31.7+py*53.3+pz*19.1+x*7.1);
-          const yy=.18+row*.29+py*.22;
-          a.setXYZ(j,px*(width-.018)*.5+n*.018,py*(.135+Math.sin(x*3)*.012)+n*.009,pz*(.24+row*.025)+n*.055);
-          const c=tint.clone().multiplyScalar((yy<.22?.64:yy<.36?.82:1)*(.9+n*.10));
-          colors.push(c.r,c.g,c.b);
-        }
-        g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.computeVertexNormals();
-        add(g,quarry,x,.18+row*.29,-4.68+(random()-.5)*.08);
-      }
+    quarry.customProgramCacheKey=()=> 'pilot-quarry-v2';
+    const mortar=material('#736b5b',.98);
+    box(mortar,-20,.5,-4.55,26,.94,.14);
+    for(const cell of quayCells()) add(createQuayStone(cell),quarry);
+    const coping=material('#c9bda7',.88);
+    for(let j=0;j<32;j++) {
+      const x=-33+(j+.5)*26/32;
+      box(coping,x,1.06,-4.91+quayContour(x)*.55,26/32-.014,.12,.64);
     }
-    const coping=material('#d0c4ad',.86);
-    for(let j=0;j<32;j++) box(coping,-33+(j+.5)*26/32,1.06,-4.91,26/32-.018,.12,.6);
   }
   // Small raised beds with actual individual leaves and flowering clusters.
-  function foliage(x,y,z,r,flowers=false,fine=false,dense=false) {
+  function foliage(x,y,z,r,flowers=false,fine=false,dense=false,count=null,trailing=false) {
     if(flowers&&dense)for(let branch=0;branch<2;branch++){
       const angle=random()*Math.PI*2;
       const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(x,y-.08,z),
         new THREE.Vector3(x,y+r*.55,z),new THREE.Vector3(x+Math.cos(angle)*r*.8,y+r*.17,z+Math.sin(angle)*r*.8));
       add(new THREE.TubeGeometry(curve,4,.006,3,false),bark);
     }
-    for (let j=0;j<(dense?88:fine?56:leafTexture?48:32);j++) {
-      const angle=random()*6.28, radius=r*Math.sqrt(random()), h=r*.65*Math.sqrt(1-radius*radius/(r*r))*(.35+random()*.65);
+    for (let j=0;j<(count??(dense?88:fine?56:leafTexture?48:32));j++) {
+      const angle=random()*6.28, radius=r*Math.sqrt(random()), h=trailing?(random()-.5)*r*1.6:r*.65*Math.sqrt(1-radius*radius/(r*r))*(.35+random()*.65);
       const px=x+Math.cos(angle)*radius, pz=z+Math.sin(angle)*radius;
       // Pointed elliptical leaves with a raised midrib; irregular orientation
       // catches light without looking like low-poly balls or flat confetti.
@@ -132,18 +117,30 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       ],3));
       leaf.setIndex([0,6,1,1,6,2,2,6,3,3,6,4,4,6,5,5,6,0]);leaf.computeVertexNormals();
       }
-      leaf.rotateX(random()*.9-.35).rotateZ(random()*1.2-.6);
+      leaf.rotateX(trailing?random()*2.5-.8:random()*.9-.35).rotateZ(random()*1.2-.6);
       add(leaf,greens[j%2],px,y+h,pz,angle);
       if (flowers&&j%(dense?4:leafTexture?9:6)===0) {
         const blossom=bloom[dense ? ((j/4)%5===0?1:0) : (j%4===0?1:0)];
         // Small three-bract blossoms sit above foliage, interspersed with buds.
         for(let petal=0;petal<3;petal++) {
           const a=petal*Math.PI*2/3;
-          const g=new THREE.CircleGeometry((dense?.045:.03)+random()*.025,5).scale(1,.76,1).rotateX(-Math.PI*(.28+random()*.25));
+          const g=new THREE.CircleGeometry((dense?.045:.03)+random()*.025,5).scale(1,.76,1).rotateX(trailing?random()*Math.PI:-Math.PI*(.28+random()*.25));
           add(g,blossom,px+Math.cos(a)*.035,y+h+.065,pz+Math.sin(a)*.035,a);
         }
         add(new THREE.TetrahedronGeometry(.018,0),bloom[1],px,y+h+.073,pz);
       }
+    }
+  }
+  // A continuous woody stem carries small uneven leaf/bract groups across an
+  // edge. Unlike stacked spheres, the gaps expose a believable hanging branch.
+  function trailingFlowers(x,y,z,sign,length=.9) {
+    const curve=new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x,y,z),new THREE.Vector3(x+sign*.23,y+.08,z+.09),
+      new THREE.Vector3(x+sign*.38,y-length*.45,z-.06),new THREE.Vector3(x+sign*.34,y-length,z+.14)]);
+    add(new THREE.TubeGeometry(curve,12,.009,4,false),bark);
+    for(let node=0;node<13;node++) {
+      const t=(node+.1+random()*.6)/13,p=curve.getPoint(t),r=(.13+random()*.08)*(1-t*.38);
+      foliage(p.x,p.y,p.z,r,true,true,true,14,true);
     }
   }
   function bed(x,z,w=2.4,d=.9,flowers=true) {
@@ -165,20 +162,19 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       box(stone,x,y+.19,z,2.3,.38,.85);
       box(soil,x,y+.39,z,2.12,.015,.67);
       for(let j=0;j<7;j++) foliage(x-.9+j*.3,y+.40+random()*.13,z+(random()-.5)*.22,.26+random()*.08,true,false,true);
+      for(const dx of [-.68,.53])trailingFlowers(x+dx,y+.51,z+.22,dx<0?-1:1,.32);
     }
     // Roof planters and cascading bougainvillea are attached only to buildings
     // which were actually placed; the building already owns their collision.
     for(const b of exclusions) {
-      const left=b.x<-20, innerX=b.x+(left?1:-1)*.9;
+      const left=b.x<-20, innerX=b.x+(left?1:-1)*(b.w/2-.30);
       const y=ctx.groundY(b.x,b.z)+(left?5.8:6.1);
       box(stone,innerX,y+.13,b.z+.65,.52,.34,2.8);
       box(soil,innerX,y+.31,b.z+.65,.38,.015,2.64);
-      for(let j=0;j<8;j++) {
-        const z=b.z-.45+j*.3;
-        foliage(innerX,y+.34,z,.30,true,false,true);
-        if(j%2===0) for(let drop=0,n=3+Math.floor(random()*3);drop<n;drop++) {
-          foliage(innerX+(left?1:-1)*(.28+drop*.07),y+.14-drop*.20,z+(random()-.5)*.16,.17+random()*.07,true,true,true);
-        }
+      for(let j=0;j<7;j++) {
+        const z=b.z-.45+j*.35+(random()-.5)*.12;
+        foliage(innerX,y+.34+random()*.16,z,.26+random()*.12,true,false,true);
+        if(j%2===0)trailingFlowers(innerX,y+.35,z,left?1:-1,.7+random()*.65);
       }
     }
   }
@@ -271,7 +267,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
             col+=vec3(.24,.32,.26)*caustic*.32;
             col=mix(col,vec3(.52,.65,.62),clamp(landingFoam*.35,0.,.4));
             col+=vec3(.18,.23,.22)*pow(max(wave,0.),12.)*exp(-r*.8)*.22;
-            float sun=pow(max(dot(N,normalize(V+normalize(vec3(-.9,.85,1.05)))),0.),100.);
+            float sun=pow(max(dot(N,normalize(V+normalize(vec3(-1.1,.72,.85)))),0.),100.);
             col+=vec3(1.,.87,.65)*sun*.65;
             gl_FragColor=vec4(col,1.);
             #include <tonemapping_fragment>

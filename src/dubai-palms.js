@@ -63,14 +63,14 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   foliage.setIndex(indices); foliage.computeVertexNormals();
   const ribGeometry = mergeGeometries(ribs); ribs.forEach(g => g.dispose());
   // Ringed, tapered trunk follows the source curve and touches the same ground.
-  const trunkPositions = [], trunkColors = [], trunkIndices = [], rings = 48, sides = 9;
+  const trunkPositions = [], trunkColors = [], trunkIndices = [], rings = 48, sides = 14;
   for (let j = 0; j <= rings; j++) {
     const t = j / rings, radius = district ? .12+.075*(1-t)+.075*Math.exp(-t*13) : (.18-.07*t)*(j%2?.94:1.04);
     const color = new THREE.Color(district ? '#87745d' : j % 2 ? '#938269' : '#ab987a');
     for (let k = 0; k <= sides; k++) {
       const a = k / sides * Math.PI * 2;
       const relief=district?1+.055*Math.sin(a*3+j*1.7):1;
-      trunkPositions.push(.8*t*t+Math.cos(a)*radius*relief,3.6*t,Math.sin(a)*radius*relief);
+      trunkPositions.push(.8*t*t+Math.cos(a)*radius*relief,3.6*t,Math.sin(a)*radius*relief+(district?.075*Math.sin(t*Math.PI):0));
       const shade=district?.87+.13*Math.sin(a*2+j*.8):1;
       trunkColors.push(color.r*shade,color.g*shade,color.b*shade);
       if (j < rings && k < sides) { const i = j * (sides + 1) + k, n = i + sides + 1; trunkIndices.push(i, n, i + 1, i + 1, n, n + 1); }
@@ -84,13 +84,19 @@ export function createDubaiPalms({ THREE, city, district = false }) {
     // Overlapping cut petiole bases break the smooth ring silhouette of the
     // trunk. They share its vertex-colour batch, so cost no extra draw calls.
     const bark=[trunk];
-    for(let row=1;row<32;row++) for(let k=0;k<11;k++) {
-      const t=(row+(random()-.5)*.4)/34,a=k/11*Math.PI*2+row*.44+(random()-.5)*.24,r=.12+.075*(1-t)+.075*Math.exp(-t*13);
-      const g=new THREE.OctahedronGeometry(1,0).scale(.045+random()*.017,.063+random()*.023,.019+random()*.009).rotateY(Math.PI/2-a);
+    for(let i=0;i<510;i++) {
+      const t=.03+random()*.94,a=i*2.39996+(random()-.5)*.6;
+      const r=.12+.075*(1-t)+.075*Math.exp(-t*13);
+      const width=.023+random()*.023,height=.026+random()*.040;
+      const outline=[[-width*.8,-height*.65],[width*.6,-height],[width,height*.25],
+        [width*.35,height*.85],[-width*.7,height*.65]],depth=.006+random()*.009;
+      const verts=[0,0,depth];for(const p of outline)verts.push(...p,0);
+      const faces=[];for(let j=0;j<5;j++)faces.push(0,j+1,(j+1)%5+1);
+      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(faces);g.computeVertexNormals();
+      g.rotateZ((random()-.5)*.7).rotateY(Math.PI/2-a);
       g.deleteAttribute('uv');
-      g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));
-      g.translate(.8*t*t+Math.cos(a)*r,3.6*t,Math.sin(a)*r);
-      const c=new THREE.Color('#786047').multiplyScalar(.75+random()*.45);
+      g.translate(.8*t*t+Math.cos(a)*r,3.6*t,Math.sin(a)*r+.075*Math.sin(t*Math.PI));
+      const c=new THREE.Color(['#817057','#8b775d','#79674f','#927e63'][i%4]).multiplyScalar(.88+random()*.2);
       g.setAttribute('color',new THREE.Float32BufferAttribute(Array.from({length:g.attributes.position.count},()=>[c.r,c.g,c.b]).flat(),3));bark.push(g);
     }
     trunk=mergeGeometries(bark);bark.forEach(g=>g.dispose());
@@ -99,7 +105,7 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   if(district){
     leafMat.onBeforeCompile=shader=>{
       shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-        vec3 leafSun=normalize((viewMatrix*vec4(-.9,.85,1.05,0.)).xyz);
+        vec3 leafSun=normalize((viewMatrix*vec4(-1.1,.72,.85,0.)).xyz);
         float through=pow(max(dot(normalize(vViewPosition),-leafSun),0.),3.);
         reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.17,.20,.08)*through;
       `);
@@ -108,6 +114,26 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   }
   const ribMat = new THREE.MeshStandardMaterial({ color: district ? '#686c38' : '#8a8e59', roughness: .91 });
   const trunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95 });
+  if(district){
+    trunkMat.onBeforeCompile=shader=>{
+      shader.vertexShader='varying vec3 barkPoint;\n'+shader.vertexShader;
+      shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nbarkPoint=position;');
+      shader.fragmentShader=`varying vec3 barkPoint;
+        float barkHash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
+        float barkNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+          return mix(mix(mix(barkHash(i),barkHash(i+vec3(1,0,0)),f.x),mix(barkHash(i+vec3(0,1,0)),barkHash(i+vec3(1,1,0)),f.x),f.y),
+          mix(mix(barkHash(i+vec3(0,0,1)),barkHash(i+vec3(1,0,1)),f.x),mix(barkHash(i+vec3(0,1,1)),barkHash(i+vec3(1,1,1)),f.x),f.y),f.z);}
+        `+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+        float grain=barkNoise(barkPoint*vec3(105.,72.,105.));
+        float relief=grain*.004;
+        vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition),rx=cross(dy,normal),ry=cross(normal,dx);
+        float det=dot(dx,rx);normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
+        diffuseColor.rgb*=.91+.12*grain;
+      `);
+    };
+    trunkMat.customProgramCacheKey=()=> 'palm-bark-grain-v1';
+  }
   const meshes = [[foliage, leafMat], [ribGeometry, ribMat], [trunk, trunkMat]].map(([geometry, material]) => {
     const mesh = new THREE.InstancedMesh(geometry, material, selected.length);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -118,7 +144,9 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   let enabled = true, disposed = false;
   const variants=selected.map((p,i)=>new THREE.Matrix4().compose(new THREE.Vector3(),
     new THREE.Quaternion().setFromAxisAngle(v(0,1,0),district ? i*2.39996 : 0),
-    v(district ? .92+(i%4)*.055 : 1,district ? .94+(i%5)*.03 : 1,district ? .95+(i%3)*.05 : 1)));
+    v(district ? .85+(i%4)*.09 : 1,district ? .88+(i%5)*.055 : 1,district ? .9+(i%3)*.09 : 1)));
+  // Per-instance lean leaves every root on the ground; crown and trunk share it.
+  if(district)variants.forEach((m,i)=>m.multiply(new THREE.Matrix4().makeShear(0,0,Math.sin(i*1.7)*.045,Math.cos(i*2.1)*.035,0,0)));
   const instance=new THREE.Matrix4();
   const saved = selected.map(() => ({ trunk: new THREE.Matrix4(), leaves: new THREE.Matrix4(), valid: false }));
   function apply() {
