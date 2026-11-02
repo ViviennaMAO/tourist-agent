@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 export function createDubaiPalms({ THREE, city, district = false }) {
   const root = new THREE.Group(); root.name = 'Dubai — west promenade date palms';
   const pools = city.w.ctx.pools;
-  const selected = city.w.ctx.palms.filter(p => district ? p.z < -5 : p.x >= -34 && p.x <= 5 && p.z > -50 && p.z < -10);
+  const selected = city.w.ctx.palms.filter(p => district ? true : p.x >= -34 && p.x <= 5 && p.z > -50 && p.z < -10);
   const positions = [], colors = [], indices = [];
   const palettes = (district ? ['#314e27','#526b32','#677b3d','#3e5d2e','#8b854b'] : ['#637346', '#75804d', '#51633d', '#85935d']).map(c => new THREE.Color(c));
   let seed=7281;

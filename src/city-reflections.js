@@ -16,12 +16,12 @@ export function createCityReflections({renderer,scene,city}) {
     zone.boxMin={value:new THREE.Vector3(...zone.min)};zone.boxMax={value:new THREE.Vector3(...zone.max)};
     zone.active={value:0};zone.filtered=null;
   }
-  city.w.root.traverse(o=>{
+  function discoverMaterials(){for(const root of [city.w.root,city.landmarkGroup].filter(Boolean))root.traverse(o=>{
     if(!o.isMesh)return;
     for(const m of Array.isArray(o.material)?o.material:[o.material])if(m.userData.cityGlass&&!records.has(m)){
       const zone=zones[m.userData.reflectionZone||'courtyard'];
       const before={envMap:m.envMap,compile:m.onBeforeCompile,key:m.customProgramCacheKey,zone};
-      const key=m.customProgramCacheKey();records.set(m,before);
+      const key=m.customProgramCacheKey();records.set(m,before);dirty=true;
       m.onBeforeCompile=(shader,renderer)=>{
         before.compile.call(m,shader,renderer);
         Object.assign(shader.uniforms,{cityProbeOrigin:zone.origin,cityProbeMin:zone.boxMin,cityProbeMax:zone.boxMax,cityProbeActive:zone.active});
@@ -46,11 +46,14 @@ export function createCityReflections({renderer,scene,city}) {
       };
       m.customProgramCacheKey=()=>key+'-city-box-reflections-v1';m.needsUpdate=true;
     }
-  });
+  });}
+  discoverMaterials();
   const restoreMaps=()=>{for(const [m,r] of records){m.envMap=r.envMap;m.needsUpdate=true;}for(const zone of Object.values(zones))zone.active.value=0;};
   function assignMaps(){for(const [m,{zone}] of records)if(zone.filtered){m.envMap=zone.filtered.texture;m.needsUpdate=true;zone.active.value=1;}}
   return {invalidate(){dirty=true;},setEnabled(value){enabled=!!value;if(enabled)assignMaps();else restoreMaps();},captureIfNeeded(){
-    if(disposed||!enabled||!dirty||!city.w.root.visible)return;
+    if(disposed||!enabled||!city.w.root.visible)return;
+    if(!dirty)return;
+    discoverMaterials();
     if(!Object.values(city.LM||{}).every(l=>l.loaded||l.failed))return;
     if(!target){target=new THREE.WebGLCubeRenderTarget(256,{type:THREE.HalfFloatType,generateMipmaps:false});cube=new THREE.CubeCamera(.5,6000,target);pmrem=new THREE.PMREMGenerator(renderer);}
     const previous=renderer.getRenderTarget(),shadowAuto=renderer.shadowMap.autoUpdate;

@@ -1,4 +1,5 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { landmarkFinish } from './landmark-finish.js';
 
 /** A procedural stepped tower study, with the existing landmark holder retaining
  * navigation, identity and picking. Original assets remain available for A/B. */
@@ -37,22 +38,16 @@ export function createDubaiLandmarks({ THREE, city }) {
     l.asset.traverse(o=>{
       if(!o.isMesh)return;
       const before=o.material;
-      const frame=l.id==='dubai_frame';
-      const after=before.clone();after.color.set(frame?'#c7a366':'#ccd0ca');after.roughness=frame?.42:.3;after.metalness=frame?.68:.62;
-      after.emissiveIntensity=0;after.envMapIntensity=.85;
-      after.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-        float neutral=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
-        diffuseColor.rgb=mix(diffuseColor.rgb,vec3(neutral),.88)*vec3(${frame?'1.15,1.00,.72':'1.0,1.02,1.02'});`);};
-      after.customProgramCacheKey=()=>frame?'ta-frame-gold-v1':'ta-museum-silver-v1';
+      const after=Array.isArray(before)?before.map(m=>landmarkFinish(m,l.id)):landmarkFinish(before,l.id);
       swaps.push({mesh:o,before,after});o.material=enabled?after:before;
     });styled.add(l);
   }
-  return {root,stats:{landmarks:3,triangles:root.children.reduce((n,m)=>n+m.geometry.index.count/3,0),drawCalls:3},apply(){
+  return {root,stats:{landmarks:Object.keys(city.LM).length,triangles:root.children.reduce((n,m)=>n+m.geometry.index.count/3,0),drawCalls:3},apply(){
     if(disposed)return;
     root.visible=enabled&&L.loaded;
     if(L.asset)L.asset.visible=!enabled;
-    styleAsset(city.LM.dubai_frame);styleAsset(city.LM.museum_future);
+    for(const [id,landmark] of Object.entries(city.LM))if(id!=='burj_khalifa')styleAsset(landmark);
   },setEnabled(v){enabled=!!v;root.visible=enabled&&L.loaded;if(L.asset)L.asset.visible=!enabled;swaps.forEach(s=>s.mesh.material=enabled?s.after:s.before);},dispose(){
-    if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());[glass,silver,plinth].forEach(m=>m.dispose());swaps.forEach(s=>s.after.dispose());
+    if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());[glass,silver,plinth].forEach(m=>m.dispose());swaps.forEach(s=>(Array.isArray(s.after)?s.after:[s.after]).forEach(m=>m.dispose()));
   }};
 }

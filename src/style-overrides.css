@@ -55,6 +55,7 @@ body.explore #hint { background:#ece8d7dc; color:#334338; font-size:11px; }
 /* Keep review controls from intercepting Start on narrow loading screens. */
 #gameLoad:not(.out) ~ #reviewPanel { display:none; }
 .reviewBtns { display:flex; gap:6px; margin-top:9px; }
+.reviewBtns.reviewCoverage { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
 .reviewBtns:has(#reviewLook) { display:grid; grid-template-columns:1fr 1fr; }
 .reviewBtns button { flex:1; border:1px solid #d7ccb155; background:#ffffff0c; color:inherit; border-radius:6px; padding:8px 4px; cursor:pointer; font:inherit; }
 .reviewBtns button[aria-pressed=true] { background:#c8b791; color:#21392b; }

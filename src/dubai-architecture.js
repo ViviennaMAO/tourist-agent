@@ -5,20 +5,21 @@ import { installCurtainWallFinish } from './curtain-wall.js';
 import { installSkylineAtmosphere } from './skyline-atmosphere.js';
 import { chamferedBox } from './chamfered-box.js';
 import { installDistrictBounce } from './district-bounce.js';
+import { appendIslandVilla } from './island-villa.js';
 
 /** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
  * All details are opaque PBR meshes, merged by finish. Existing actors still own
  * the building instances; apply() suppresses them only after the actors update.
  */
-export function createDubaiArchitecture({ THREE, city, stoneMaterial, district = false }) {
+export function createDubaiArchitecture({ THREE, city, stoneMaterial, district = false, island = false }) {
   const root = new THREE.Group();
   root.name = district ? 'Dubai — limestone district and bronze skyline' : 'Dubai — limestone courtyard shops';
   let enabled = true, disposed = false;
   const pools = city.w.ctx.pools;
   const candidates = (city.w.ctx.buildings || []).filter(b =>
     b.indices && Number.isInteger(b.indices.body) && b.indices.body >= 0 &&
-    b.w >= 3 && b.d >= 3 && b.h >= 3 &&
-    (district ? b.z < -16 : (b.z + b.d / 2 < -16 && b.h <= 7.5 && !b.gable && !b.crown)));
+    (island ? b.z>0&&b.w>=1.5&&b.d>=1.2&&b.h<3 : b.w >= 3 && b.d >= 3 && b.h >= 3 &&
+    (district ? b.z < -16 : (b.z + b.d / 2 < -16 && b.h <= 7.5 && !b.gable && !b.crown))));
   const inStudy = b => b.x >= -31 && b.x <= -13 && b.z >= -31 && b.z <= -19;
   const rank = b => (inStudy(b) ? 0 : 1000) + (b.style === 'shops' ? 0 : 100) +
     Math.hypot(b.x + 20, b.z + 22);
@@ -100,6 +101,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     transform = new THREE.Matrix4().makeRotationY(b.ry || 0);
     transform.setPosition(b.x, b.base, b.z);
     const { w, d } = b;
+    if(island){dressStone=true;design.set(b,appendIslandVilla({b,index:buildingIndex,finishes:{wall,trim,glass,wood,roof,recess},box}));return;}
     const traditional = !district || b.z > -38 || b.h <= 8;
     dressStone=district&&traditional;
     // District pass reshapes the skyline: two-storey foreground and a lower

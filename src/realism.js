@@ -8,6 +8,7 @@ import { createWaterStudy } from './water-study.js';
 import { createDubaiLandmarks } from './dubai-landmarks.js';
 import { createDubaiBackdrop } from './dubai-backdrop.js';
 import { createDubaiGardens } from './dubai-gardens.js';
+import { createDubaiCoast } from './dubai-coast.js';
 import { createContactShadows } from './contact-shadows.js';
 import { createCityReflections } from './city-reflections.js';
 import leafUrl from './assets/ficus-leaf-v1.png';
@@ -210,7 +211,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     coping.position.set(0, 1.286, -33); coping.receiveShadow = true; c.w.root.add(coping); extras.push(coping); coping.visible = enabled;
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
     const waterfront = createDubaiWaterfront({ THREE, city:c, stoneMaterial:waterfrontStone });
-    districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints }), createDubaiLandmarks({ THREE, city: c }));
+    districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints, fullCoast:true }), createDubaiLandmarks({ THREE, city: c }));
+    districtStudies.push(createDubaiArchitecture({THREE,city:c,stoneMaterial:facadeStone,district:true,island:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
     backdrop=createDubaiBackdrop({THREE,city:c});districtStudies.push(backdrop);
     const occupied=districtStudies.flatMap(s=>s.footprints||[]);
     districtStudies.push(createDubaiGardens({THREE,city:c,stoneMaterial:stone,leafTexture,exclusions:occupied}));

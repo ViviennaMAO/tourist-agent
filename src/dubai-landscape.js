@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Coastal public realm. Objects reserve reversible collision footprints and
  * leave roads, existing buildings, landmarks and the spawn corridor clear. */
-export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial, leafTexture=null, exclusions=[] }) {
+export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial, leafTexture=null, exclusions=[], fullCoast=false }) {
   const root = new THREE.Group(); root.name = 'Dubai — waterfront public realm';
   const ctx = city.w.ctx, batches = new Map(), ownedMaterials = [], colliders = [];
   let enabled = false, disposed = false, seed = 21973;
@@ -48,6 +48,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   // Rock revetment along the mainland shore; entrances at x=0 and -50 stay open.
   const rocks = material('#998d76',.98);
   for (let x=-60; x<61; x+=.66) {
+    if(fullCoast)continue;
     if (Math.abs(x)<3.4 || Math.abs(x+50)<3.4 || (exclusions.length && x>-33 && x<-7)) continue;
     const z=-4.75 + .12*Math.sin(x*1.5);
     add(new THREE.DodecahedronGeometry(.43+random()*.16,0).scale(.8+random()*.3,.7,.75).rotateX(random()*1.8),rocks,x,.48+random()*.12,z,random()*6.28);
