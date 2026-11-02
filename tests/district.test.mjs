@@ -35,8 +35,9 @@ test('landscape reserves clear paths and removes only its own collisions across 
   const existing={x:0,z:0,w:2,d:2},rects=[existing];
   const city={w:{root:new THREE.Group(),ctx:{rects,pools:{},groundY:()=>1,
     free:(x,z,w,d)=>Math.abs(x)>w/2+2.9&&Math.abs(z+16)>d/2+2.9}}};
-  const stone=new THREE.MeshStandardMaterial(),water=new THREE.MeshBasicMaterial();
-  const study=createDubaiLandscape({THREE,city,stoneMaterial:stone,waterMaterial:water});
+  const stone=new THREE.MeshStandardMaterial(),water=new THREE.MeshBasicMaterial(),leafTexture=new THREE.Texture();
+  let textureDisposed=false;leafTexture.addEventListener('dispose',()=>textureDisposed=true);
+  const study=createDubaiLandscape({THREE,city,stoneMaterial:stone,waterMaterial:water,leafTexture});
   finite(study.root);assert.ok(study.stats.decorations>10);assert.ok(study.stats.triangles<100000);
   for(let i=0;i<3;i++) {
     study.setEnabled(true);study.setEnabled(true);study.apply(180);
@@ -45,7 +46,26 @@ test('landscape reserves clear paths and removes only its own collisions across 
     study.setEnabled(false);assert.deepEqual(rects,[existing]);
   }
   study.setEnabled(true);study.dispose();study.dispose();assert.deepEqual(rects,[existing]);
-  assert.equal(city.w.root.children.length,0);stone.dispose();water.dispose();
+  assert.equal(city.w.root.children.length,0);assert.equal(textureDisposed,false);
+  stone.dispose();water.dispose();leafTexture.dispose();
+});
+
+test('arcade and upper loggia are actual metre-deep voids backed by shopfronts',()=>{
+  const b={x:0,z:-23,w:4,d:5,h:7,base:0,ry:0,indices:{body:0}};
+  const city={w:{root:new THREE.Group(),ctx:{buildings:[b],pools:{}}}};
+  const study=createDubaiArchitecture({THREE,city,district:true});
+  study.root.updateMatrixWorld(true);
+  const design=study.stats.selected[0],front=b.z+b.d/2;
+  assert.ok(design.porchDepth>=1);assert.equal(design.arcadeBays,2);
+  const ray=(x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,front+2),new THREE.Vector3(0,0,-1))
+    .intersectObject(study.root,true)[0];
+  const center=(b.w-.46)/4;
+  for(const y of [1.2,Math.min(2.85,design.facadeHeight*.47)+1.3]) {
+    const hit=ray(center,y);assert.ok(hit);assert.ok(hit.distance>2.9,'porch must not be filled by a facade/core');
+    assert.ok(hit.distance<3.5,'shopfront must close the back of the porch');
+  }
+  assert.ok(ray(0,1.2).distance<2.1,'outer pier must remain in front of the recessed shop');
+  study.dispose();
 });
 
 test('water keeps source shaders reversible and shares lake animation time',()=>{

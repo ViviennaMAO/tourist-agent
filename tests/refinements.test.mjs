@@ -68,3 +68,20 @@ test('both modules restore latest actor transforms, isolate unselected instances
   for (const module of [architecture, palms]) { module.setEnabled(true); module.apply(); module.dispose(); module.dispose(); }
   assert.equal(city.w.root.children.length, 0); assert.equal(disposed, 10);
 });
+
+test('district palms merge bark and folded fronds, vary instances and restore actor matrices',()=>{
+  const city=fixture(),study=createDubaiPalms({THREE,city,district:true});
+  validateGeometry(study.root);
+  assert.equal(study.stats.palms,2);assert.equal(study.stats.drawCalls,3);
+  assert.ok(study.stats.triangles/2<11000);
+  const pose=new THREE.Matrix4().makeTranslation(2,1,-10);
+  for(const name of ['trunk','leaves']) for(let i=0;i<2;i++) city.w.ctx.pools[name].set(i,pose);
+  study.apply();
+  const a=new THREE.Matrix4(),b=new THREE.Matrix4();
+  study.root.children[0].getMatrixAt(0,a);study.root.children[0].getMatrixAt(1,b);
+  assert.notDeepEqual(a.elements,b.elements);
+  assert.deepEqual(new THREE.Vector3().setFromMatrixPosition(a).toArray(),[2,1,-10]);
+  study.setEnabled(false);
+  for(const name of ['trunk','leaves']) for(let i=0;i<2;i++) assert.deepEqual(read(city.w.ctx.pools[name],i).elements,pose.elements);
+  study.dispose();assert.equal(city.w.root.children.length,0);
+});

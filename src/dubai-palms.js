@@ -9,7 +9,9 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   const pools = city.w.ctx.pools;
   const selected = city.w.ctx.palms.filter(p => district ? p.z < -5 : p.x >= -34 && p.x <= 5 && p.z > -50 && p.z < -10);
   const positions = [], colors = [], indices = [];
-  const palettes = ['#637346', '#75804d', '#51633d', '#85935d'].map(c => new THREE.Color(c));
+  const palettes = (district ? ['#314e27','#526b32','#677b3d','#3e5d2e','#8b854b'] : ['#637346', '#75804d', '#51633d', '#85935d']).map(c => new THREE.Color(c));
+  let seed=7281;
+  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const v = (x, y, z) => new THREE.Vector3(x, y, z);
   function triangle(a, b, c, color) {
     const i = positions.length / 3;
@@ -17,26 +19,39 @@ export function createDubaiPalms({ THREE, city, district = false }) {
     indices.push(i, i + 1, i + 2);
   }
   const ribs = [];
-  for (let f = 0; f < 13; f++) {
-    const angle = f * 2.39996, upper = f >= 9;
-    const length = upper ? 1.65 + (f % 3) * .14 : 2.35 + (f % 3) * .14;
-    const lift = upper ? 1.55 : .64, droop = upper ? .58 : 1.25;
-    const point = t => v(.8 + Math.cos(angle) * length * t,
-      3.6 + lift * t - droop * t * t, Math.sin(angle) * length * t);
+  for (let f = 0; f < (district ? 23 : 13); f++) {
+    const angle = f * 2.39996 + (district ? (random()-.5)*.48 : 0), upper = f >= (district ? 16 : 9);
+    const length = district ? (upper ? 1.25+random()*.8 : 2.05+random()*.95) : upper ? 1.65 + (f % 3) * .14 : 2.35 + (f % 3) * .14;
+    const lift = district ? (upper ? 1.8+random()*.8 : .8+random()*.7) : upper ? 1.55 : .64;
+    const droop = district ? (upper ? .6+random()*.6 : 1.8+random()*.8) : upper ? .58 : 1.25;
+    const bend = district ? (random()-.5)*.5 : 0;
+    const point = t => v(.8 + Math.cos(angle+bend*t) * length * t,
+      3.6 + lift * t - droop * t * t, Math.sin(angle+bend*t) * length * t);
     const side = v(-Math.sin(angle), 0, Math.cos(angle));
     const curve = new THREE.CatmullRomCurve3(Array.from({ length: 7 }, (_, j) => point(j / 6)));
     ribs.push(new THREE.TubeGeometry(curve, 12, .012, 3, false));
-    const color = palettes[f % palettes.length];
-    for (let j = 1; j <= 19; j++) {
-      const t = .08 + j / 20 * .89;
-      const width = .50 * Math.pow(Math.sin(Math.PI * t), .75);
+    const color = palettes[district && f<3 ? 4 : f % (district ? 4 : palettes.length)];
+    const leaflets=district ? 25 : 19;
+    for (let j = 1; j <= leaflets; j++) {
+      const t = .08 + (j+(district ? (random()-.5)*.45 : 0)) / (leaflets+1) * .89;
+      const width = (district ? .42+random()*.19 : .50) * Math.pow(Math.sin(Math.PI * t), .75);
       for (const sign of [-1, 1]) {
         const base = point(t), next = point(Math.min(1, t + .10));
         const tip = next.clone().addScaledVector(side, width * sign); tip.y -= width * .43;
         const ridge = base.clone().lerp(tip, .45); ridge.y += .022;
         const left = point(t - .019), right = point(t + .019);
-        triangle(left, ridge, tip, color); triangle(ridge, right, tip, color);
-        triangle(left, right, ridge, color);
+        if(district) {
+          // Folded, swept blades have a drooping tip and irregular paired lengths.
+          tip.addScaledVector(side,sign*(random()-.5)*width*.25);tip.y-=.08+random()*.13;
+          const mid=base.clone().lerp(tip,.58);mid.y+=.075;
+          const spread=point(t+.018).sub(base).multiplyScalar(.7);
+          const a=mid.clone().sub(spread),b=mid.clone().add(spread);
+          triangle(left,a,b,color);triangle(left,b,right,color);
+          triangle(a,tip,b,color.clone().multiplyScalar(.85));
+        } else {
+          triangle(left, ridge, tip, color); triangle(ridge, right, tip, color);
+          triangle(left, right, ridge, color);
+        }
       }
     }
   }
@@ -49,7 +64,7 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   const trunkPositions = [], trunkColors = [], trunkIndices = [], rings = 48, sides = 9;
   for (let j = 0; j <= rings; j++) {
     const t = j / rings, radius = (.18 - .07 * t) * (j % 2 ? .94 : 1.04);
-    const color = new THREE.Color(j % 2 ? '#938269' : '#ab987a');
+    const color = new THREE.Color(district ? (j%2 ? '#625142' : '#877157') : j % 2 ? '#938269' : '#ab987a');
     for (let k = 0; k <= sides; k++) {
       const a = k / sides * Math.PI * 2;
       trunkPositions.push(.8 * t * t + Math.cos(a) * radius, 3.6 * t, Math.sin(a) * radius);
@@ -57,12 +72,26 @@ export function createDubaiPalms({ THREE, city, district = false }) {
       if (j < rings && k < sides) { const i = j * (sides + 1) + k, n = i + sides + 1; trunkIndices.push(i, n, i + 1, i + 1, n, n + 1); }
     }
   }
-  const trunk = new THREE.BufferGeometry();
+  let trunk = new THREE.BufferGeometry();
   trunk.setAttribute('position', new THREE.Float32BufferAttribute(trunkPositions, 3));
   trunk.setAttribute('color', new THREE.Float32BufferAttribute(trunkColors, 3));
   trunk.setIndex(trunkIndices); trunk.computeVertexNormals();
+  if(district) {
+    // Overlapping cut petiole bases break the smooth ring silhouette of the
+    // trunk. They share its vertex-colour batch, so cost no extra draw calls.
+    const bark=[trunk];
+    for(let row=1;row<32;row++) for(let k=0;k<7;k++) {
+      const t=row/34,a=k/7*Math.PI*2+row*.44,r=.18-.07*t;
+      const g=new THREE.ConeGeometry(.034,.115,4).scale(1,1,.32).rotateX(.22).rotateZ(Math.PI).rotateY(a);
+      g.deleteAttribute('uv');
+      g.translate(.8*t*t+Math.cos(a)*r,3.6*t,Math.sin(a)*r);
+      const c=new THREE.Color('#80684d').multiplyScalar(.8+random()*.4);
+      g.setAttribute('color',new THREE.Float32BufferAttribute(Array.from({length:g.attributes.position.count},()=>[c.r,c.g,c.b]).flat(),3));bark.push(g);
+    }
+    trunk=mergeGeometries(bark);bark.forEach(g=>g.dispose());
+  }
   const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .87, side: THREE.DoubleSide, envMapIntensity: .32 });
-  const ribMat = new THREE.MeshStandardMaterial({ color: '#8a8e59', roughness: .91 });
+  const ribMat = new THREE.MeshStandardMaterial({ color: district ? '#686c38' : '#8a8e59', roughness: .91 });
   const trunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95 });
   const meshes = [[foliage, leafMat], [ribGeometry, ribMat], [trunk, trunkMat]].map(([geometry, material]) => {
     const mesh = new THREE.InstancedMesh(geometry, material, selected.length);
@@ -72,13 +101,18 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   });
   city.w.root.add(root);
   let enabled = true, disposed = false;
+  const variants=selected.map((p,i)=>new THREE.Matrix4().compose(new THREE.Vector3(),
+    new THREE.Quaternion().setFromAxisAngle(v(0,1,0),district ? i*2.39996 : 0),
+    v(district ? .92+(i%4)*.055 : 1,district ? .94+(i%5)*.03 : 1,district ? .95+(i%3)*.05 : 1)));
+  const instance=new THREE.Matrix4();
   const saved = selected.map(() => ({ trunk: new THREE.Matrix4(), leaves: new THREE.Matrix4(), valid: false }));
   function apply() {
     if (!enabled || disposed) return;
     selected.forEach((p, i) => {
       pools.trunk.m.getMatrixAt(p.index, saved[i].trunk);
       pools.leaves.m.getMatrixAt(p.index, saved[i].leaves); saved[i].valid = true;
-      meshes.forEach(mesh => mesh.setMatrixAt(i, saved[i].trunk));
+      instance.multiplyMatrices(saved[i].trunk,variants[i]);
+      meshes.forEach(mesh => mesh.setMatrixAt(i, instance));
       pools.trunk.hide(p.index); pools.leaves.hide(p.index);
     });
     meshes.forEach(mesh => { mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere(); });

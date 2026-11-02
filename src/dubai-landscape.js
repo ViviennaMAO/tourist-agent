@@ -2,7 +2,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Coastal public realm. Objects reserve reversible collision footprints and
  * leave roads, existing buildings, landmarks and the spawn corridor clear. */
-export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial }) {
+export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial, leafTexture=null }) {
   const root = new THREE.Group(); root.name = 'Dubai — waterfront public realm';
   const ctx = city.w.ctx, batches = new Map(), ownedMaterials = [], colliders = [];
   let enabled = false, disposed = false, seed = 21973;
@@ -13,8 +13,9 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   const stone = stoneMaterial.clone(); stone.onBeforeCompile = stoneMaterial.onBeforeCompile;
   stone.customProgramCacheKey = stoneMaterial.customProgramCacheKey; ownedMaterials.push(stone);
   const dark = material('#393c30',.64,{metalness:.55}), wood = material('#99784d'), soil = material('#4e4935');
-  const greens = [material('#43592f',.92,{side:THREE.DoubleSide}),material('#74854b',.91,{side:THREE.DoubleSide})];
-  const bloom = [material('#bd5075'),material('#eee3c3')];
+  const leafOptions={side:THREE.DoubleSide,envMapIntensity:.4,...(leafTexture ? {map:leafTexture,alphaTest:.42,bumpMap:leafTexture,bumpScale:.006} : {})};
+  const greens = [material(leafTexture?'#c6cbb2':'#344f28',.88,leafOptions),material(leafTexture?'#f0edd0':'#657b3b',.86,leafOptions)];
+  const bloom = [material('#b7446e',.88,{side:THREE.DoubleSide}),material('#f1e7c9',.9,{side:THREE.DoubleSide})];
   const lamp = material('#ffe1a0',.4,{emissive:'#ffc06a',emissiveIntensity:1.0});
   const fabric = material('#e9dcc1');
   const cube = new THREE.BoxGeometry(1,1,1), matrix = new THREE.Matrix4(), quat = new THREE.Quaternion();
@@ -47,20 +48,48 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   }
   // Small raised beds with actual individual leaves and flowering clusters.
   function foliage(x,y,z,r,flowers=false) {
-    for (let j=0;j<26;j++) {
-      const angle=random()*6.28, radius=r*Math.sqrt(random()), h=random()*r*.7;
+    for (let j=0;j<(leafTexture?48:32);j++) {
+      const angle=random()*6.28, radius=r*Math.sqrt(random()), h=r*.65*Math.sqrt(1-radius*radius/(r*r))*(.35+random()*.65);
       const px=x+Math.cos(angle)*radius, pz=z+Math.sin(angle)*radius;
-      const leaf = new THREE.SphereGeometry(.12,4,2).scale(1.55,.18,.65);
-      leaf.rotateX(random()*1.1).rotateZ(random()*1.2-.6);
+      // Pointed elliptical leaves with a raised midrib; irregular orientation
+      // catches light without looking like low-poly balls or flat confetti.
+      const length=.105+random()*.095,width=length*(.35+random()*.12);
+      let leaf;
+      if(leafTexture) {
+        // Alpha-tested folded cards keep visible veins and smooth leaf edges.
+        // Four triangles per leaf allow denser clusters at the same mesh budget.
+        leaf=new THREE.PlaneGeometry(length*2.1,length*2.1,2,1).rotateX(-Math.PI/2);
+        const a=leaf.attributes.position;
+        for(let k=0;k<a.count;k++) a.setY(k,.012*(1-Math.abs(a.getX(k))/length)-Math.max(0,a.getZ(k))*.12);
+        leaf.computeVertexNormals();
+      } else {
+      leaf = new THREE.BufferGeometry();
+      leaf.setAttribute('position',new THREE.Float32BufferAttribute([
+        0,0,-length, -width,0,-length*.25, -width*.85,-.008,length*.48,
+        0,-.025,length, width*.85,-.008,length*.48, width,0,-length*.25, 0,.022,0
+      ],3));
+      leaf.setIndex([0,6,1,1,6,2,2,6,3,3,6,4,4,6,5,5,6,0]);leaf.computeVertexNormals();
+      }
+      leaf.rotateX(random()*.9-.35).rotateZ(random()*1.2-.6);
       add(leaf,greens[j%2],px,y+h,pz,angle);
-      if (flowers&&j%5===0) add(new THREE.IcosahedronGeometry(.085,0),bloom[j%2],px,y+h+.09,pz);
+      if (flowers&&j%(leafTexture?9:6)===0) {
+        // Small three-bract blossoms sit above foliage, interspersed with buds.
+        for(let petal=0;petal<3;petal++) {
+          const a=petal*Math.PI*2/3;
+          const g=new THREE.CircleGeometry(.035+random()*.015,3).rotateX(-Math.PI*.43);
+          add(g,bloom[j%4===0?1:0],px+Math.cos(a)*.035,y+h+.065,pz+Math.sin(a)*.035,a);
+        }
+        add(new THREE.TetrahedronGeometry(.018,0),bloom[1],px,y+h+.073,pz);
+      }
     }
   }
   function bed(x,z,w=2.4,d=.9,flowers=true) {
     if (!reserve(x,z,w,d)) return;
     const y=ctx.groundY(x,z);
     box(stone,x,y+.24,z,w,.48,d); box(soil,x,y+.485,z,w-.18,.015,d-.18);
-    for (let i=0;i<Math.ceil(w/.45);i++) foliage(x-w/2+.23+i*.44,y+.52,z,.38,flowers);
+    for(const sign of [-1,1]) box(stone,x,y+.49,z+sign*(d/2-.045),w,.08,.09);
+    const n=Math.ceil((w-.5)/.34);
+    for (let i=0;i<n;i++) foliage(x-w/2+.3+(w-.6)*i/(n-1),y+.52,z+(random()-.5)*.12,.26,flowers);
   }
   for (const x of [-43,-36,-29,-12,12,21,29,38,44]) bed(x,-6.8,3.2,.85);
   for (const [x,z] of [[-27,-20],[-15,-20],[15,-20],[27,-20],[-28,-34],[28,-38],[-10,-45],[10,-45]]) bed(x,z,2.4,1.1);
@@ -72,13 +101,20 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     cylinder(stone,x,y+.22,z,1.1,1.2,.44,20);
     cylinder(soil,x,y+.45,z,.95,.95,.035,20);
     cylinder(wood,x,y+1.55,z,.055,.12,2.3,8);
-    for(let branch=0;branch<8;branch++) {
-      const a=branch/8*Math.PI*2, r=.35+random()*.4, cy=y+2.3+random()*.9;
+    for(let branch=0;branch<9;branch++) {
+      const a=branch*2.39996, r=.3+random()*.35, cy=y+2.4+random()*.95;
       const end=new THREE.Vector3(x+Math.cos(a)*r,cy,z+Math.sin(a)*r), start=new THREE.Vector3(x,y+1.8,z);
       const delta=end.clone().sub(start), limb=new THREE.CylinderGeometry(.022,.045,delta.length(),6);
       limb.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
       add(limb,wood,...start.clone().add(end).multiplyScalar(.5).toArray());
-      for(let cluster=0;cluster<3;cluster++) foliage(end.x+(random()-.5)*.4,end.y+(random()-.5)*.5,end.z+(random()-.5)*.4,.38,false);
+      for(let cluster=0;cluster<3;cluster++) {
+        const tip=end.clone().add(new THREE.Vector3((random()-.5)*.35,(random()-.5)*.45,(random()-.5)*.35));
+        const delta=tip.clone().sub(end);
+        const twig=new THREE.CylinderGeometry(.007,.015,delta.length(),5);
+        twig.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
+        add(twig,wood,...end.clone().add(tip).multiplyScalar(.5).toArray());
+        foliage(tip.x,tip.y,tip.z,.35,false);
+      }
     }
     foliage(x,y+.55,z,.8,true);
   }
