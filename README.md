@@ -10,6 +10,7 @@ This repository has its own history and Vercel project. It does not merge change
 npm ci
 npm run dev
 npm run check
+npm test
 npm run build
 ```
 
@@ -25,11 +26,17 @@ Open the printed localhost URL. WASD/arrow keys move, Shift runs, dragging orbit
 - Camera-following shadow coverage and distance-based city visibility; all cities stay available on the world map.
 - Quiet, responsive travel UI and separate `ta_` local storage keys.
 
-Geometry and landmark textures mostly remain from the original game. This is the first material/lighting pass, not the final photorealistic asset pass. The art-direction concept is a target, not a screenshot of this build. Detailed architecture, palm fronds, landmark material reconstruction and the ocean shader are subsequent local iterations.
+## Round 2: west Dubai street study
+
+- Two low-rise buildings: recessed glazing, limestone reveals, cornices, parapets and slim metal balcony rails. Geometry stays within the original building footprints and height.
+- Nine nearby palms: feathered fronds, tapered ringed trunks and the original animated transforms. Three instanced draw calls for the grove.
+- Geometry changes can be toggled independently of round 1 lighting/materials. Other cities and walking collision footprints remain unchanged.
+
+Most buildings and landmark textures still come from the original game. The concept reference remains an art-direction target, not a screenshot. Landmark materials, additional buildings and the ocean are future local iterations.
 
 ## Visual review
 
-Open `/?review=1`. Choose 全岛 / 广场 / 近景, freeze the environment at 180 seconds, and switch Before / After without moving the camera. The review panel reports load failures, runtime errors, camera/character positions and renderer metrics. Before compares the retained base surfaces and lighting in this Explore build; both views include the same extraction, UI and visibility improvements.
+Open `/?review=1`. Choose 全岛 / 广场 / 近景 / 街区, freeze the environment at 180 seconds, and switch Before / After without moving the camera. Use 第二轮 · 建筑与棕榈 / 第一轮 · 材质基线 to compare the geometry pass at identical lighting. `?review=1&detail=off` starts at the round 1 baseline. The review panel reports load failures, runtime errors, camera/character positions and renderer metrics. Before compares the retained base surfaces and lighting in this Explore build; both views include the same extraction, UI and visibility improvements.
 
 ## Source and assets
 
@@ -46,4 +53,4 @@ Ticket purchases, PWV balance and rewards are local prototype demonstrations. No
 
 `src/game.js` owns the city generator, world, character, navigation and game UI. `src/realism.js` owns the reversible visual pass; shared base materials are not mutated. `src/base.css` retains the game layout, while `src/style-overrides.css` supplies the restrained visual treatment. Vite bundles the app, and `vercel.json` declares deployment and routes.
 
-See `docs/round-1.md` for scope and validation.
+See `docs/round-1.md` and `docs/round-2.md` for scope and validation. `src/dubai-architecture.js` and `src/dubai-palms.js` own the reversible local geometry and its disposal; `npm test` checks geometry bounds and actor-transform restoration.

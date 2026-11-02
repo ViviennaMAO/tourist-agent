@@ -1445,6 +1445,7 @@ class Ctx {
   constructor(root, seed, city, LMc) {
     this.root = root; this.rng = mulberry32(hashSeed(String(seed)));
     this.city = city; this.LM = LMc;
+    this.buildings = []; this.palms = [];
     this.camKeys = []; this.orbit = null; this.T = 50; this.title = null;
     this.roads = []; this.circles = []; this.rects = []; this.fronds = []; this.crescent = null;
     this.raised = [];   // 抬高地块：{ test(x,z), y }，决定树、楼落在多高
@@ -1563,6 +1564,7 @@ function scatter(ctx, [x1, z1, x2, z2], n, size) {
 function palmActor(ctx, x, y, z, s0, start, dur) {
   const P = ctx.pools, i = P.trunk.alloc(); P.leaves.alloc();
   const ry = ctx.r(0, Math.PI * 2), sc = s0 * ctx.r(0.85, 1.2);
+  ctx.palms.push({ index: i, x, y, z, scale: sc, ry });
   P.leaves.color(i, ctx.pick(PAL.leaves));
   return {
     apply(t) {
@@ -1582,6 +1584,7 @@ function towerActor(ctx, b, start, dur) {
   const iP = b.pad ? P.pad.alloc() : -1, iA = b.ant ? P.ant.alloc() : -1;
   const iG = b.gable ? P.gable.alloc() : -1; if (iG >= 0) P.gable.color(iG, b.gable.color);
   const ry = b.ry || 0;
+  ctx.buildings.push({ ...b, indices: { body: iB, crown: iC, roof: iR, pad: iP, antenna: iA, gable: iG } });
   return {
     apply(t) {
       const p = prog(t, start, dur);
@@ -1998,7 +2001,7 @@ const CMDS = {
       if (!ctx.free(x, z, w, d)) continue;
       ctx.rects.push({ x, z, w, d });
       const h = wa ? ctx.r(2.2, 3.8) : paris ? ctx.r(4.5, 7.5) : adobe ? ctx.r(2.5, 6) : style === 'shops' ? ctx.r(3, 7) : pop ? ctx.r(5, 14) : (ctx.rng() < 0.15 ? ctx.r(26, 34) : ctx.r(10, 24));
-      const b = { x, z, w, d, h, base: ctx.groundY(x, z), color: ctx.pick(wa ? PAL.wa : paris ? PAL.paris : adobe ? PAL.adobe : pop ? PAL.pop : PAL.glass) };
+      const b = { x, z, w, d, h, style, base: ctx.groundY(x, z), color: ctx.pick(wa ? PAL.wa : paris ? PAL.paris : adobe ? PAL.adobe : pop ? PAL.pop : PAL.glass) };
       if (roofed) { b.gable = { h: paris ? ctx.r(1, 1.5) : ctx.r(1.3, 2), color: ctx.pick(paris ? PAL.slate : PAL.waRoof) }; b.ry = ctx.rng() < 0.5 ? 0 : Math.PI / 2; }
       else if (adobe) { if (ctx.rng() < 0.3) { b.pad = true; b.padR = Math.min(w, d) * 0.25; } }
       else {
@@ -3248,7 +3251,8 @@ function setReviewCamera(kind) {
   const shots = {
     island: { p: [105, 105, 130], q: [0, 3, -10], name: '迪拜全岛' },
     plaza: { p: [27, 22, -5], q: [0, 1.3, -32], name: '迪拜广场' },
-    close: { p: [-7, 6, -18], q: [0, 2, -33], name: '广场近景' }
+    close: { p: [-7, 6, -18], q: [0, 2, -33], name: '广场近景' },
+    street: { p: [-8, 12, 0], q: [-23, 3, -25], name: '西侧街区' }
   };
   const shot = shots[kind];
   spawnAt('dubai'); girl.root.position.copy(EX.pos);
@@ -3260,7 +3264,7 @@ function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第一轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第二轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   $('reviewLook').textContent = review.enabled ? 'After · 写实材质' : 'Before · 基础材质';
   $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
@@ -3269,6 +3273,14 @@ function setupReview() {
     review.enabled = !review.enabled; realism.setEnabled(review.enabled);
     $('reviewLook').textContent = review.enabled ? 'After · 写实材质' : 'Before · 基础材质';
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
+  };
+  const updateDetailButton = () => {
+    $('reviewDetail').textContent = realism.refinementEnabled ? '第二轮 · 建筑与棕榈' : '第一轮 · 材质基线';
+    $('reviewDetail').setAttribute('aria-pressed', String(realism.refinementEnabled));
+  };
+  updateDetailButton();
+  $('reviewDetail').onclick = () => {
+    realism.setRefinementEnabled(!realism.refinementEnabled); updateDetailButton();
   };
   $('reviewFreeze').onclick = () => {
     review.frozen = !review.frozen; if (review.frozen) review.time = 180;
@@ -3282,7 +3294,7 @@ function updateReview() {
   if (!REVIEW) return;
   const ok = ALL_LM.filter(l => l.loaded).length, failed = ALL_LM.filter(l => l.failed).length;
   const xyz = v => v.toArray().map(n => n.toFixed(1)).join(', ');
-  $('reviewStatus').textContent = `状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
+  $('reviewStatus').textContent = `状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.buildings ? s.buildings + ' 栋建筑' : s.palms + ' 棵棕榈').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
 }
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);

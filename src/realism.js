@@ -1,10 +1,15 @@
-/** Round 1: reversible lighting + Dubai surface study. No gameplay mutations.
+import { createDubaiArchitecture } from './dubai-architecture.js';
+import { createDubaiPalms } from './dubai-palms.js';
+
+/** Reversible lighting, surfaces and local Dubai geometry studies. No gameplay mutations.
  * Textures are deterministic, authored procedural materials (not scanned assets).
  * Shared source materials are never mutated: other cities retain their surfaces.
  */
 export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sky }) {
   const qs = new URLSearchParams(location.search);
   let enabled = qs.get('look') !== 'original';
+  let refinementEnabled = qs.get('detail') !== 'off';
+  const refinements = [];
   const textures = [], materials = [], swaps = [], extras = [], colors = [];
   const original = {
     exposure: renderer.toneMappingExposure, env: scene.environment,
@@ -45,13 +50,14 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const sets = { stone: textureSet('stone', 1102), sand: textureSet('sand', 931), asphalt: textureSet('asphalt', 83), grass: textureSet('grass', 742) };
 
   // World projection keeps paving at the same physical scale on scaled/extruded meshes.
-  function surface(kind, { color = '#ffffff', roughness = .85, scale = .25, bump = .025 } = {}) {
+  function surface(kind, { color = '#ffffff', roughness = .85, scale = .25, bump = .025, detail = 1 } = {}) {
     const mat = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, envMapIntensity: .3 });
     mat.onBeforeCompile = sh => {
       sh.uniforms.taColor = { value: sets[kind].map };
       sh.uniforms.taHeight = { value: sets[kind].bump };
       sh.uniforms.taScale = { value: scale };
       sh.uniforms.taBump = { value: bump };
+      sh.uniforms.taDetail = { value: detail };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 taWorld;');
       sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
         vec4 taP = vec4(transformed, 1.0);
@@ -62,7 +68,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
         varying vec3 taWorld;
         uniform sampler2D taColor, taHeight;
-        uniform float taScale, taBump;
+        uniform float taScale, taBump, taDetail;
         vec2 taUV;
         vec3 taBumpNormal(vec3 N, float H) {
           vec3 dx = dFdx(-vViewPosition), dy = dFdy(-vViewPosition);
@@ -74,7 +80,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
         vec3 taN = abs(normalize(cross(dFdx(taWorld), dFdy(taWorld))));
         taUV = (taN.y > .5 ? taWorld.xz : (taN.x > taN.z ? taWorld.zy : taWorld.xy)) * taScale;
-        diffuseColor.rgb *= texture2D(taColor, taUV).rgb;`);
+        diffuseColor.rgb *= mix(vec3(1.0), texture2D(taColor, taUV).rgb, taDetail);`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         normal = taBumpNormal(normal, texture2D(taHeight, taUV).r * taBump);`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
@@ -88,6 +94,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
   const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
+  const facadeStone = surface('stone', { scale: .38, roughness: .84, bump: .006, detail: .72 });
   const neutral = (source, color, roughness) => {
     const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
     materials.push(m); return m;
@@ -157,10 +164,14 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     // A narrow outer coping helps the transition read in oblique views.
     const coping = new THREE.Mesh(new THREE.RingGeometry(11.35, 11.48, 96).rotateX(-Math.PI / 2), sideStone);
     coping.position.set(0, 1.286, -33); coping.receiveShadow = true; c.w.root.add(coping); extras.push(coping); coping.visible = enabled;
+    refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
+    refinements.forEach(r => r.setEnabled(enabled && refinementEnabled));
   }
   const dir = new THREE.Vector3(-.64, .88, .5).normalize();
   const originalDir = new THREE.Vector3(Math.cos(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180), Math.sin(55 * Math.PI / 180), Math.sin(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180));
   function update({ target, overview = false }) {
+    // Must follow the source actors: they restore the original instances each frame.
+    refinements.forEach(r => r.apply());
     const span = overview ? 300 : Math.min(125, Math.max(48, camera.position.distanceTo(target) * .75));
     const texel = span * 2 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, 0, Math.round(target.z / texel) * texel);
@@ -178,10 +189,19 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     for (const s of swaps) s.mesh.material = enabled ? s.after : s.before;
     for (const c of colors) { c.mesh.instanceColor.array.set(enabled ? c.after : c.before); c.mesh.instanceColor.needsUpdate = true; }
     extras.forEach(o => o.visible = enabled);
+    refinements.forEach(r => r.setEnabled(enabled && refinementEnabled));
+  }
+  function setRefinementEnabled(value) {
+    refinementEnabled = !!value;
+    refinements.forEach(r => r.setEnabled(enabled && refinementEnabled));
   }
   applyEnvironment();
-  return { enhanceCity, update, setEnabled, get enabled() { return enabled; }, dispose() {
+  return { enhanceCity, update, setEnabled, setRefinementEnabled,
+    get refinementEnabled() { return refinementEnabled; },
+    get refinementStats() { return refinements.map(r => r.stats); },
+    get enabled() { return enabled; }, dispose() {
     setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
+    refinements.forEach(r => r.dispose());
     textures.forEach(t => t.dispose()); materials.forEach(m => m.dispose()); envTarget.dispose();
   } };
 }
