@@ -1,22 +1,24 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-/** Two reversible, footprint-preserving facade studies for the west Dubai plaza.
+/** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
  * All details are opaque PBR meshes, merged by finish. Existing actors still own
  * the building instances; apply() suppresses them only after the actors update.
  */
-export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
+export function createDubaiArchitecture({ THREE, city, stoneMaterial, district = false }) {
   const root = new THREE.Group();
-  root.name = 'Dubai — limestone courtyard shops';
+  root.name = district ? 'Dubai — limestone district and bronze skyline' : 'Dubai — limestone courtyard shops';
   let enabled = true, disposed = false;
   const pools = city.w.ctx.pools;
   const candidates = (city.w.ctx.buildings || []).filter(b =>
     b.indices && Number.isInteger(b.indices.body) && b.indices.body >= 0 &&
-    b.z + b.d / 2 < -16 && b.h >= 3 && b.h <= 7.5 && !b.gable && !b.crown &&
-    b.w >= 3 && b.d >= 3);
+    b.w >= 3 && b.d >= 3 && b.h >= 3 &&
+    (district ? b.z < -16 : (b.z + b.d / 2 < -16 && b.h <= 7.5 && !b.gable && !b.crown)));
   const inStudy = b => b.x >= -31 && b.x <= -13 && b.z >= -31 && b.z <= -19;
   const rank = b => (inStudy(b) ? 0 : 1000) + (b.style === 'shops' ? 0 : 100) +
     Math.hypot(b.x + 20, b.z + 22);
-  const selected = [...candidates].sort((a, b) => rank(a) - rank(b)).slice(0, 2);
+  const sorted = [...candidates].sort((a, b) => rank(a) - rank(b));
+  const selected = district ? sorted : sorted.slice(0, 2);
+  const design = new Map();
   const materials = [], batches = new Map(), originals = new Map();
   const finish = (color, roughness, metalness = 0, extra = {}) => {
     const material = new THREE.MeshStandardMaterial({ color, roughness, metalness,
@@ -38,6 +40,12 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
   const glass = finish('#334b53', .19, .38, { envMapIntensity: 1.25 });
   const roof = finish('#9b9688', .94);
   const recess = finish('#4b4b43', .95);
+  const wood = district ? finish('#514032', .82) : null;
+  const skylineGlass = district ? finish('#72898a', .23, .42, { envMapIntensity: 1.35 }) : null;
+  const amberGlass = district ? finish('#6f573c', .28, .15, { emissive:'#bd8743', emissiveIntensity:.22 }) : null;
+  const lanternGlass = district ? finish('#ffe1a0', .4, 0, { emissive:'#ffca7d', emissiveIntensity:.7 }) : null;
+  const plantGreen = district ? finish('#496c39', .94) : null;
+  const flowers = district ? finish('#bd527b', .9) : null;
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   let transform = new THREE.Matrix4();
@@ -50,14 +58,46 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
     batches.get(material).push(geometry);
   }
   selected.forEach((b, buildingIndex) => {
-    const wall = buildingIndex === 0 ? ivory : warm;
+    const wall = district ? (buildingIndex % 3 === 1 ? warm : ivory) : (buildingIndex === 0 ? ivory : warm);
     transform = new THREE.Matrix4().makeRotationY(b.ry || 0);
     transform.setPosition(b.x, b.base, b.z);
-    const { w, d, h } = b;
-    const floorCount = h >= 4.6 ? 2 : 1;
+    const { w, d } = b;
+    const traditional = !district || b.z > -38 || b.h <= 8;
+    // District pass reshapes the skyline: two-storey foreground and a lower
+    // backdrop leave the landmark legible. Horizontal collision footprints stay.
+    const h = !district ? b.h : traditional
+      ? Math.min(Math.max(b.h, 5.8), 6.2 + (buildingIndex % 5) * .4)
+      : Math.min(b.h, 12 + (buildingIndex % 5) * 1.3);
+    design.set(b, { treatment: traditional ? 'limestone' : 'glass', facadeHeight: h, originalHeight: b.h });
+    if (!traditional) {
+      // One continuous glass volume with thin bronze fins. No baked white grid;
+      // the PMREM daylight and real fins produce broad reflection and shadow.
+      box(skylineGlass, 0, h / 2, 0, w - .1, h - .06, d - .1);
+      box(wall, 0, .18, 0, w, .36, d);
+      box(metal, 0, h - .055, 0, w, .11, d);
+      for (let side = 0; side < 4; side++) {
+        const span = side % 2 === 0 ? w : d, depth = side % 2 === 0 ? d : w;
+        const angle = side * Math.PI / 2, cs = Math.cos(angle), sn = Math.sin(angle);
+        const fins = Math.max(4, Math.floor(span / .66));
+        const z = depth / 2 - .045;
+        for (let j = 0; j <= fins; j++) {
+          const u = -span / 2 + .08 + (span - .16) * j / fins;
+          box(metal, u * cs + z * sn, h / 2, -u * sn + z * cs,
+            .025, h - .16, .075, angle);
+        }
+        // Recessed dark spandrels read as floor depth without white crosshatching.
+        for (let y = 2.8; y < h - .3; y += 2.8) {
+          box(recess, z * sn, y, z * cs, span - .14, .09, .035, angle);
+        }
+      }
+      return;
+    }
+    const floorCount = district && h >= 7 ? 3 : h >= 4.6 ? 2 : 1;
     const parapetHeight = .25, roofLevel = h - parapetHeight;
     const groundHeight = floorCount === 2 ? Math.min(2.65, roofLevel * .53) : roofLevel;
-    const floors = floorCount === 2 ? [[0, groundHeight], [groundHeight, roofLevel]] : [[0, roofLevel]];
+    const floors = floorCount === 3
+      ? Array.from({ length: 3 }, (_, i) => [roofLevel * i / 3, roofLevel * (i + 1) / 3])
+      : floorCount === 2 ? [[0, groundHeight], [groundHeight, roofLevel]] : [[0, roofLevel]];
     const inset = .045, thickness = .23;
     // Solid inset core occludes interiors behind recessed glazing. Wall openings
     // genuinely have side/top/bottom reveals; no glass or window texture overlay.
@@ -78,6 +118,33 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
     box(trim, 0, h - .025, -d / 2 + .105, w, .05, .21);
     box(trim, -w / 2 + .105, h - .025, 0, .21, .05, d - .42);
     box(trim, w / 2 - .105, h - .025, 0, .21, .05, d - .42);
+
+    if (district && b.h - h >= 1.35) {
+      // Rooftop objects use only the height vacated by a reduced front-row tower.
+      const pw = Math.min(w - .65, 2.7), pd = Math.min(d - .65, 2.45);
+      const pergolaHeight = .98;
+      for (const x of [-pw / 2, pw / 2]) for (const z of [-pd / 2, pd / 2]) {
+        box(wood, x, roofLevel + pergolaHeight / 2, z, .085, pergolaHeight, .085);
+      }
+      for (const z of [-pd / 2, pd / 2]) box(wood, 0, roofLevel + pergolaHeight, z, pw + .14, .1, .09);
+      const slats = 9;
+      for (let j = 0; j < slats; j++) {
+        box(wood, -pw / 2 + pw * j / (slats - 1), roofLevel + pergolaHeight + .075, 0,
+          .085, .065, pd + .16);
+      }
+      if (buildingIndex % 3 === 0 && b.h - h >= 2.05) {
+        // Small barjeel wind catcher with open shaded slots and stone corner posts.
+        const tw = Math.min(1.05, w * .22), tx = w / 2 - tw / 2 - .22;
+        const tz = -d / 2 + tw / 2 + .22, ty = roofLevel;
+        box(wall, tx, ty + .42, tz, tw, .84, tw);
+        box(recess, tx, ty + 1.16, tz, tw - .16, .65, tw - .16);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+          box(wall, tx + sx * (tw / 2 - .065), ty + 1.16, tz + sz * (tw / 2 - .065), .13, .65, .13);
+        }
+        box(trim, tx, ty + 1.55, tz, tw + .14, .13, tw + .14);
+        box(trim, tx, ty + .84, tz, tw + .1, .09, tw + .1);
+      }
+    }
 
     // Facade coordinates: u is horizontal and v runs inward from the boundary.
     for (let side = 0; side < 4; side++) {
@@ -117,7 +184,8 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
           }
           // Recessed, opaque reflective glass is backed by the interior core.
           const glassDepth = inset + .235;
-          facade(glass, center, (sill + upper) / 2, glassDepth, openingWidth - .035,
+          const pane = district && isGround && (col + buildingIndex) % 3 !== 0 ? amberGlass : glass;
+          facade(pane, center, (sill + upper) / 2, glassDepth, openingWidth - .035,
             windowHeight - .035, .024);
           const frame = .026;
           for (const sign of [-1, 1]) {
@@ -131,6 +199,36 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
           facade(metal, center, sill + windowHeight * .74, glassDepth - .023,
             openingWidth, .02, .037);
           facade(trim, center, sill - .035, .135, openingWidth + .09, .07, .25);
+          if (district && door) {
+            // Extruded spandrel replaces the rectangular head with a true arched
+            // stone opening; glass remains opaque and recessed behind the arch.
+            const radius = openingWidth / 2, spring = upper - radius;
+            const shape = new THREE.Shape();
+            shape.moveTo(-radius, spring); shape.lineTo(-radius, upper + .04);
+            shape.lineTo(radius, upper + .04); shape.lineTo(radius, spring);
+            shape.absarc(0, spring, radius, 0, Math.PI, false); shape.closePath();
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 10 });
+            geometry.translate(center, 0, depth / 2 - inset - thickness);
+            geometry.rotateY(angle); geometry.applyMatrix4(transform);
+            // Extrusions are nonindexed; match the box batch's indexed topology.
+            const indices = Array.from({ length: geometry.attributes.position.count }, (_, i) => i);
+            geometry.setIndex(indices); batches.get(wall).push(geometry);
+            // Small bronze-framed wall lantern on the door pier, with warm glass.
+            const lu=center+bay/2, ly=Math.min(upper-.15,2.05);
+            facade(metal,lu,ly,.09,.14,.36,.14);
+            facade(lanternGlass,lu,ly,.015,.09,.25,.015);
+          }
+          if (district && !isGround && (side === 0 || side === 1) && col % 2 === buildingIndex % 2) {
+            // A few mashrabiya-like timber screens, with real air between slats.
+            const screenHeight = Math.min(windowHeight - .12, .92);
+            for (let j = 0; j < 7; j++) {
+              facade(wood, center - openingWidth * .44 + openingWidth * .88 * j / 6,
+                sill + screenHeight / 2 + .04, .09, .035, screenHeight, .045);
+            }
+            for (const y of [sill + .04, sill + screenHeight + .04]) {
+              facade(wood, center, y, .09, openingWidth - .03, .045, .055);
+            }
+          }
           if (door) {
             facade(metal, center + .11, 1.12, glassDepth - .054, .018, .23, .025);
             // Deep stone lintel shades the entry without projecting into a path.
@@ -148,6 +246,18 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
               openingWidth + .04, .045, .045);
             facade(metal, center, sill + .08, railDepth,
               openingWidth + .04, .025, .03);
+            if(district && col === buildingIndex % columns) {
+              const planterWidth=Math.min(.65,openingWidth-.12);
+              facade(wood,center,sill+.15,.14,planterWidth,.16,.2);
+              for(let j=0;j<9;j++) {
+                const u=center-planterWidth*.43+planterWidth*.86*j/8;
+                for(const [mat,rise,radius] of [[plantGreen,.27,.07],[flowers,.32,.04]]) {
+                  const g=new THREE.SphereGeometry(radius,5,3);
+                  g.scale(1.1,.7,1);g.translate(u,sill+rise+Math.sin(j*2.7)*.025,depth/2-.12);
+                  g.rotateY(angle);g.applyMatrix4(transform);batches.get(mat).push(g);
+                }
+              }
+            }
           }
         }
       });
@@ -168,7 +278,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial }) {
   const mappings = { body: 'tower', crown: 'tower', roof: 'roof', pad: 'pad', antenna: 'ant', gable: 'gable' };
   const stats = { buildings: selected.length, triangles, drawCalls: root.children.length,
     selected: selected.map(b => ({ x: b.x, z: b.z, w: b.w, d: b.d, h: b.h,
-      base: b.base, ry: b.ry || 0, style: b.style || 'unknown', inStudy: inStudy(b) })) };
+      base: b.base, ry: b.ry || 0, style: b.style || 'unknown', inStudy: inStudy(b), ...design.get(b) })) };
   function apply() {
     if (!enabled || disposed) return;
     const touched = new Set();

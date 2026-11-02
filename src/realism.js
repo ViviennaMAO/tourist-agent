@@ -1,15 +1,20 @@
 import { createDubaiArchitecture } from './dubai-architecture.js';
 import { createDubaiPalms } from './dubai-palms.js';
+import { createDubaiLandscape } from './dubai-landscape.js';
+import { createWaterStudy } from './water-study.js';
+import { createDubaiLandmarks } from './dubai-landmarks.js';
 
-/** Reversible lighting, surfaces and local Dubai geometry studies. No gameplay mutations.
+/** Reversible lighting, surfaces and local Dubai geometry studies.
  * Textures are deterministic, authored procedural materials (not scanned assets).
  * Shared source materials are never mutated: other cities retain their surfaces.
  */
-export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sky }) {
+export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sky, seaMat, lagoonMat }) {
   const qs = new URLSearchParams(location.search);
   let enabled = qs.get('look') !== 'original';
   let refinementEnabled = qs.get('detail') !== 'off';
-  const refinements = [];
+  const refinements = [], districtStudies = [], lakeSwaps = [];
+  let districtEnabled = qs.get('district') !== 'off';
+  const waterStudy = createWaterStudy({ THREE, seaMat, lagoonMat });
   const textures = [], materials = [], swaps = [], extras = [], colors = [];
   const original = {
     exposure: renderer.toneMappingExposure, env: scene.environment,
@@ -18,6 +23,24 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     top: sky.material.uniforms.top.value.clone(), mid: sky.material.uniforms.mid.value.clone(),
     horizon: sky.material.uniforms.hor.value.clone(), fog: scene.fog.color.clone()
   };
+  const skyFragment = sky.material.fragmentShader;
+  sky.material.uniforms.taAtmosphere = { value: 0 };
+  sky.material.fragmentShader = `uniform float taAtmosphere;
+    float taHash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+    float taNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(taHash(i),taHash(i+vec2(1,0)),f.x),mix(taHash(i+vec2(0,1)),taHash(i+1.),f.x),f.y);}
+    float taCloud(vec2 p){return taNoise(p)*.55+taNoise(p*2.03)*.28+taNoise(p*4.1)*.12+taNoise(p*8.2)*.05;}
+    ` + skyFragment.replace('gl_FragColor = vec4(c,1.);', `
+      if(taAtmosphere>.5){
+        vec3 d=normalize(vD);
+        float elevation=smoothstep(0.,.12,max(d.y,0.));
+        c=mix(vec3(.45,.56,.68),vec3(.15,.29,.52),elevation);
+        vec2 uv=d.xz/max(d.y+.12,.08)*2.4;
+        float wisps=smoothstep(.52,.75,taCloud(uv*vec2(.65,1.8)));
+        float cloud=wisps*smoothstep(.02,.18,d.y)*.43;
+        c=mix(c,vec3(.91,.87,.79),cloud);
+      }
+      gl_FragColor = vec4(c,1.);`);
+  sky.material.needsUpdate = true;
   const rng = seed => () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
 
   function textureSet(kind, seed) {
@@ -124,17 +147,19 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   pmrem.dispose(); equirect.dispose();
 
   function applyEnvironment() {
-    renderer.toneMappingExposure = enabled ? .99 : original.exposure;
+    const district = enabled && refinementEnabled && districtEnabled;
+    sky.material.uniforms.taAtmosphere.value = district ? 1 : 0;
+    renderer.toneMappingExposure = enabled ? (district ? .96 : .99) : original.exposure;
     scene.environment = enabled ? envTarget.texture : original.env;
     hemi.color.copy(enabled ? new THREE.Color('#dae2e5') : original.hemi);
     hemi.groundColor.copy(enabled ? new THREE.Color('#a3947b') : original.ground);
-    hemi.intensity = enabled ? 1.1 : original.hi;
+    hemi.intensity = enabled ? (district ? .83 : 1.1) : original.hi;
     sun.color.copy(enabled ? new THREE.Color('#fff1dc') : original.sun);
-    sun.intensity = enabled ? 2.65 : original.si;
+    sun.intensity = enabled ? (district ? 3.05 : 2.65) : original.si;
     sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
     sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
     sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color('#e0e1d8') : original.horizon);
-    scene.fog.color.copy(enabled ? new THREE.Color('#e0e1d8') : original.fog);
+    scene.fog.color.copy(enabled ? new THREE.Color(district ? '#c7d5d9' : '#e0e1d8') : original.fog);
   }
   function enhanceCity(c) {
     if (c.id !== 'dubai') return;
@@ -165,13 +190,16 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     const coping = new THREE.Mesh(new THREE.RingGeometry(11.35, 11.48, 96).rotateX(-Math.PI / 2), sideStone);
     coping.position.set(0, 1.286, -33); coping.receiveShadow = true; c.w.root.add(coping); extras.push(coping); coping.visible = enabled;
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
-    refinements.forEach(r => r.setEnabled(enabled && refinementEnabled));
+    districtStudies.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial }), createDubaiLandmarks({ THREE, city: c }));
+    lakeSwaps.push(...swaps.filter(s => s.before === M.lake));
+    syncStudies();
   }
   const dir = new THREE.Vector3(-.64, .88, .5).normalize();
   const originalDir = new THREE.Vector3(Math.cos(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180), Math.sin(55 * Math.PI / 180), Math.sin(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180));
-  function update({ target, overview = false }) {
+  function update({ target, overview = false, time = 0 }) {
     // Must follow the source actors: they restore the original instances each frame.
-    refinements.forEach(r => r.apply());
+    refinements.forEach(r => r.apply(time));
+    districtStudies.forEach(r => r.apply(time));
     const span = overview ? 300 : Math.min(125, Math.max(48, camera.position.distanceTo(target) * .75));
     const texel = span * 2 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, 0, Math.round(target.z / texel) * texel);
@@ -183,25 +211,38 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     sun.shadow.normalBias = .025; sun.shadow.bias = -.00012;
     const h = Math.max(0, camera.position.y);
     scene.fog.near = 240 + h * 1.6; scene.fog.far = 920 + h * 3.2;
+    waterStudy.update({ sunDirection: enabled ? dir : originalDir, fog: scene.fog.color, near: scene.fog.near, far: scene.fog.far });
   }
   function setEnabled(value) {
     enabled = !!value; applyEnvironment();
     for (const s of swaps) s.mesh.material = enabled ? s.after : s.before;
     for (const c of colors) { c.mesh.instanceColor.array.set(enabled ? c.after : c.before); c.mesh.instanceColor.needsUpdate = true; }
     extras.forEach(o => o.visible = enabled);
-    refinements.forEach(r => r.setEnabled(enabled && refinementEnabled));
+    syncStudies();
   }
+  function syncStudies() {
+    refinements.forEach(r => r.setEnabled(false));
+    districtStudies.forEach(r => r.setEnabled(false));
+    const active = enabled && refinementEnabled;
+    (districtEnabled ? districtStudies : refinements).forEach(r => r.setEnabled(active));
+    waterStudy.setEnabled(active && districtEnabled);
+    for (const s of lakeSwaps) s.mesh.material = active && districtEnabled ? waterStudy.lakeMaterial : (enabled ? s.after : s.before);
+    applyEnvironment();
+  }
+  function setDistrictEnabled(value) { districtEnabled = !!value; syncStudies(); }
   function setRefinementEnabled(value) {
     refinementEnabled = !!value;
-    refinements.forEach(r => r.setEnabled(enabled && refinementEnabled));
+    syncStudies();
   }
   applyEnvironment();
-  return { enhanceCity, update, setEnabled, setRefinementEnabled,
+  return { enhanceCity, update, setEnabled, setRefinementEnabled, setDistrictEnabled,
+    get districtEnabled() { return districtEnabled; },
     get refinementEnabled() { return refinementEnabled; },
-    get refinementStats() { return refinements.map(r => r.stats); },
+    get refinementStats() { return (districtEnabled ? districtStudies : refinements).map(r => r.stats); },
     get enabled() { return enabled; }, dispose() {
     setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
-    refinements.forEach(r => r.dispose());
+    refinements.forEach(r => r.dispose()); districtStudies.forEach(r => r.dispose()); waterStudy.dispose();
+    sky.material.fragmentShader = skyFragment; delete sky.material.uniforms.taAtmosphere; sky.material.needsUpdate = true;
     textures.forEach(t => t.dispose()); materials.forEach(m => m.dispose()); envTarget.dispose();
   } };
 }

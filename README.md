@@ -32,11 +32,19 @@ Open the printed localhost URL. WASD/arrow keys move, Shift runs, dragging orbit
 - Nine nearby palms: feathered fronds, tapered ringed trunks and the original animated transforms. Three instanced draw calls for the grove.
 - Geometry changes can be toggled independently of round 1 lighting/materials. Other cities and walking collision footprints remain unchanged.
 
-Most buildings and landmark textures still come from the original game. The concept reference remains an art-direction target, not a screenshot. Landmark materials, additional buildings and the ocean are future local iterations.
+## Round 3: Dubai waterfront district
+
+- 23 buildings use limestone façades or quieter glass/bronze finishes. Two-storey foreground shops add arches, recessed windows, warm storefront panes, lanterns, balcony planters, timber screens and selected rooftop pergolas/wind towers. Building heights change; horizontal collision footprints stay in place.
+- 24 main-island palms, 32 reserved street-furniture/planting footprints, waterfront paving, irregular shore stones, café canopies, benches and a small fountain.
+- Analytic wave normals, Fresnel daylight and sun highlights replace the ocean's graphic white ripples. Dubai's lake and new fountain share the water treatment. Blue atmospheric sky with procedural wisps.
+- A stepped silver Burj Khalifa study replaces its coarse silhouette; Dubai Frame and Museum materials are desaturated. Original landmark identities, navigation and picking holders remain.
+- Reversible A/B switches retain rounds 1 and 2. Added planting/furniture collisions are enabled and removed with the district pass.
+
+The concept reference remains an art-direction target, not a screenshot or an achieved photorealism claim. Assets are procedural approximations, not surveyed architecture or scanned materials. Other cities keep their architecture; global sky, lighting and ocean changes are visible throughout the world. Player/NPC models still use the existing chibi style; Eva's guide panels use the supplied character direction.
 
 ## Visual review
 
-Open `/?review=1`. Choose 全岛 / 广场 / 近景 / 街区, freeze the environment at 180 seconds, and switch Before / After without moving the camera. Use 第二轮 · 建筑与棕榈 / 第一轮 · 材质基线 to compare the geometry pass at identical lighting. `?review=1&detail=off` starts at the round 1 baseline. The review panel reports load failures, runtime errors, camera/character positions and renderer metrics. Before compares the retained base surfaces and lighting in this Explore build; both views include the same extraction, UI and visibility improvements.
+Open `/?review=1`. Choose 全岛 / 广场 / 近景 / 街区 / 滨海, freeze the environment at 180 seconds, and switch Before / After without moving the camera. 第三轮 · 街区整体 switches between the new district and round 2. 几何精修 switches back to round 1. `?review=1&district=off` starts at round 2; `?review=1&detail=off` starts at round 1. The panel reports load failures, runtime errors, camera/character positions and renderer metrics. Ordinary players do not see these controls.
 
 ## Source and assets
 
@@ -53,4 +61,4 @@ Ticket purchases, PWV balance and rewards are local prototype demonstrations. No
 
 `src/game.js` owns the city generator, world, character, navigation and game UI. `src/realism.js` owns the reversible visual pass; shared base materials are not mutated. `src/base.css` retains the game layout, while `src/style-overrides.css` supplies the restrained visual treatment. Vite bundles the app, and `vercel.json` declares deployment and routes.
 
-See `docs/round-1.md` and `docs/round-2.md` for scope and validation. `src/dubai-architecture.js` and `src/dubai-palms.js` own the reversible local geometry and its disposal; `npm test` checks geometry bounds and actor-transform restoration.
+See `docs/round-1.md`, `docs/round-2.md` and `docs/round-3.md` for scope, limitations and validation. The `src/dubai-*.js` modules own local geometry and its disposal; `src/water-study.js` owns the reversible water shader. `npm test` checks geometry bounds, actor restoration, collision lifecycle, late landmark loading and shader restoration.

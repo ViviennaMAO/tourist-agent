@@ -4,10 +4,10 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * local origin and crown position, so the existing actor still owns its sway.
  * Feathered fronds use opaque geometry; no alpha sorting or texture downloads.
  */
-export function createDubaiPalms({ THREE, city }) {
+export function createDubaiPalms({ THREE, city, district = false }) {
   const root = new THREE.Group(); root.name = 'Dubai — west promenade date palms';
   const pools = city.w.ctx.pools;
-  const selected = city.w.ctx.palms.filter(p => p.x >= -34 && p.x <= 5 && p.z > -50 && p.z < -10);
+  const selected = city.w.ctx.palms.filter(p => district ? p.z < -5 : p.x >= -34 && p.x <= 5 && p.z > -50 && p.z < -10);
   const positions = [], colors = [], indices = [];
   const palettes = ['#637346', '#75804d', '#51633d', '#85935d'].map(c => new THREE.Color(c));
   const v = (x, y, z) => new THREE.Vector3(x, y, z);
