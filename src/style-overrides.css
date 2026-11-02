@@ -52,6 +52,8 @@ body.explore #hint { background:#ece8d7dc; color:#334338; font-size:11px; }
 .gp-card h2 { color:#e5d4ac; }.gp-card .gp-btns .ok { background:#b9c5ac; color:#23382b; }
 #reviewPanel { position:absolute; top:auto; left:18px; bottom:58px; z-index:40; width:286px; max-height:calc(100% - 130px); overflow:auto; padding:14px; border:1px solid #d7cdb899; border-radius:12px; background:#172922ed; color:#f3efe4; font-size:12px; box-shadow:0 8px 30px #0002; }
 #reviewPanel strong { font-size:13px; font-weight:600; }
+/* Keep review controls from intercepting Start on narrow loading screens. */
+#gameLoad:not(.out) ~ #reviewPanel { display:none; }
 .reviewBtns { display:flex; gap:6px; margin-top:9px; }
 .reviewBtns:has(#reviewLook) { display:grid; grid-template-columns:1fr 1fr; }
 .reviewBtns button { flex:1; border:1px solid #d7ccb155; background:#ffffff0c; color:inherit; border-radius:6px; padding:8px 4px; cursor:pointer; font:inherit; }
