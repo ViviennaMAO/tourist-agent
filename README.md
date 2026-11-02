@@ -40,7 +40,15 @@ Open the printed localhost URL. WASD/arrow keys move, Shift runs, dragging orbit
 - A stepped silver Burj Khalifa study replaces its coarse silhouette; Dubai Frame and Museum materials are desaturated. Original landmark identities, navigation and picking holders remain.
 - Reversible A/B switches retain rounds 1 and 2. Added planting/furniture collisions are enabled and removed with the district pass.
 
-The concept reference remains an art-direction target, not a screenshot or an achieved photorealism claim. Assets are procedural approximations, not surveyed architecture or scanned materials. Other cities keep their architecture; global sky, lighting and ocean changes are visible throughout the world. Player/NPC models still use the existing chibi style; Eva's guide panels use the supplied character direction.
+The concept reference remains an art-direction target, not a screenshot or an achieved photorealism claim. Assets are procedural approximations, not surveyed architecture or scanned materials. Other cities keep their architecture; global sky, lighting and ocean changes are visible throughout the world.
+
+## Round 4: playable Eva
+
+- Replaced the chibi player and all four NPC meshes with an articulated Eva model: adult proportions, green-eyed facial albedo, center-parted wavy black hair, a square-neck puff-sleeve cream dress, pleated calf-length skirt and ivory Mary Jane heels. NPCs share the model with muted color variations and lower geometry detail.
+- Hip/knee/ankle and shoulder/elbow/hand joints support idle, walk and run. Foot targets keep a sole planted; the skirt clears the moving knees, with updated normals and small hair/idle motion. This is a procedural animation system, not motion capture or physical cloth simulation.
+- Player avatar and overhead label heights follow the new proportions. Walk/run speeds are 3/6 world units per second to better match the gait; city teleport buttons remain available. Camera minimum distance is 4.5 for closer inspection.
+- Street refinements extend selected ground-floor arches and add small crossed bronze balcony details.
+- In the review page, Eva 正面 / 侧面 / 背面 inspect the actual player; the pose button cycles idle → walk → run → idle. These are preview poses; ordinary controls still move the player through the world.
 
 ## Visual review
 
@@ -61,4 +69,4 @@ Ticket purchases, PWV balance and rewards are local prototype demonstrations. No
 
 `src/game.js` owns the city generator, world, character, navigation and game UI. `src/realism.js` owns the reversible visual pass; shared base materials are not mutated. `src/base.css` retains the game layout, while `src/style-overrides.css` supplies the restrained visual treatment. Vite bundles the app, and `vercel.json` declares deployment and routes.
 
-See `docs/round-1.md`, `docs/round-2.md` and `docs/round-3.md` for scope, limitations and validation. The `src/dubai-*.js` modules own local geometry and its disposal; `src/water-study.js` owns the reversible water shader. `npm test` checks geometry bounds, actor restoration, collision lifecycle, late landmark loading and shader restoration.
+See `docs/round-1.md` through `docs/round-4.md` for scope, limitations and validation. The `src/dubai-*.js` modules own local geometry and its disposal; `src/water-study.js` owns the reversible water shader; `src/eva-character.js` owns the articulated characters. `npm test` checks geometry bounds, actor restoration, collision lifecycle, landmark loading, shader restoration, foot contact, knee/skirt clearance and character disposal.

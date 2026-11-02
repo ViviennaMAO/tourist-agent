@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import evaGuideUrl from './assets/eva-guide-v1.png';
+import evaFaceUrl from './assets/eva-face-albedo-v1.png';
+import { createEvaCharacter } from './eva-character.js';
 import { createRealism } from './realism.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -2678,97 +2680,17 @@ function renderCityOptions() {
 renderCityOptions();
 
 /* =====================================================================
-   8. 自由探索：卡通小女孩在十一城之间旅行（?mode=explore）
+   8. 自由探索：新 Eva 立体角色在十一城之间旅行
    角色依据设定图：黑色中长波浪发（中分）、绿瞳、红唇、奶黄色方领泡泡袖高腰中长裙、米白玛丽珍鞋
    ===================================================================== */
+const evaFaceTexture = new THREE.TextureLoader().load(evaFaceUrl, () => {
+  if (GUI.ready) makeAvatar();
+});
+evaFaceTexture.colorSpace = THREE.SRGBColorSpace;
+evaFaceTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 function makeGirl(look = {}) {
-  const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.65, metalness: 0, ...o });
-  const SKIN = mat(look.skin || '#F7DED3'), HAIR = mat(look.hair || '#18171D', { roughness: 0.45 }), DRESS = mat(look.dress || '#F7E8A6'), DRESS2 = mat(look.dress2 || '#EAD48A'),
-        SHOE = mat('#F4EFE4', { roughness: 0.4 }), STRAP = mat('#D9CFBE'), LIP = mat('#B5303A', { roughness: 0.4 });
-  const add = (parent, geo, m, [x, y, z] = [0, 0, 0], [sx, sy, sz] = [1, 1, 1], rot) => {
-    const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); if (rot) o.rotation.set(...rot);
-    o.castShadow = true; parent.add(o); return o;
-  };
-  const S = (r, ws = 20, hs = 14) => new THREE.SphereGeometry(r, ws, hs);
-  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-
-  // 腿 + 玛丽珍鞋（髋部为轴，走路时前后摆）
-  const legs = [-1, 1].map(sx => {
-    const hip = new THREE.Group(); hip.position.set(sx * 0.13, 0.78, 0); body.add(hip);
-    add(hip, new THREE.CylinderGeometry(0.07, 0.065, 0.66, 10).translate(0, -0.33, 0), SKIN);
-    add(hip, new RoundedBoxGeometry(0.19, 0.12, 0.32, 2, 0.05), SHOE, [0, -0.7, 0.05]);
-    add(hip, new THREE.BoxGeometry(0.2, 0.025, 0.05), STRAP, [0, -0.63, 0.04]);
-    return hip;
-  });
-  // 裙摆（高腰 A 字）+ 上身 + 腰线
-  const skirt = add(body, new THREE.CylinderGeometry(0.3, 0.66, 0.98, 28, 1), DRESS, [0, 0.98, 0]);
-  add(body, new THREE.CylinderGeometry(0.29, 0.3, 0.4, 24), DRESS, [0, 1.66, 0]);
-  add(body, new THREE.TorusGeometry(0.3, 0.035, 8, 28).rotateX(Math.PI / 2), DRESS2, [0, 1.47, 0]);
-  add(body, new THREE.BoxGeometry(0.34, 0.15, 0.04), SKIN, [0, 1.8, 0.27]);        // 方领露出的肌肤
-  add(body, new THREE.BoxGeometry(0.4, 0.035, 0.05), DRESS2, [0, 1.72, 0.285]);    // 方领下沿
-  add(body, new THREE.CylinderGeometry(0.085, 0.09, 0.2, 10), SKIN, [0, 1.92, 0]);  // 脖子
-  // 泡泡袖 + 手臂（肩为轴）
-  const arms = [-1, 1].map(sx => {
-    add(body, S(0.17), DRESS, [sx * 0.36, 1.75, 0], [1, 0.88, 1]);
-    add(body, new THREE.TorusGeometry(0.1, 0.03, 6, 16).rotateX(Math.PI / 2), DRESS2, [sx * 0.39, 1.63, 0]);
-    const sh = new THREE.Group(); sh.position.set(sx * 0.39, 1.68, 0); body.add(sh);
-    add(sh, new THREE.CylinderGeometry(0.07, 0.06, 0.5, 10).translate(0, -0.25, 0), SKIN, [0, 0, 0], [1, 1, 1], [0, 0, sx * 0.12]);
-    add(sh, S(0.075, 10, 8), SKIN, [sx * 0.06, -0.54, 0]);
-    return sh;
-  });
-  // 头：大头 Q 版
-  const head = new THREE.Group(); head.position.set(0, 2.0, 0); body.add(head);
-  add(head, S(0.6, 32, 24), SKIN, [0, 0.52, 0], [1, 0.96, 0.95]);
-  // 眼睛：深色眼眶 + 绿瞳 + 高光
-  for (const sx of [-1, 1]) {
-    add(head, S(0.11, 16, 12), mat('#22303A', { roughness: 0.3 }), [sx * 0.21, 0.48, 0.5], [0.85, 1.15, 0.4]);
-    add(head, S(0.075, 16, 12), mat('#3E9E86', { roughness: 0.25 }), [sx * 0.21, 0.46, 0.535], [1, 1.1, 0.35]);
-    add(head, S(0.038, 10, 8), mat('#0E1A1C'), [sx * 0.21, 0.455, 0.555], [1, 1.1, 0.3]);
-    add(head, S(0.026, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' }), [sx * 0.21 + 0.03, 0.51, 0.565]);
-    add(head, new THREE.BoxGeometry(0.15, 0.02, 0.03), HAIR, [sx * 0.21, 0.59, 0.52]);                                   // 上睫毛线：平
-    add(head, new THREE.BoxGeometry(0.06, 0.018, 0.03), HAIR, [sx * 0.3, 0.6, 0.49], [1, 1, 1], [0, sx * 0.5, sx * 0.55]); // 外眼角小翘
-    add(head, new THREE.BoxGeometry(0.13, 0.02, 0.03), HAIR, [sx * 0.21, 0.73, 0.49]);                         // 眉毛：平直、细，表情温和
-    const blush = add(head, new THREE.CircleGeometry(0.075, 16), new THREE.MeshBasicMaterial({ color: '#F2A3A8', transparent: true, opacity: 0.55, depthWrite: false }), [sx * 0.34, 0.35, 0.47]);
-    blush.rotation.y = sx * 0.6; blush.castShadow = false;
-  }
-  add(head, S(0.06, 12, 8), LIP, [0, 0.25, 0.56], [1.25, 0.6, 0.5]);   // 红唇
-  // 头发：头顶 + 后侧整片 + 中分刘海 + 两侧垂发 + 发尾两层波浪卷
-  add(head, new THREE.SphereGeometry(0.66, 32, 16, 0, Math.PI * 2, 0, 1.12), HAIR, [0, 0.56, -0.02]);
-  // 后侧整片垂到肩：同一个球壳向下拉长，避开正脸
-  add(head, new THREE.SphereGeometry(0.67, 40, 20, Math.PI / 2 + 0.85, Math.PI * 2 - 1.7, 0.85, 1.45), HAIR, [0, 0.52, -0.03], [1.04, 1.28, 1]);
-  for (const sx of [-1, 1]) {
-    add(head, S(0.3, 16, 12), HAIR, [sx * 0.26, 0.83, 0.36], [1.05, 0.48, 0.55], [0.3, 0, -sx * 0.45]);
-    add(head, S(0.2, 14, 10), HAIR, [sx * 0.5, 0.32, 0.2], [0.8, 1.9, 0.9], [0, 0, sx * 0.1]);
-  }
-  const curls = [];
-  // 发尾一圈柔和的外翻波浪（扁椭球），像设定图里的波浪中长发
-  for (let k = 0, n = 7; k < n; k++) {
-    const a = lerp(1.25, Math.PI * 2 - 1.25, k / (n - 1)) + Math.PI / 2;
-    const c = add(head, S(0.25, 18, 10), HAIR, [Math.cos(a) * 0.64, -0.06 + (k % 2) * 0.05, Math.sin(a) * 0.64 - 0.05], [1.35, 0.5, 0.95], [0, -a, (k % 2 ? 0.18 : -0.18)]);
-    curls.push({ m: c, y: c.position.y, ph: k * 0.9 });
-  }
-  // 脚下的柔和投影
-  const blob = new THREE.Mesh(new THREE.CircleGeometry(0.75, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#1a2a40', transparent: true, opacity: 0.25, depthWrite: false }));
-  blob.position.y = 0.02; root.add(blob);
-  root.scale.setScalar(0.95);
-
-  let phase = 0;
-  return {
-    root, arms,
-    // speed：0 站立，1 走，>1 跑
-    animate(dt, speed, t) {
-      phase += dt * (5.5 + 3 * Math.max(0, speed - 1)) * (speed > 0.05 ? 1 : 0);
-      const w = Math.min(1, speed), swing = Math.sin(phase) * 0.55 * w;
-      legs[0].rotation.x = swing; legs[1].rotation.x = -swing;
-      arms[0].rotation.x = -swing * 0.8; arms[1].rotation.x = swing * 0.8;
-      arms[0].rotation.z = -0.08 - 0.05 * Math.sin(t * 1.5) * (1 - w); arms[1].rotation.z = 0.08 + 0.05 * Math.sin(t * 1.5) * (1 - w);
-      body.position.y = Math.abs(Math.sin(phase)) * 0.07 * w + Math.sin(t * 2) * 0.012 * (1 - w);
-      body.rotation.x = 0.06 * w * Math.min(speed, 1.6);
-      skirt.rotation.z = Math.sin(phase) * 0.04 * w; skirt.scale.set(1 + 0.03 * w * Math.abs(Math.sin(phase)), 1, 1);
-      head.rotation.z = Math.sin(phase) * 0.03 * w + Math.sin(t * 0.8) * 0.02 * (1 - w);
-      for (const c of curls) c.m.position.y = c.y + Math.sin(phase * 2 + c.ph) * 0.025 * w;
-    },
-  };
+  return createEvaCharacter({ THREE, faceTexture: evaFaceTexture, look,
+    detail: Object.keys(look).length ? 'medium' : 'high' });
 }
 
 const EX = { on: EXPLORE, keys: new Set(), pos: V3(), y: 1, yaw: 0, city: null, auto: null, t0: performance.now() };
@@ -2851,7 +2773,7 @@ function setupExplore() {
   girl = makeGirl(); scene.add(girl.root);
   spawnAt('dubai');
   controls.enabled = true; state.userCam = true; state.playing = false;
-  Object.assign(controls, { minDistance: 9, maxDistance: 90, maxPolarAngle: 1.38, enablePan: false });
+  Object.assign(controls, { minDistance: 4.5, maxDistance: 90, maxPolarAngle: 1.38, enablePan: false });
   camera.position.copy(EX.pos).add(V3(0, 13, 24)); controls.target.copy(EX.pos).add(V3(0, 2, 0));
   $('worldHint').textContent = '点击任意一座城市，直达它的中心地标 · Esc 返回';
 
@@ -2886,7 +2808,7 @@ function exploreStep(dt, now) {
   let speed = 0;
   if (mv.lengthSq() > 0) {
     review.fixed = false; review.camera = '自由探索';
-    mv.normalize(); const run = K.has('run'), v = run ? 17 : 9; speed = run ? 1.8 : 1;
+    mv.normalize(); const run = K.has('run'), v = run ? 6 : 3; speed = run ? 1.8 : 1;
     const step = mv.clone().multiplyScalar(v * dt), old = EX.pos.clone();
     for (const [sx, sz] of [[1, 1], [1, 0], [0, 1]]) {   // 撞墙时沿墙滑动
       const nx = old.x + step.x * sx, nz = old.z + step.z * sz;
@@ -2897,7 +2819,7 @@ function exploreStep(dt, now) {
   }
   const w = walkable(EX.pos.x, EX.pos.z), gy = w ? w.y : EX.y; EX.y += (gy - EX.y) * Math.min(1, dt * 10);
   girl.root.position.set(EX.pos.x, EX.y, EX.pos.z); girl.root.rotation.y = EX.yaw;
-  girl.animate(dt, speed, now / 1000);
+  girl.animate(dt, review.fixed && review.character ? review.poseSpeed : speed, now / 1000);
   if (speed > 0) EX.hold = false;   // 一走动，视线高度慢慢回到她身上
   if (!camFly && !EX.overview && !EX.hold) controls.target.y += (EX.y + 2 - controls.target.y) * Math.min(1, dt * 6);
   controls.update();
@@ -2935,10 +2857,10 @@ const CITY_DESC = {
 const TIPS = ['走近地标即可点亮城市印记，集齐一城成为「文化大使」', '门票与 PWV 余额仅为本机演示，不会发生真实付款', '探索十一座城市，发现各地地标',
   '方向键 / WASD 走动，按住 Shift 奔跑', '按 M 打开世界地图，点任意一座城直达', '右下角 GO：前往下一座城市'];
 const NPC_LOOKS = [
-  { name: '模拟_Omar294', hair: '#3A2418', dress: '#8FC8F0', dress2: '#6AAAD8', skin: '#D9A882' },
-  { name: '模拟_Aisha732', hair: '#E3C27A', dress: '#F4A9B8', dress2: '#E08A9C' },
-  { name: '模拟_Yuki318', hair: '#20191C', dress: '#A8E0B0', dress2: '#86C892' },
-  { name: '模拟_Lucas507', hair: '#A8502F', dress: '#C9B6F2', dress2: '#A894E0', skin: '#E9C3A8' },
+  { name: '模拟_Omar294', hair: '#30251e', dress: '#92a9ab', dress2: '#748f91', skin: '#c99978' },
+  { name: '模拟_Aisha732', hair: '#9f8454', dress: '#c5a39c', dress2: '#ad8983' },
+  { name: '模拟_Yuki318', hair: '#201d20', dress: '#a6b39b', dress2: '#87987a' },
+  { name: '模拟_Lucas507', hair: '#5a382b', dress: '#b4acc0', dress2: '#9690a3', skin: '#deb098' },
 ];
 const CHECK_KEY = 'ta_explore_checkins', GIFT_KEY = 'ta_explore_gift', PID_KEY = 'ta_player_id';
 const GUI = { loading: EXPLORE, ready: false, seen: new Set(), panel: null, pop: null, thumbs: new Map(), shots: new Map(), npcs: [] };
@@ -2994,8 +2916,8 @@ function cityShot(c) {
 }
 // Eva is an authored transparent guide portrait, bundled independently of player/NPC models.
 function makeAvatar() {
-  const f = V3(Math.sin(EX.yaw), 0, Math.cos(EX.yaw)), head = girl.root.position.clone().add(V3(0, 2.42, 0));
-  $('hudAvatar').src = shoot(head.clone().addScaledVector(f, 2.7).add(V3(0, 0.3, 0)), head, 140, 140, 30);
+  const f = V3(Math.sin(EX.yaw), 0, Math.cos(EX.yaw)), head = girl.root.position.clone().add(V3(0, girl.root.userData.headHeight, 0));
+  $('hudAvatar').src = shoot(head.clone().addScaledVector(f, 1.4).add(V3(0, 0.04, 0)), head, 140, 140, 30);
 }
 
 function hudRefresh() {
@@ -3128,7 +3050,7 @@ function npcStep(n, dt, t) {
       const dx = n.target.x - n.pos.x, dz = n.target.z - n.pos.z, d = Math.hypot(dx, dz);
       if (d < 0.5) { n.target = null; n.wait = 0.8 + Math.random() * 2.5; }
       else {
-        const s = Math.min(d, 5.5 * dt), w = walkable(n.pos.x + dx / d * s, n.pos.z + dz / d * s);
+        const s = Math.min(d, 2 * dt), w = walkable(n.pos.x + dx / d * s, n.pos.z + dz / d * s);
         if (!w) { n.target = null; n.wait = 0.3; }
         else { n.pos.x += dx / d * s; n.pos.z += dz / d * s; n.y += (w.y - n.y) * Math.min(1, dt * 10); speed = 0.75; let a = Math.atan2(dx, dz) - n.yaw; a -= Math.round(a / 6.283) * 6.283; n.yaw += a * Math.min(1, dt * 8); }
       }
@@ -3139,7 +3061,7 @@ function npcStep(n, dt, t) {
 // 头顶名牌（HTML，跟着 3D 位置投影到屏幕）
 const _tp = V3();
 function tagAt(el, obj, W, H) {
-  _tp.copy(obj.position); _tp.y += 3.15; _tp.project(camera);
+  _tp.copy(obj.position); _tp.y += obj.userData.tagHeight || 3.15; _tp.project(camera);
   const vis = obj.visible && !EX.overview && _tp.z < 1 && Math.abs(_tp.x) < 1.05 && Math.abs(_tp.y) < 1.05 && camera.position.distanceTo(obj.position) < 150;
   el.style.display = vis ? 'block' : 'none';
   if (vis) el.style.transform = `translate(${((_tp.x + 1) / 2 * W).toFixed(1)}px,${((1 - _tp.y) / 2 * H).toFixed(1)}px) translate(-50%,-100%)`;
@@ -3148,7 +3070,10 @@ function gameFrame(dt, now) {
   for (const n of GUI.npcs) npcStep(n, dt, now / 1000);
   const W = stageEl.clientWidth, H = stageEl.clientHeight;
   tagAt(GUI.myTag, girl.root, W, H);
-  for (const n of GUI.npcs) tagAt(n.tag, n.g.root, W, H);
+  for (const n of GUI.npcs) {
+    tagAt(n.tag, n.g.root, W, H);
+    if (review.fixed && review.character) n.tag.style.display = 'none';
+  }
 }
 
 function gameLoadProgress() {
@@ -3225,9 +3150,10 @@ function setupGameUI() {
 
 // Review tools are DOM controls so validation uses the same UI as a player.
 const REVIEW = QS.get('review') === '1';
-const review = { enabled: realism.enabled, frozen: false, fixed: false, time: 0, errors: [], fps: 0, camera: '自由探索' };
+const review = { enabled: realism.enabled, frozen: false, fixed: false, time: 0, errors: [], fps: 0, camera: '自由探索', character: false, poseSpeed: 0 };
 function setReviewCamera(kind) {
-  review.fixed = true;
+  review.fixed = true; review.character = false;
+  controls.minDistance = 4.5; controls.maxPolarAngle = 1.38;
   for (let i = 0; i < 3 && GUI.pop; i++) closePop();
   closePanel(); hideCard(); camFly = null;
   EX.overview = false; EX.hold = true; EX.keys.clear(); document.body.classList.remove('overview');
@@ -3246,15 +3172,32 @@ function setReviewCamera(kind) {
   controls.target.set(x + shot.q[0], shot.q[1], z + shot.q[2]);
   camera.lookAt(controls.target); controls.update(); review.camera = shot.name;
 }
+function setReviewCharacter(view) {
+  setReviewCamera('street'); review.character = true;
+  EX.yaw = 0; girl.root.rotation.y = 0;
+  controls.minDistance = 2; controls.maxPolarAngle = 1.52;
+  const offset = view === 'back' ? V3(0,2.3,-6.4) : view === 'side' ? V3(6.4,2.3,0) : V3(0,2.3,6.4);
+  camera.position.copy(EX.pos).add(offset); controls.target.copy(EX.pos).add(V3(0,1.65,0));
+  camera.lookAt(controls.target); controls.update();
+  review.camera = 'Eva · ' + ({front:'正面',side:'侧面',back:'背面'}[view]);
+}
 function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第三轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第三轮 · 街区整体</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第四轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第三轮 · 街区整体</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   $('reviewLook').textContent = review.enabled ? 'After · 写实材质' : 'Before · 基础材质';
   $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   panel.querySelectorAll('[data-shot]').forEach(b => b.onclick = () => setReviewCamera(b.dataset.shot));
+  panel.querySelectorAll('[data-character]').forEach(b => b.onclick = () => setReviewCharacter(b.dataset.character));
+  $('reviewGait').onclick = () => {
+    if (!review.character) setReviewCharacter('front');
+    review.poseSpeed = review.poseSpeed === 0 ? 1 : review.poseSpeed === 1 ? 1.8 : 0; review.frozen = false;
+    $('reviewGait').setAttribute('aria-pressed', String(!!review.poseSpeed));
+    $('reviewGait').textContent = review.poseSpeed === 0 ? '步行预览' : review.poseSpeed === 1 ? '跑步预览' : '返回待机';
+    $('reviewFreeze').textContent = '定格环境'; $('reviewFreeze').setAttribute('aria-pressed','false');
+  };
   $('reviewLook').onclick = () => {
     review.enabled = !review.enabled; realism.setEnabled(review.enabled);
     $('reviewLook').textContent = review.enabled ? 'After · 写实材质' : 'Before · 基础材质';
@@ -3286,7 +3229,7 @@ function updateReview() {
   if (!REVIEW) return;
   const ok = ALL_LM.filter(l => l.loaded).length, failed = ALL_LM.filter(l => l.failed).length;
   const xyz = v => v.toArray().map(n => n.toFixed(1)).join(', ');
-  $('reviewStatus').textContent = `状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
+  $('reviewStatus').textContent = `角色：Eva 立体模型 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
 }
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);

@@ -199,7 +199,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
           facade(metal, center, sill + windowHeight * .74, glassDepth - .023,
             openingWidth, .02, .037);
           facade(trim, center, sill - .035, .135, openingWidth + .09, .07, .25);
-          if (district && door) {
+          if (district && isGround && front && (door || buildingIndex % 3 === 0)) {
             // Extruded spandrel replaces the rectangular head with a true arched
             // stone opening; glass remains opaque and recessed behind the arch.
             const radius = openingWidth / 2, spring = upper - radius;
@@ -214,9 +214,11 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
             const indices = Array.from({ length: geometry.attributes.position.count }, (_, i) => i);
             geometry.setIndex(indices); batches.get(wall).push(geometry);
             // Small bronze-framed wall lantern on the door pier, with warm glass.
-            const lu=center+bay/2, ly=Math.min(upper-.15,2.05);
-            facade(metal,lu,ly,.09,.14,.36,.14);
-            facade(lanternGlass,lu,ly,.015,.09,.25,.015);
+            if(door) {
+              const lu=center+bay/2, ly=Math.min(upper-.15,2.05);
+              facade(metal,lu,ly,.09,.14,.36,.14);
+              facade(lanternGlass,lu,ly,.015,.09,.25,.015);
+            }
           }
           if (district && !isGround && (side === 0 || side === 1) && col % 2 === buildingIndex % 2) {
             // A few mashrabiya-like timber screens, with real air between slats.
@@ -246,6 +248,17 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
               openingWidth + .04, .045, .045);
             facade(metal, center, sill + .08, railDepth,
               openingWidth + .04, .025, .03);
+            if(district) {
+              // Small bronze diamond insets between the upright balcony bars.
+              for(let j=0;j<3;j++) {
+                const u=center-openingWidth*.32+openingWidth*.32*j;
+                const h=.14, y=sill+.36, z=depth/2-.045;
+                for(const r of [-Math.PI/4,Math.PI/4]) {
+                  const g=new THREE.BoxGeometry(.012,h*1.42,.025);
+                  g.rotateZ(r);g.translate(u,y,z);g.rotateY(angle);g.applyMatrix4(transform);batches.get(metal).push(g);
+                }
+              }
+            }
             if(district && col === buildingIndex % columns) {
               const planterWidth=Math.min(.65,openingWidth-.12);
               facade(wood,center,sill+.15,.14,planterWidth,.16,.2);
