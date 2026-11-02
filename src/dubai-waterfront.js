@@ -14,7 +14,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const wall = stoneMaterial.clone(); wall.color.set('#f5edda');
   wall.onBeforeCompile = stoneMaterial.onBeforeCompile; wall.customProgramCacheKey = stoneMaterial.customProgramCacheKey;
   materials.push(wall); batches.set(wall, []);
-  const trim = finish('#e4d8c0'), metal = finish('#645341', .37, { metalness: .65 });
+  const trim = finish('#e4d8c0'), metal = finish('#423c30', .42, { metalness: .65 });
   const glass = finish('#536563', .17, { metalness: .35, envMapIntensity: 1.5 });
   const shopGlass = finish('#c5d8d1', .12, { metalness: .12, transparent: true, opacity: .13, depthWrite: false, envMapIntensity: 1.4 });
   const roof = finish('#b0a38a'), recess = finish('#635340'), wood = finish('#765231');
@@ -38,16 +38,50 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
     transform = new THREE.Matrix4().makeRotationY(ry).setPosition(x, base, z);
     appendDubaiVilla({THREE, b:{w, d, h:9, interior:true}, h:i ? 6.1 : 5.8, index:i,
       finishes, box, add});
+    const h=i?6.1:5.8, floor=Math.min(2.85,h*.47), front=d/2;
+    // Stepped cornices and corner pilasters catch sunlight on actual returns.
+    // All additions sit within the two existing pilot collision envelopes.
+    for(const side of [-1,1]) {
+      for(const [yy,thick,inset] of [[floor-.2,.07,.05],[h-.42,.09,.06],[h-.29,.045,.025]]) {
+        box(trim,side*(w/2-.075),yy,-.56,.15,thick,d-1.15);
+        if(side===1) box(trim,0,yy,-d/2+inset,w-.08,thick,inset*2);
+      }
+      for(const z of [-d/2+.11,front-1.25]) {
+        box(trim,side*(w/2-.11),h/2-.15,z,.20,h-.42,.20);
+        box(trim,side*(w/2-.14),.34,z,.28,.15,.25);
+      }
+    }
+    // Open eight-point bronze patterns retain the view into the shaded loggia.
+    for(let panel=0;panel<12;panel++) {
+      const x=-w/2+.43+panel*(w-.86)/11;
+      for(const turn of [0,Math.PI/4]) for(let edge=0;edge<4;edge++) {
+        const a=turn+edge*Math.PI/2;
+        add(new THREE.BoxGeometry(.235,.022,.027).translate(0,.1175,0)
+          .rotateZ(a).translate(x,floor+.58,front-.071),metal);
+      }
+    }
+    // Individual dentils under the arcade's stone string course.
+    for(let k=0;k<28;k++) box(trim,-w/2+.2+k*(w-.4)/27,floor-.24,front-.05,.08,.11,.1);
   }
   // Pale paving with modest colour variation and actual thin joints. A darker
   // border describes the square without a raised step in the walking route.
   transform.identity();
-  const pavers = ['#d6c9b4', '#daceb9', '#d2c5af'].map(c => finish(c, .88));
+  const pavers = ['#c4b69f', '#d3c6af', '#b9ad99'].map(c => {
+    const m=stoneMaterial.clone(); m.color.set(c); m.roughness=.9;
+    m.onBeforeCompile=stoneMaterial.onBeforeCompile; m.customProgramCacheKey=stoneMaterial.customProgramCacheKey;
+    materials.push(m); batches.set(m,[]); return m;
+  });
   const y = ctx.groundY(-20, -9.4);
-  for (let row = 0; row < 12; row++) for (let col = 0; col < 32; col++) {
-    const x = -31.625 + col * .75, z = -12.7 + row * .6;
-    if (footprints.some(r => Math.abs(x-r.x)<r.w/2+.4 && Math.abs(z-r.z)<r.d/2+.3)) continue;
-    box(pavers[((Math.imul(row+7,73856093)^Math.imul(col+11,19349663))>>>0)%7 < 4 ? 0 : (row+col)%2+1], x, y+.022, z, .735, .022, .585);
+  for (let row = 0; row < 14; row++) {
+    const z=-12.825+row*.525;
+    let left=-32, col=0;
+    while(left<-8) {
+      const hash=(Math.imul(row+7,73856093)^Math.imul(col+11,19349663))>>>0;
+      const width=Math.min(.55*(1+hash%3),-8-left), x=left+width/2;
+      left+=width;col++;
+      if (footprints.some(r => Math.abs(x-r.x)<r.w/2+width/2 && Math.abs(z-r.z)<r.d/2+.263)) continue;
+      box(pavers[hash%7<4?0:hash%2+1], x, y+.022, z, width-.014, .022, .511);
+    }
   }
   for (const z of [-13.04, -5.76]) box(trim, -20, y+.023, z, 24, .025, .12);
   const ring = new THREE.RingGeometry(2.66, 3.02, 80).rotateX(-Math.PI/2).translate(-20,y+.038,-9.4);
