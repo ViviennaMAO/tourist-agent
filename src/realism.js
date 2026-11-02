@@ -1,3 +1,4 @@
+import { createDubaiWaterfront } from './dubai-waterfront.js';
 import { createDubaiVehicles } from './dubai-vehicles.js';
 import { createDubaiStreets } from './dubai-streets.js';
 import { createDubaiArchitecture } from './dubai-architecture.js';
@@ -125,6 +126,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
   const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
   const facadeStone = surface('stone', { scale: .38, roughness: .84, bump: .005, detail: .56 });
+  const waterfrontStone = surface('stone', { scale: .38, roughness: .85, bump: .003, detail: .28 });
   const neutral = (source, color, roughness) => {
     const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
     materials.push(m); return m;
@@ -156,13 +158,13 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   function applyEnvironment() {
     const district = enabled && refinementEnabled && districtEnabled;
     sky.material.uniforms.taAtmosphere.value = district ? 1 : 0;
-    renderer.toneMappingExposure = enabled ? (district ? .96 : .99) : original.exposure;
+    renderer.toneMappingExposure = enabled ? (district ? 1.02 : .99) : original.exposure;
     scene.environment = enabled ? envTarget.texture : original.env;
     hemi.color.copy(enabled ? new THREE.Color('#dae2e5') : original.hemi);
     hemi.groundColor.copy(enabled ? new THREE.Color('#a3947b') : original.ground);
-    hemi.intensity = enabled ? (district ? .83 : 1.1) : original.hi;
-    sun.color.copy(enabled ? new THREE.Color('#fff1dc') : original.sun);
-    sun.intensity = enabled ? (district ? 3.05 : 2.65) : original.si;
+    hemi.intensity = enabled ? (district ? .72 : 1.1) : original.hi;
+    sun.color.copy(enabled ? new THREE.Color('#ffe5bd') : original.sun);
+    sun.intensity = enabled ? (district ? 3.3 : 2.65) : original.si;
     sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
     sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
     sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color('#e0e1d8') : original.horizon);
@@ -197,17 +199,18 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     const coping = new THREE.Mesh(new THREE.RingGeometry(11.35, 11.48, 96).rotateX(-Math.PI / 2), sideStone);
     coping.position.set(0, 1.286, -33); coping.receiveShadow = true; c.w.root.add(coping); extras.push(coping); coping.visible = enabled;
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
-    districtStudies.push(createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture }), createDubaiLandmarks({ THREE, city: c }));
+    const waterfront = createDubaiWaterfront({ THREE, city:c, stoneMaterial:waterfrontStone });
+    districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints }), createDubaiLandmarks({ THREE, city: c }));
     lakeSwaps.push(...swaps.filter(s => s.before === M.lake));
     syncStudies();
   }
-  const dir = new THREE.Vector3(-.64, .88, .5).normalize();
+  const dir = new THREE.Vector3(-.9, .85, 1.05).normalize();
   const originalDir = new THREE.Vector3(Math.cos(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180), Math.sin(55 * Math.PI / 180), Math.sin(40 * Math.PI / 180) * Math.cos(55 * Math.PI / 180));
   function update({ target, overview = false, time = 0 }) {
     // Must follow the source actors: they restore the original instances each frame.
     refinements.forEach(r => r.apply(time));
     districtStudies.forEach(r => r.apply(time));
-    const span = overview ? 300 : Math.min(125, Math.max(48, camera.position.distanceTo(target) * .75));
+    const span = overview ? 300 : Math.min(125, Math.max(24, camera.position.distanceTo(target) * .65));
     const texel = span * 2 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, 0, Math.round(target.z / texel) * texel);
     sun.position.copy(sun.target.position).addScaledVector(enabled ? dir : originalDir, 220);

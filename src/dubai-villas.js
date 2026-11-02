@@ -13,7 +13,8 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
   const spring = floor - .38 - radius;
   // The core ends behind the porch. This void is what creates long contact
   // shadows under the arches instead of painting an arch onto flat glass.
-  box(recess, 0, ceiling / 2, -porch / 2, w - .7, ceiling, d - porch - .7);
+  const roomDepth = b.interior ? .9 : 0;
+  box(recess, 0, ceiling / 2, -porch / 2 - roomDepth / 2, w - .7, ceiling, d - porch - .7 - roomDepth);
   box(trim, 0, .09, 0, w, .18, d);
   box(trim, 0, floor - .1, 0, w, .2, d);
   box(roof, 0, ceiling - .06, -porch / 2, w - .08, .12, d - porch);
@@ -70,7 +71,27 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
     box(wall,0,top+.055,shopZ-.06,w-.38,.11,.18);
     for(let j=0;j<cols;j++) {
       const x=-w/2+edge+bay*(j+.5), wh=top-bottom;
-      box(j%2===index%2?amberGlass:glass,x,(top+bottom)/2,shopZ,opening-.08,wh,.025);
+      const shop = b.interior && bottom < 1;
+      box(shop ? finishes.shopGlass : j%2===index%2?amberGlass:glass,x,(top+bottom)/2,shopZ,opening-.08,wh,.025);
+      if (shop) {
+        // Small real display rooms sit behind the glazing: shelves, pottery,
+        // a counter and a pendant light. No painted-on interior texture.
+        box(trim,x,bottom,shopZ-.56,opening-.06,.045,1.03);
+        box(wall,x,(top+bottom)/2,shopZ-1.13,opening-.06,wh,.04);
+        for (const sy of [bottom+.55,bottom+1.02,bottom+1.5]) {
+          box(wood,x,sy,shopZ-.96,opening-.17,.045,.25);
+          for(let k=0;k<3;k++) {
+            const px=x+(k-1)*(opening-.35)/3;
+            const profile=[[0,0],[.05,0],[.075,.035],[.065,.09],[.03,.135],[.035,.17],[.025,.17],[.022,.14]].map(([r,y])=>new THREE.Vector2(r,y));
+            add(new THREE.LatheGeometry(profile,12).scale(1,k===1?1.15:.9,1).translate(px,sy+.025,shopZ-.91),k%2?trim:amberGlass);
+          }
+        }
+        box(wood,x,bottom+.35,shopZ-.42,opening*.65,.7,.32);
+        box(trim,x,bottom+.72,shopZ-.42,opening*.72,.06,.38);
+        box(metal,x,top-.23,shopZ-.55,.012,.4,.012);
+        add(new THREE.ConeGeometry(.15,.15,16).translate(x,top-.43,shopZ-.55),metal);
+        add(new THREE.SphereGeometry(.065,10,6).translate(x,top-.49,shopZ-.55),lanternGlass);
+      }
       for(const sx of [-1,1]) box(wood,x+sx*(opening/2-.025),(top+bottom)/2,shopZ+.025,.05,wh,.065);
       for(const yy of [bottom,top,bottom+wh*.76]) box(wood,x,yy,shopZ+.025,opening,.04,.065);
       box(wood,x,(top+bottom)/2,shopZ+.03,.028,wh,.065);

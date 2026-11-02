@@ -2,7 +2,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Coastal public realm. Objects reserve reversible collision footprints and
  * leave roads, existing buildings, landmarks and the spawn corridor clear. */
-export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial, leafTexture=null }) {
+export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial, leafTexture=null, exclusions=[] }) {
   const root = new THREE.Group(); root.name = 'Dubai — waterfront public realm';
   const ctx = city.w.ctx, batches = new Map(), ownedMaterials = [], colliders = [];
   let enabled = false, disposed = false, seed = 21973;
@@ -30,6 +30,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   const reserved = [];
   function reserve(x,z,w,d) {
     if (!ctx.free(x,z,w,d)) return false;
+    if (exclusions.some(q=>Math.abs(x-q.x)<(w+q.w)/2+.45&&Math.abs(z-q.z)<(d+q.d)/2+.45)) return false;
     if (reserved.some(q=>Math.abs(x-q.x)<(w+q.w)/2+.45&&Math.abs(z-q.z)<(d+q.d)/2+.45)) return false;
     const r={x,z,w,d}; reserved.push(r); colliders.push(r); return true;
   }
@@ -40,20 +41,30 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   // Rock revetment along the mainland shore; entrances at x=0 and -50 stay open.
   const rocks = material('#998d76',.98);
   for (let x=-60; x<61; x+=.66) {
-    if (Math.abs(x)<3.4 || Math.abs(x+50)<3.4) continue;
+    if (Math.abs(x)<3.4 || Math.abs(x+50)<3.4 || (exclusions.length && x>-33 && x<-7)) continue;
     const z=-4.75 + .12*Math.sin(x*1.5);
     add(new THREE.DodecahedronGeometry(.43+random()*.16,0).scale(.8+random()*.3,.7,.75).rotateX(random()*1.8),rocks,x,.48+random()*.12,z,random()*6.28);
     add(new THREE.DodecahedronGeometry(.25+random()*.16,0).scale(1,.6,.8),rocks,x+.18,.2,z+.15,random()*6.28);
     box(stone,x,1.015,-4.9,.68,.1,.48);
   }
+  // Pilot quay: coursed stone facing and a damp base replace oversized faceted
+  // boulders here. The existing shore and island navigation remain unchanged.
+  if (exclusions.length) {
+    const wetStone=material('#8a8879',.94), lightStone=material('#bcb19a',.88);
+    for(let row=0;row<3;row++) for(let j=0;j<36;j++) {
+      const width=26/36, x=-33+(j+.5)*width;
+      box(row===0?wetStone:(j+row)%4===0?lightStone:stone,x,.23+row*.31,-4.84+(random()-.5)*.035,width-.018,.295,.42);
+    }
+    for(let j=0;j<32;j++) box(lightStone,-33+(j+.5)*26/32,1.06,-4.91,26/32-.018,.12,.6);
+  }
   // Small raised beds with actual individual leaves and flowering clusters.
-  function foliage(x,y,z,r,flowers=false) {
-    for (let j=0;j<(leafTexture?48:32);j++) {
+  function foliage(x,y,z,r,flowers=false,fine=false) {
+    for (let j=0;j<(fine?56:leafTexture?48:32);j++) {
       const angle=random()*6.28, radius=r*Math.sqrt(random()), h=r*.65*Math.sqrt(1-radius*radius/(r*r))*(.35+random()*.65);
       const px=x+Math.cos(angle)*radius, pz=z+Math.sin(angle)*radius;
       // Pointed elliptical leaves with a raised midrib; irregular orientation
       // catches light without looking like low-poly balls or flat confetti.
-      const length=.105+random()*.095,width=length*(.35+random()*.12);
+      const length=fine?.055+random()*.05:.105+random()*.095,width=length*(.35+random()*.12);
       let leaf;
       if(leafTexture) {
         // Alpha-tested folded cards keep visible veins and smooth leaf edges.
@@ -95,11 +106,12 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   for (const [x,z] of [[-27,-20],[-15,-20],[15,-20],[27,-20],[-28,-34],[28,-38],[-10,-45],[10,-45]]) bed(x,z,2.4,1.1);
   // Layered small-leaf crowns add middle-height shade between low beds and palms.
   // Their entire crowns stay inside reserved planting footprints.
-  for (const [x,z] of [[-39,-10],[-33,-7.5],[17,-7.5],[33,-7.5],[-13,-25],[13,-25],[-25,-36],[28,-43]]) {
-    if (!reserve(x,z,2.8,2.8)) continue;
+  for (const [x,z] of [...(exclusions.length?[[-25.1,-6.9],[-14.9,-6.9]]:[]),[-39,-10],[-33,-7.5],[17,-7.5],[33,-7.5],[-13,-25],[13,-25],[-25,-36],[28,-43]]) {
+    const pilot=z===-6.9;
+    if (!reserve(x,z,pilot?1.8:2.8,pilot?1.8:2.8)) continue;
     const y=ctx.groundY(x,z);
-    cylinder(stone,x,y+.22,z,1.1,1.2,.44,20);
-    cylinder(soil,x,y+.45,z,.95,.95,.035,20);
+    cylinder(stone,x,y+.22,z,pilot?.72:1.1,pilot?.8:1.2,.44,24);
+    cylinder(soil,x,y+.45,z,pilot?.67:.95,pilot?.67:.95,.035,24);
     cylinder(wood,x,y+1.55,z,.055,.12,2.3,8);
     for(let branch=0;branch<9;branch++) {
       const a=branch*2.39996, r=.3+random()*.35, cy=y+2.4+random()*.95;
@@ -113,10 +125,10 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         const twig=new THREE.CylinderGeometry(.007,.015,delta.length(),5);
         twig.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
         add(twig,wood,...end.clone().add(tip).multiplyScalar(.5).toArray());
-        foliage(tip.x,tip.y,tip.z,.35,false);
+        foliage(tip.x,tip.y,tip.z,.35,false,pilot);
       }
     }
-    foliage(x,y+.55,z,.8,true);
+    foliage(x,y+.55,z,pilot?.6:.8,true,pilot);
   }
   // Keep all substantial decorations outside the traversable carriageway.
   function bench(x,z,ry=0) {
@@ -138,14 +150,14 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   }
   for (const x of [-44,-30,-16,16,30,44]) lantern(x,-12.3);
   // A compact waterfront fountain, in the open beach strip away from the road.
-  const fountainX=-20, fountainZ=-8.8, fountainR=2.05;
+  const fountainX=-20, fountainZ=-9.4, fountainR=2.4;
   const jetMeshes=[];
-  if (reserve(fountainX,fountainZ,4.5,4.5)) {
+  if (reserve(fountainX,fountainZ,5.3,5.3)) {
     const y=ctx.groundY(fountainX,fountainZ);
-    cylinder(stone,fountainX,y+.21,fountainZ,2.15,2.25,.42,64);
+    cylinder(stone,fountainX,y+.21,fountainZ,2.5,2.6,.42,80);
     const water=new THREE.Mesh(new THREE.CircleGeometry(fountainR,64).rotateX(-Math.PI/2),waterMaterial);
     water.position.set(fountainX,y+.435,fountainZ); root.add(water);
-    const rim=new THREE.TorusGeometry(2.13,.10,8,64).rotateX(Math.PI/2); add(rim,stone,fountainX,y+.46,fountainZ);
+    const rim=new THREE.TorusGeometry(2.48,.10,8,80).rotateX(Math.PI/2); add(rim,stone,fountainX,y+.46,fountainZ);
     const spray=material('#d4e7df',.15,{transparent:true,opacity:.72,depthWrite:false});
     for(let j=0;j<7;j++) {
       const angle=j/7*Math.PI*2;
@@ -156,14 +168,13 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     }
   }
   // Café tables with quiet linen canopies, replacing the original beach umbrellas.
-  for (const x of [-39,-6,7,36]) {
-    const z=-8.6;
-    if (!reserve(x,z,3.4,3.2)) continue;
+  for (const [x,z,small] of [...(exclusions.length?[[-25,-10.4,true],[-15,-10.4,true]]:[]),[-39,-8.6,false],[-6,-8.6,false],[7,-8.6,false],[36,-8.6,false]]) {
+    if (!reserve(x,z,small?2.4:3.4,small?2.4:3.2)) continue;
     const y=ctx.groundY(x,z);
     cylinder(dark,x,y+.5,z,.065,.09,1); cylinder(wood,x,y+1.02,z,.65,.65,.08,24);
     cylinder(wood,x,y+1.6,z,.035,.035,3.2,8);
-    add(new THREE.ConeGeometry(1.6,.55,8),fabric,x,y+3.2,z,Math.PI/8);
-    for(const dx of [-.95,.95]) { box(wood,x+dx,y+.53,z,.45,.07,.45); box(wood,x+dx,y+.88,z-.2,.45,.52,.055); for(const a of [-.16,.16]) for(const b of [-.16,.16]) box(dark,x+dx+a,y+.27,z+b,.03,.52,.03); }
+    add(new THREE.ConeGeometry(small?1.15:1.6,.42,12),fabric,x,y+3.2,z,Math.PI/8);
+    for(const dx of (small?[-.75,.75]:[-.95,.95])) { box(wood,x+dx,y+.53,z,.45,.07,.45); box(wood,x+dx,y+.88,z-.2,.45,.52,.055); for(const a of [-.16,.16]) for(const b of [-.16,.16]) box(dark,x+dx+a,y+.27,z+b,.03,.52,.03); }
   }
   cube.dispose();
   for(const [m,geometries] of batches) {
