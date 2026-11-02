@@ -1,3 +1,4 @@
+import {shoreBulge} from '../src/shore-profile.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {quayCells,createQuayStone,quayContour} from '../src/quay-stones.js';
@@ -16,7 +17,7 @@ test('irregular quay stones are deterministic, nondegenerate and remain below th
     for(let i=0;i<p.count;i++){
       assert.ok(p.getX(i)>-33.02&&p.getX(i)<-6.98);
       assert.ok(p.getY(i)>0&&p.getY(i)<1.01);
-      assert.ok(p.getZ(i)>-5.3&&p.getZ(i)<-4.2);
+      assert.ok(p.getZ(i)-shoreBulge(p.getX(i))>-5.3&&p.getZ(i)-shoreBulge(p.getX(i))<-4.2);
     }
     g.dispose();
   }

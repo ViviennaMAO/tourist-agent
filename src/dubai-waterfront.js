@@ -1,4 +1,5 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { installStoneWear } from './stone-wear.js';
 import { appendDubaiVilla } from './dubai-villas.js';
 
 /** A bounded waterfront pilot: two inward-facing shops frame the public square.
@@ -14,7 +15,11 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const wall = stoneMaterial.clone(); wall.color.set('#f5edda');
   wall.onBeforeCompile = stoneMaterial.onBeforeCompile; wall.customProgramCacheKey = stoneMaterial.customProgramCacheKey;
   materials.push(wall); batches.set(wall, []);
-  const trim = finish('#e4d8c0'), metal = finish('#423c30', .42, { metalness: .65 });
+  const trim=stoneMaterial.clone();trim.color.set('#e4d8c0');
+  trim.onBeforeCompile=stoneMaterial.onBeforeCompile;trim.customProgramCacheKey=stoneMaterial.customProgramCacheKey;
+  materials.push(trim);batches.set(trim,[]);
+  for(const m of [wall,trim])installStoneWear(m,city.w.root.position.clone());
+  const metal = finish('#423c30', .42, { metalness: .65 });
   const glass = finish('#536563', .17, { metalness: .35, envMapIntensity: 1.5 });
   const shopGlass = finish('#c5d8d1', .12, { metalness: .12, transparent: true, opacity: .13, depthWrite: false, envMapIntensity: 1.4 });
   const roof = finish('#b0a38a'), recess = finish('#635340'), wood = finish('#765231');

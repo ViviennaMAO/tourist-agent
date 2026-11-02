@@ -1,4 +1,5 @@
-import { quayCells, quayContour, createQuayStone } from './quay-stones.js';
+import { shoreBulge, shoreSlope, promenadePolygon } from './shore-profile.js';
+import { quayCells, createQuayStone } from './quay-stones.js';
 import { createFountainSpray, fountainPoint } from './fountain-spray.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -8,6 +9,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   const root = new THREE.Group(); root.name = 'Dubai — waterfront public realm';
   const ctx = city.w.ctx, batches = new Map(), ownedMaterials = [], colliders = [];
   let enabled = false, disposed = false, seed = 21973;
+  const promenade=exclusions.length?{kind:'polygon',args:[promenadePolygon()]}:null;
   const random = () => { seed = (Math.imul(seed,1664525)+1013904223)>>>0; return seed/4294967296; };
   function material(color, roughness = .85, options = {}) {
     const m = new THREE.MeshStandardMaterial({color,roughness,...options}); ownedMaterials.push(m); return m;
@@ -79,12 +81,18 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     };
     quarry.customProgramCacheKey=()=> 'pilot-quarry-v2';
     const mortar=material('#736b5b',.98);
-    box(mortar,-20,.5,-4.55,26,.94,.14);
+    const backing=new THREE.BoxGeometry(26,.94,.14,96,1,1).translate(-20,.5,-4.55);
+    const bp=backing.attributes.position;
+    for(let i=0;i<bp.count;i++)bp.setZ(i,bp.getZ(i)+shoreBulge(bp.getX(i)));
+    backing.computeVertexNormals();add(backing,mortar);
+    const pavement=new THREE.Shape();pavement.moveTo(-33,5.9);pavement.lineTo(-7,5.9);
+    for(let i=0;i<=96;i++){const x=-7-i*26/96;pavement.lineTo(x,4.87-shoreBulge(x));}pavement.closePath();
+    add(new THREE.ShapeGeometry(pavement).rotateX(-Math.PI/2).translate(0,1.014,0),stone);
     for(const cell of quayCells()) add(createQuayStone(cell),quarry);
     const coping=material('#c9bda7',.88);
     for(let j=0;j<32;j++) {
       const x=-33+(j+.5)*26/32;
-      box(coping,x,1.06,-4.91+quayContour(x)*.55,26/32-.014,.12,.64);
+      box(coping,x,1.06,-4.91+shoreBulge(x),26/32*Math.sqrt(1+shoreSlope(x)**2)-.012,.12,.64,-Math.atan(shoreSlope(x)));
     }
   }
   // Small raised beds with actual individual leaves and flowering clusters.
@@ -340,7 +348,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   },setEnabled(v){
     if(disposed)return;
     const next=!!v; if(next===enabled)return; enabled=next;root.visible=next;
-    if(next)ctx.rects.push(...colliders);
-    else {for(const r of colliders){const i=ctx.rects.indexOf(r);if(i>=0)ctx.rects.splice(i,1);}restore();}
+    if(next){ctx.rects.push(...colliders);if(promenade&&ctx.islands&&!ctx.islands.includes(promenade))ctx.islands.push(promenade);}
+    else {if(promenade&&ctx.islands){const i=ctx.islands.indexOf(promenade);if(i>=0)ctx.islands.splice(i,1);}for(const r of colliders){const i=ctx.rects.indexOf(r);if(i>=0)ctx.rects.splice(i,1);}restore();}
   },dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());ownedMaterials.forEach(m=>m.dispose());}};
 }

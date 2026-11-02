@@ -1,3 +1,4 @@
+import {shoreBulge,pointInPolygon} from '../src/shore-profile.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -5,7 +6,7 @@ import { createDubaiWaterfront } from '../src/dubai-waterfront.js';
 import { createDubaiLandscape } from '../src/dubai-landscape.js';
 
 function fixture() {
-  const rects=[], roads=[{A:[-34,-50],B:[-34,-16]},{A:[34,-50],B:[34,-16]},{A:[-48,-16],B:[48,-16]}], ctx={rects, pools:{}, groundY:()=>1,
+  const rects=[], roads=[{A:[-34,-50],B:[-34,-16]},{A:[34,-50],B:[34,-16]},{A:[-48,-16],B:[48,-16]}], ctx={rects, islands:[], pools:{}, groundY:()=>1,
     // Ctx.free reserves a 2.3 m road half-width, including the verge. The
     // traversable asphalt is narrower (1.65 m); placement must use the former.
     free(x,z,w,d){return !roads.some(r=>{
@@ -48,6 +49,9 @@ test('pilot furniture respects both shops and leaves routes from shore spawn to 
   const landscape=createDubaiLandscape({THREE,city,stoneMaterial:stone,waterMaterial:water,leafTexture,exclusions:pilot.footprints});
   pilot.setEnabled(true);landscape.setEnabled(true);
   const rects=city.w.ctx.rects;
+  assert.equal(city.w.ctx.islands.length,1);
+  assert.ok(pointInPolygon(city.w.ctx.islands[0].args[0],-20,-2.1));
+  assert.ok(!pointInPolygon(city.w.ctx.islands[0].args[0],-20,-1.4));
   assert.ok(rects.some(r=>r.x===-20&&r.z===-9.4),'fountain must actually be placed');
   assert.ok(rects.some(r=>r.x===-25&&r.z===-10.4),'west café must actually be placed');
   assert.ok(rects.some(r=>r.x===-15&&r.z===-10.4),'east café must actually be placed');
@@ -68,7 +72,7 @@ test('pilot furniture respects both shops and leaves routes from shore spawn to 
   for(let i=0;i<q.count;i++) {
     assert.ok(Number.isFinite(c.getX(i)+c.getY(i)+c.getZ(i)));
     assert.ok(q.getY(i)>=0&&q.getY(i)<1.01,'quay stays below the walking surface');
-    assert.ok(q.getZ(i)>-5.3&&q.getZ(i)<-4.2,'quay stays outside the shore walking corridor');
+    assert.ok(q.getZ(i)-shoreBulge(q.getX(i))>-5.3&&q.getZ(i)-shoreBulge(q.getX(i))<-4.2,'quay stays outside the shore walking corridor');
   }
   const basin=landscape.root.children.find(m=>m.material.isShaderMaterial);
   assert.ok(basin,'pilot has its own shallow basin surface');
@@ -86,8 +90,10 @@ test('pilot furniture respects both shops and leaves routes from shore spawn to 
       for(let i=0;i<=n;i++)assert.ok(walkable(a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n),'avatar clearance must remain continuous');
     }
   }
-  for(let i=0;i<3;i++){pilot.setEnabled(false);landscape.setEnabled(false);assert.equal(rects.length,0);pilot.setEnabled(true);landscape.setEnabled(true);}
+  for(let i=0;i<3;i++){pilot.setEnabled(false);landscape.setEnabled(false);assert.equal(rects.length,0);assert.equal(city.w.ctx.islands.length,0);pilot.setEnabled(true);landscape.setEnabled(true);}
+  const otherIsland={kind:'rect',args:[[0,0,2,2]]};city.w.ctx.islands.push(otherIsland);
   pilot.dispose();landscape.dispose();landscape.dispose();assert.equal(rects.length,0);
+  assert.deepEqual(city.w.ctx.islands,[otherIsland],'disposing the promenade preserves other walkable islands');
   assert.equal(basinDisposals,1);assert.equal(sharedWaterDisposals,0);
   stone.dispose();water.dispose();leafTexture.dispose();
 });

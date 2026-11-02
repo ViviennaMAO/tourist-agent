@@ -23,7 +23,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   let districtEnabled = qs.get('district') !== 'off';
   let contactEnabled=qs.get('ao')!=='off',reflectionsEnabled=qs.get('reflections')!=='off',skylineEnabled=qs.get('skyline')!=='off';
   let contact=null,probe=null,backdrop=null,dubai=null,nearDubai=false;
-  const waterStudy = createWaterStudy({ THREE, seaMat, lagoonMat });
+  const waterStudy = createWaterStudy({ THREE, seaMat, lagoonMat, renderer, scene, camera });
   const textures = [], materials = [], swaps = [], extras = [], colors = [];
   const leafTexture=new THREE.TextureLoader().load(leafUrl);
   leafTexture.colorSpace=THREE.SRGBColorSpace;
@@ -266,6 +266,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         // Capture only after the current sun matrix and shadow texture exist.
         // Sampling before this render baked a stale camera's shadows into glass.
         if(nearDubai)probe?.captureIfNeeded();
+        waterStudy.capture(enabled&&refinementEnabled&&districtEnabled&&nearDubai&&reflectionsEnabled);
         if(enabled&&refinementEnabled&&districtEnabled&&nearDubai&&contactEnabled){
           contact??=createContactShadows({renderer,scene,camera});contact.render();
         }

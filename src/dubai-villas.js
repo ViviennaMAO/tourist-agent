@@ -1,3 +1,4 @@
+import {archPoint,pointedSpandrel} from './pointed-arch.js';
 /** Limestone houses with a shaded ground arcade and a usable-looking upper
  * loggia. All geometry stays inside the source collision envelope. The arcade
  * is a visual recess, not a new traversable room. Finishes share district batches.
@@ -10,7 +11,7 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
   const floor = Math.min(2.85, h * .47), ceiling = h - .3;
   const cols = w > 5 ? 3 : 2, edge = .23, bay = (w - 2 * edge) / cols;
   const pier = .20, opening = bay - pier, radius = opening / 2;
-  const spring = floor - .38 - radius;
+  const rise=radius*1.12, spring = floor - .38 - rise;
   // The core ends behind the porch. This void is what creates long contact
   // shadows under the arches instead of painting an arch onto flat glass.
   const roomDepth = b.interior ? .9 : 0;
@@ -123,18 +124,15 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
   }
   for(let j=0;j<cols;j++) {
     const x=-w/2+edge+bay*(j+.5);
-    const s=new THREE.Shape();
-    s.moveTo(-radius,spring);s.lineTo(-radius,floor-.18);s.lineTo(radius,floor-.18);s.lineTo(radius,spring);
-    s.absarc(0,spring,radius,0,Math.PI,false);s.closePath();
-    add(new THREE.ExtrudeGeometry(s,{depth:.38,curveSegments:16,bevelEnabled:false}).translate(x,0,front-.42),wall);
-    for(let k=0;k<17;k++) {
-      const a=k*Math.PI/17+.0025, z=(k+1)*Math.PI/17-.0025, outer=radius+.065;
-      const stone=new THREE.Shape();
-      stone.moveTo(Math.cos(a)*radius,spring+Math.sin(a)*radius);
-      stone.absarc(0,spring,radius,a,z,false);
-      stone.lineTo(Math.cos(z)*outer,spring+Math.sin(z)*outer);
-      stone.absarc(0,spring,outer,z,a,true);stone.closePath();
-      add(new THREE.ExtrudeGeometry(stone,{depth:.025,curveSegments:3,bevelEnabled:false}).translate(x,0,front-.026),trim);
+    const s=pointedSpandrel(radius,rise,spring,floor-.18);
+    add(new THREE.ExtrudeGeometry(s,{depth:.38,curveSegments:1,bevelEnabled:false}).translate(x,0,front-.42),wall);
+    for(let k=0;k<20;k++) {
+      const a=(k+.02)/20,z=(k+.98)/20,stone=new THREE.Shape();
+      for(const [i,[t,offset]] of [[a,0],[z,0],[z,.06],[a,.06]].entries()){
+        const p=archPoint(t,radius,rise,offset);i===0?stone.moveTo(p.x,p.y+spring):stone.lineTo(p.x,p.y+spring);
+      }
+      stone.closePath();
+      add(new THREE.ExtrudeGeometry(stone,{depth:.025,curveSegments:1,bevelEnabled:false}).translate(x,0,front-.026),trim);
     }
     // Pendant lantern hangs inside the shaded arcade, not on the glass plane.
     const ly=floor-.76, lz=front-porch*.56;

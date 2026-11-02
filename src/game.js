@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {pointInPolygon} from './shore-profile.js';
 import evaSpriteUrl from './assets/eva-sprite-atlas-v1.png';
 import { createEvaSprite } from './eva-sprite.js';
 import { spaceDubaiTraffic } from './dubai-vehicles.js';
@@ -1500,6 +1501,7 @@ class Ctx {
 }
 
 function insideShape(kind, args, x, z) {
+  if(kind==='polygon')return pointInPolygon(args[0],x,z);
   if (kind === 'rect') { const [[x1, z1, x2, z2]] = args; return x > x1 && x < x2 && z > z1 && z < z2; }
   if (kind === 'circle') { const [[cx, cz], r] = args; return Math.hypot(x - cx, z - cz) < r; }
   if (kind === 'capsule') {
@@ -3190,7 +3192,7 @@ function setReviewCamera(kind) {
     flowers: { p: [-21, 8.2, -3], q: [-27, 5.7, -10], name: '屋顶垂花' },
     waterfront: { p: [-17, 12, 17], q: [-20, 3.8, -10], name: '滨水样板区' },
     fountain: { p: [-17, 4.2, -3.6], q: [-20, 1.6, -9.4], name: '喷泉水滴' },
-    quay: { p: [-16, 2.5, .6], q: [-22, .75, -4.8], name: '护岸石材' },
+    quay: { p: [-14, 2.2, 5], q: [-21, .75, -2.8], name: '护岸石材' },
     shop: { p: [-22.3, 3.7, -8.7], q: [-27.8, 2.7, -9.8], name: '店铺前场' },
     skyline: { p: [7, 18, -17], q: [20, 8, -53], name: '高楼天际线' },
     district: { p: [-22, 40, 78], q: [-9, 18, -28], name: '滨海街区' }
@@ -3228,7 +3230,7 @@ function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第十五轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第十五轮 · 滨水样板区</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第十六轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第十六轮 · 滨水样板区</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   $('reviewVehicle').onclick = setReviewVehicle;
   for(const [id,label,key,setter] of [
@@ -3255,7 +3257,7 @@ function setupReview() {
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   };
   const updateDistrictButton = () => {
-    $('reviewDistrict').textContent = realism.districtEnabled ? '第十五轮 · 滨水样板区' : '第二轮 · 局部样本';
+    $('reviewDistrict').textContent = realism.districtEnabled ? '第十六轮 · 滨水样板区' : '第二轮 · 局部样本';
     $('reviewDistrict').setAttribute('aria-pressed', String(realism.districtEnabled));
   };
   updateDistrictButton();
