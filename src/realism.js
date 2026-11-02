@@ -22,6 +22,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const refinements = [], districtStudies = [], lakeSwaps = [];
   let districtEnabled = qs.get('district') !== 'off';
   let contactEnabled=qs.get('ao')!=='off',reflectionsEnabled=qs.get('reflections')!=='off',skylineEnabled=qs.get('skyline')!=='off';
+  let bounceEnabled=qs.get('bounce')!=='off';
   let contact=null,probe=null,backdrop=null,dubai=null,nearDubai=false;
   const waterStudy = createWaterStudy({ THREE, seaMat, lagoonMat, renderer, scene, camera });
   const textures = [], materials = [], swaps = [], extras = [], colors = [];
@@ -248,6 +249,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     (districtEnabled ? districtStudies : refinements).forEach(r => r.setEnabled(active));
     if(backdrop)backdrop.setEnabled(active&&districtEnabled&&skylineEnabled);
     probe?.setEnabled(active&&districtEnabled&&reflectionsEnabled);
+    districtStudies.forEach(s=>s.setBounce?.(active&&bounceEnabled));
     waterStudy.setEnabled(active && districtEnabled);
     for (const s of lakeSwaps) s.mesh.material = active && districtEnabled ? waterStudy.lakeMaterial : (enabled ? s.after : s.before);
     applyEnvironment();
@@ -273,6 +275,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       } finally {renderer.info.autoReset=reset;}
     },
     get contactEnabled(){return contactEnabled;},setContactEnabled(v){contactEnabled=!!v;},
+    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));},
     get reflectionsEnabled(){return reflectionsEnabled;},setReflectionsEnabled(v){reflectionsEnabled=!!v;syncStudies();},
     get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();},
     get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&nearDubai?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?probe?.status||'准备中':'关'}`;},

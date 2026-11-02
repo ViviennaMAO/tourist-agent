@@ -7,8 +7,9 @@ export function quayCells() {
   let seed=91273;
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const sites=[];
-  for(let row=0;row<3;row++)for(let col=0;col<30;col++)
-    sites.push([-33+(col+.18+random()*.64)*26/30,.04+(row+.12+random()*.76)*.94/3]);
+  // Smaller, mixed-height rubble: about 45 cm wide, with no level courses.
+  for(let row=0;row<4;row++)for(let col=0;col<58;col++)
+    sites.push([-33+(col+.18+random()*.64)*26/58,.04+(row+.12+random()*.76)*.94/4]);
   return sites.map((s,index)=>{
     let poly=[[-33,.04],[-7,.04],[-7,.98],[-33,.98]];
     for(const q of sites){
@@ -25,7 +26,7 @@ export function quayCells() {
     // Insets leave narrow, genuinely recessed mortar seams between stones.
     const center=poly.reduce((a,p)=>[a[0]+p[0]/poly.length,a[1]+p[1]/poly.length],[0,0]);
     return {index,center,polygon:poly.map(p=>{const d=Math.hypot(p[0]-center[0],p[1]-center[1]);
-      const f=Math.max(.7,1-.025/d);return [center[0]+(p[0]-center[0])*f,center[1]+(p[1]-center[1])*f];})};
+      const f=Math.max(.7,1-.012/d);return [center[0]+(p[0]-center[0])*f,center[1]+(p[1]-center[1])*f];})};
   });
 }
 
@@ -36,7 +37,7 @@ export function createQuayStone(cell){
   // The source island's wall is at z=-4.5. Every face must remain seaward of
   // it, including the chipped edge, or that old wall clips through the stone.
   const front=-4.34+quayContour(cell.center[0])*.4+.015*Math.sin(cell.index*7.1);
-  const g=new THREE.ExtrudeGeometry(shape,{depth:front+5.04,steps:1,bevelEnabled:true,bevelThickness:.018,bevelSize:.012,bevelSegments:1,curveSegments:1});
+  const g=new THREE.ExtrudeGeometry(shape,{depth:front+5.04,steps:1,bevelEnabled:true,bevelThickness:.012,bevelSize:.007,bevelSegments:1,curveSegments:1});
   g.translate(0,0,-5.04);
   const p=g.attributes.position,colors=[];
   const tint=new THREE.Color(['#b6a38a','#baa88e','#c3b397','#a99880','#c7b69c'][cell.index%5]);

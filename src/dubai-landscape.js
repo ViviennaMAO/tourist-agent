@@ -21,6 +21,8 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   const leafOptions={side:THREE.DoubleSide,envMapIntensity:.4,...(leafTexture ? {map:leafTexture,alphaTest:.42,bumpMap:leafTexture,bumpScale:.006} : {})};
   const greens = [material(leafTexture?'#c6cbb2':'#344f28',.88,leafOptions),material(leafTexture?'#f0edd0':'#657b3b',.86,leafOptions)];
   const bloom = [material('#b7446e',.88,{side:THREE.DoubleSide}),material('#f1e7c9',.9,{side:THREE.DoubleSide})];
+  const grasses=exclusions.length?[material('#536d3e',.9,{side:THREE.DoubleSide}),material('#87965c',.92,{side:THREE.DoubleSide})]:[];
+  for(const m of grasses)m.userData.plantFamily='fine-grass';
   const lamp = material('#ffe1a0',.4,{emissive:'#ffc06a',emissiveIntensity:1.0});
   const fabric = material('#e9dcc1');
   const cube = new THREE.BoxGeometry(1,1,1), matrix = new THREE.Matrix4(), quat = new THREE.Quaternion();
@@ -80,7 +82,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       `);
     };
     quarry.customProgramCacheKey=()=> 'pilot-quarry-v2';
-    const mortar=material('#736b5b',.98);
+    const mortar=material('#968873',.98);
     const backing=new THREE.BoxGeometry(26,.94,.14,96,1,1).translate(-20,.5,-4.55);
     const bp=backing.attributes.position;
     for(let i=0;i<bp.count;i++)bp.setZ(i,bp.getZ(i)+shoreBulge(bp.getX(i)));
@@ -132,7 +134,12 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         // Small three-bract blossoms sit above foliage, interspersed with buds.
         for(let petal=0;petal<3;petal++) {
           const a=petal*Math.PI*2/3;
-          const g=new THREE.CircleGeometry((dense?.045:.03)+random()*.025,5).scale(1,.76,1).rotateX(trailing?random()*Math.PI:-Math.PI*(.28+random()*.25));
+          const rr=(dense?.045:.03)+random()*.025,g=new THREE.BufferGeometry();
+          // Two gently folded triangles make one papery pointed bract.
+          g.setAttribute('position',new THREE.Float32BufferAttribute([0,rr,0,-rr*.7,0,0,0,-rr*.76,.012,rr*.7,0,0],3));
+          g.setAttribute('uv',new THREE.Float32BufferAttribute([.5,1,0,.5,.5,0,1,.5],2));
+          g.setIndex([0,1,2,0,2,3]);g.computeVertexNormals();
+          g.rotateX(trailing?random()*Math.PI:-Math.PI*(.28+random()*.25));
           add(g,blossom,px+Math.cos(a)*.035,y+h+.065,pz+Math.sin(a)*.035,a);
         }
         add(new THREE.TetrahedronGeometry(.018,0),bloom[1],px,y+h+.073,pz);
@@ -151,17 +158,51 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       foliage(p.x,p.y,p.z,r,true,true,true,14,true);
     }
   }
+  // Upright narrow blades contrast with the existing broad-leaf shrubs.
+  // White five-petal flowers grow on branching stems, rather than sharing
+  // the large pink bougainvillea bracts used above the balconies.
+  function meadow(x,y,z,r=.18,white=true){
+    for(let blade=0;blade<22;blade++){
+      const a=random()*Math.PI*2,h=.16+random()*.29,lean=.08+random()*.14,width=.009+random()*.009;
+      const g=new THREE.BufferGeometry(),verts=[];
+      for(let k=0;k<3;k++)for(const [t,s] of [[k/3,-1],[k/3,1],[(k+1)/3,1],[k/3,-1],[(k+1)/3,1],[(k+1)/3,-1]])
+        verts.push(s*width*(1-t),h*(t-.16*t*t),lean*t*t);
+      g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+      g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(verts.length/3*2),2));g.computeVertexNormals();
+      add(g,grasses[blade%2],x+(random()-.5)*r,y,z+(random()-.5)*r,a);
+    }
+    if(!white)return;
+    for(let stem=0;stem<5;stem++){
+      const end=new THREE.Vector3(x+(random()-.5)*r*1.8,y+.23+random()*.25,z+(random()-.5)*r*1.8);
+      const start=new THREE.Vector3(x,y,z),delta=end.clone().sub(start);
+      const g=new THREE.CylinderGeometry(.0025,.004,delta.length(),3);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
+      add(g,grasses[0],...start.clone().add(end).multiplyScalar(.5).toArray());
+      for(let f=0;f<3;f++){
+        const angle=f*2.4+random()*.6,px=end.x+Math.cos(angle)*.05,pz=end.z+Math.sin(angle)*.05,py=end.y-f*.025;
+        for(let petal=0;petal<5;petal++){
+          const a=petal*Math.PI*2/5,rr=.018+random()*.007;
+          add(new THREE.CircleGeometry(rr,4).rotateX(-Math.PI*.43),bloom[1],px+Math.cos(a)*.018,py,pz+Math.sin(a)*.018,a);
+        }
+        add(new THREE.TetrahedronGeometry(.008),bloom[0],px,py+.006,pz);
+      }
+    }
+  }
   function bed(x,z,w=2.4,d=.9,flowers=true) {
     if (!reserve(x,z,w,d)) return;
     const y=ctx.groundY(x,z);
     box(stone,x,y+.24,z,w,.48,d); box(soil,x,y+.485,z,w-.18,.015,d-.18);
     for(const sign of [-1,1]) box(stone,x,y+.49,z+sign*(d/2-.045),w,.08,.09);
     const n=Math.ceil((w-.5)/.34);
-    for (let i=0;i<n;i++) foliage(x-w/2+.3+(w-.6)*i/(n-1),y+.48+random()*.12,z+(random()-.5)*.25,.23+random()*.09,flowers);
+    for (let i=0;i<n;i++) foliage(x-w/2+.3+(w-.6)*i/(n-1),y+.48+random()*.12,z+(random()-.5)*.25,.23+random()*.09,flowers,!flowers,false,flowers?null:78);
+    if(exclusions.length&&x>-33&&x<-7&&z>-14)for(let i=0;i<3;i++)meadow(x+(i-1)*(w-.65)/3,y+.5,z+.12,.16,!flowers||i!==1);
   }
   for (const x of [-43,-36,-29,-12,12,21,29,38,44]) bed(x,-6.8,3.2,.85);
   for (const [x,z] of [[-27,-20],[-15,-20],[15,-20],[27,-20],[-28,-34],[28,-38],[-10,-45],[10,-45]]) bed(x,z,2.4,1.1);
   if(exclusions.length) {
+    // These smaller front borders sit wholly on the promenade and leave the
+    // central spawn route and the two fountain-to-street routes untouched.
+    for(const x of [-29.6,-10.4])bed(x,-5.3,2.2,.65,false);
     // Two low, dense mixed borders close the bare strip behind the café. They
     // remain outside both continuous fountain-to-street pedestrian corridors.
     for(const x of [-25,-15]) {
@@ -170,6 +211,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       box(stone,x,y+.19,z,2.3,.38,.85);
       box(soil,x,y+.39,z,2.12,.015,.67);
       for(let j=0;j<7;j++) foliage(x-.9+j*.3,y+.40+random()*.13,z+(random()-.5)*.22,.26+random()*.08,true,false,true);
+      for(let j=0;j<4;j++)meadow(x-.75+j*.5,y+.4,z+.12,.15,true);
       for(const dx of [-.68,.53])trailingFlowers(x+dx,y+.51,z+.22,dx<0?-1:1,.32);
     }
     // Roof planters and cascading bougainvillea are attached only to buildings
@@ -212,10 +254,11 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         const twig=new THREE.CylinderGeometry(.007,.015,delta.length(),5);
         twig.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
         add(twig,bark,...end.clone().add(tip).multiplyScalar(.5).toArray());
-        foliage(tip.x,tip.y,tip.z,.35,false,pilot);
+        foliage(tip.x,tip.y,tip.z,pilot?.28:.35,false,false,false,pilot?64:null);
       }
     }
     foliage(x,y+.55,z,pilot?.6:.8,true,pilot);
+    if(pilot)for(const a of [0,2.1,4.2])meadow(x+Math.cos(a)*.43,y+.48,z+Math.sin(a)*.43,.12,true);
   }
   // Keep all substantial decorations outside the traversable carriageway.
   function bench(x,z,ry=0) {

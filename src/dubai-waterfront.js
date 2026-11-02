@@ -1,6 +1,8 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { installStoneWear } from './stone-wear.js';
 import { appendDubaiVilla } from './dubai-villas.js';
+import { chamferedBox } from './chamfered-box.js';
+import { installCourtyardBounce } from './courtyard-bounce.js';
 
 /** A bounded waterfront pilot: two inward-facing shops frame the public square.
  * New collisions are owned here and are removed on A/B or disposal. */
@@ -28,13 +30,18 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const plantGreen = finish('#566638'), flowers = finish('#b85177');
   for(const m of [glass,shopGlass,amberGlass])m.userData.cityGlass=true;
   const finishes = { wall, trim, metal, glass, shopGlass, roof, recess, wood, amberGlass, lanternGlass, plantGreen, flowers };
+  const bounce={value:1};
+  for(const m of [wall,trim,recess,wood,roof])installCourtyardBounce(m,city.w.root.position.clone(),bounce);
   let transform = new THREE.Matrix4();
   function add(g, m) {
     if (!g.index) g.setIndex(Array.from({length:g.attributes.position.count}, (_, i) => i));
     g.applyMatrix4(transform); batches.get(m).push(g);
   }
   function box(m, x, y, z, w, h, d, ry = 0) {
-    add(new THREE.BoxGeometry(w, h, d).rotateY(ry).translate(x, y, z), m);
+    const dressed=(m===wall||m===trim)&&((h>.8&&w>=.14&&w<=.35&&d>=.14&&d<=.5)||(m===trim&&w>4&&d>3&&h<.25));
+    const g=dressed?chamferedBox(w,h,d,.022):new THREE.BoxGeometry(w,h,d);
+    if(m.userData.paving){const indices=Array.from(g.index.array);g.setIndex([...indices.slice(0,18),...indices.slice(24)]);}
+    add(g.rotateY(ry).translate(x, y, z), m);
   }
   for (const [i, x, ry] of [[0, -29.15, Math.PI / 2], [1, -10.85, -Math.PI / 2]]) {
     const z = -9.8, w = 6.4, d = 4.7, base = ctx.groundY(x, z);
@@ -75,7 +82,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const pavers = ['#c9bea9', '#d0c6b3', '#c1b6a3'].map(c => {
     // These slabs already have geometric joints. A second tiled wall map
     // created dark dashes and false seams across their faces.
-    return finish(c,.9);
+    const m=finish(c,.9);m.userData.paving=true;return m;
   });
   const y = ctx.groundY(-20, -9.4);
   for (let row = 0; row < 14; row++) {
@@ -103,7 +110,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   }
   city.w.root.add(root); root.visible = false;
   const stats = { buildings:footprints.length, pilot:true, triangles:root.children.reduce((s,m)=>s+m.geometry.index.count/3,0), drawCalls:root.children.length };
-  return {root, footprints, stats, apply(){}, setEnabled(value) {
+  return {root, footprints, stats, setBounce(v){bounce.value=v?1:0;}, apply(){}, setEnabled(value) {
     if (disposed || enabled === !!value) return;
     enabled = !!value; root.visible = enabled;
     if (enabled) ctx.rects.push(...footprints);

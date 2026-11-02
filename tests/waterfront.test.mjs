@@ -24,8 +24,9 @@ function fixture() {
 test('waterfront pilot frames the square, has real display rooms and disposes owned resources once',()=>{
   const city=fixture(), stone=new THREE.MeshStandardMaterial(); let sourceDisposed=0;stone.addEventListener('dispose',()=>sourceDisposed++);
   const p=createDubaiWaterfront({THREE,city,stoneMaterial:stone});
-  // Round 10 adds open bronze fretwork and stone mouldings to the two pilots.
-  assert.equal(p.stats.buildings,2);assert.ok(p.stats.triangles<45000);assert.ok(p.stats.drawCalls<=15);
+  // Round 17 adds physical bevels; removing buried paver bottoms keeps the
+  // increase below 2,000 triangles while retaining the same drawing batches.
+  assert.equal(p.stats.buildings,2);assert.ok(p.stats.triangles<46000);assert.ok(p.stats.drawCalls<=15);
   for(const m of p.root.children) {
     for(const a of Object.values(m.geometry.attributes)) assert.ok(a.array.every(Number.isFinite));
     assert.ok(m.geometry.index.array.every(i=>i<m.geometry.attributes.position.count));
@@ -55,6 +56,8 @@ test('pilot furniture respects both shops and leaves routes from shore spawn to 
   assert.ok(rects.some(r=>r.x===-20&&r.z===-9.4),'fountain must actually be placed');
   assert.ok(rects.some(r=>r.x===-25&&r.z===-10.4),'west café must actually be placed');
   assert.ok(rects.some(r=>r.x===-15&&r.z===-10.4),'east café must actually be placed');
+  for(const x of [-29.6,-10.4])assert.ok(rects.some(r=>r.x===x&&r.z===-5.3),'front mixed borders must actually be placed');
+  assert.equal(landscape.root.children.filter(m=>m.material.userData.plantFamily==='fine-grass').length,2);
   for(const x of [-25,-15]) assert.ok(rects.some(r=>r.x===x&&r.z===-12.55),'rear flower borders must actually be placed');
   const pink=landscape.root.children.find(m=>m.material.color?.getHexString()==='b7446e').geometry.attributes.position;
   for(const b of pilot.footprints){
