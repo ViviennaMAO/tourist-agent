@@ -1,4 +1,5 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { appendDubaiHighrise } from './dubai-highrises.js';
 import { appendDubaiVilla } from './dubai-villas.js';
 
 /** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
@@ -54,7 +55,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     };
     wood.customProgramCacheKey = () => 'dubai-timber-grain-v1';
   }
-  const skylineGlass = district ? finish('#72898a', .23, .42, { envMapIntensity: 1.35 }) : null;
+  const skylineGlass = district ? finish('#728f9c', .19, .48, { envMapIntensity: 1.6 }) : null;
   const amberGlass = district ? finish('#6b5b43', .2, .3, { envMapIntensity:1.3, emissive:'#bd8743', emissiveIntensity:.07 }) : null;
   const lanternGlass = district ? finish('#ffe1a0', .4, 0, { emissive:'#ffca7d', emissiveIntensity:.7 }) : null;
   const plantGreen = district ? finish('#496c39', .94) : null;
@@ -83,26 +84,8 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
       : Math.min(b.h, 12 + (buildingIndex % 5) * 1.3);
     design.set(b, { treatment: traditional ? 'limestone' : 'glass', facadeHeight: h, originalHeight: b.h });
     if (!traditional) {
-      // One continuous glass volume with thin bronze fins. No baked white grid;
-      // the PMREM daylight and real fins produce broad reflection and shadow.
-      box(skylineGlass, 0, h / 2, 0, w - .1, h - .06, d - .1);
-      box(wall, 0, .18, 0, w, .36, d);
-      box(metal, 0, h - .055, 0, w, .11, d);
-      for (let side = 0; side < 4; side++) {
-        const span = side % 2 === 0 ? w : d, depth = side % 2 === 0 ? d : w;
-        const angle = side * Math.PI / 2, cs = Math.cos(angle), sn = Math.sin(angle);
-        const fins = Math.max(4, Math.floor(span / .66));
-        const z = depth / 2 - .045;
-        for (let j = 0; j <= fins; j++) {
-          const u = -span / 2 + .08 + (span - .16) * j / fins;
-          box(metal, u * cs + z * sn, h / 2, -u * sn + z * cs,
-            .025, h - .16, .075, angle);
-        }
-        // Recessed dark spandrels read as floor depth without white crosshatching.
-        for (let y = 2.8; y < h - .3; y += 2.8) {
-          box(recess, z * sn, y, z * cs, span - .14, .09, .035, angle);
-        }
-      }
+      Object.assign(design.get(b), appendDubaiHighrise({ b, h, index: buildingIndex,
+        finishes: { wall, trim, metal, skylineGlass, glass, amberGlass, roof, recess }, box }));
       return;
     }
     if (district) {
