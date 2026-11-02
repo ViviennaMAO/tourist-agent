@@ -1,0 +1,75 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { createDubaiGardens } from '../src/dubai-gardens.js';
+import { createDubaiBackdrop } from '../src/dubai-backdrop.js';
+import { createDubaiArchitecture } from '../src/dubai-architecture.js';
+import { installDistrictBounce } from '../src/district-bounce.js';
+
+const overlap=(a,b,gap=0)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+gap&&Math.abs(a.z-b.z)<(a.d+b.d)/2+gap;
+test('gardens avoid roads, landmarks, existing and deferred refinement footprints',()=>{
+  const existing={x:-28,z:-34,w:6,d:6},rects=[existing];
+  const ctx={rects,palms:[{x:54,z:-43}],groundY:()=>1,free:(x,z,w,d)=>
+    Math.abs(z+50)>2.9+d/2&&Math.hypot(x-21,z+27)>7.6+Math.hypot(w,d)/2&&!overlap({x,z,w,d},existing,.9)};
+  const city={w:{root:new THREE.Group(),ctx}},backdrop=createDubaiBackdrop({THREE,city});
+  const stone=new THREE.MeshStandardMaterial(),leafTexture=new THREE.Texture();
+  const gardens=createDubaiGardens({THREE,city,stoneMaterial:stone,leafTexture,exclusions:backdrop.footprints});
+  assert.ok(gardens.stats.gardens>10&&gardens.stats.trees>5);
+  assert.ok(gardens.stats.triangles<150000);assert.ok(gardens.stats.drawCalls<=10);
+  for(const [i,r] of gardens.footprints.entries()) {
+    assert.ok(ctx.free(r.x,r.z,r.w,r.d));
+    assert.ok(!backdrop.footprints.some(q=>overlap(r,q,.9)));
+    assert.ok(!ctx.palms.some(p=>overlap(r,{...p,w:.7,d:.7},.4)));
+    assert.ok(!gardens.footprints.slice(i+1).some(q=>overlap(r,q,1.3)));
+  }
+  for(const m of gardens.root.children) {
+    for(const attr of Object.values(m.geometry.attributes))assert.ok(attr.array.every(Number.isFinite));
+    assert.ok(m.geometry.index.array.every(i=>i<m.geometry.attributes.position.count));
+  }
+  for(const p of gardens.surfaces)assert.ok(p.x-p.w/2>=-62&&p.x+p.w/2<=62&&p.z-p.d/2>=-82&&p.z+p.d/2<=-20+.00001);
+  for(let i=0;i<3;i++) {
+    gardens.setEnabled(true);gardens.setEnabled(true);assert.equal(rects.length,1+gardens.footprints.length);
+    gardens.setEnabled(false);assert.deepEqual(rects,[existing]);
+  }
+  let disposed=0;stone.addEventListener('dispose',()=>disposed++);leafTexture.addEventListener('dispose',()=>disposed++);
+  gardens.setEnabled(true);gardens.dispose();gardens.dispose();assert.deepEqual(rects,[existing]);assert.equal(disposed,0);
+  backdrop.dispose();stone.dispose();leafTexture.dispose();
+});
+
+test('rear road-end ramps descend to paving with upward faces and no collision obstacles',()=>{
+  const city={w:{root:new THREE.Group(),ctx:{rects:[],groundY:()=>1,free:()=>false,roads:[{A:[-48,-50],B:[48,-50],kind:'road',hw:2.3}]}}};
+  const stone=new THREE.MeshStandardMaterial(),g=createDubaiGardens({THREE,city,stoneMaterial:stone});
+  assert.equal(g.ramps.length,2);assert.equal(g.footprints.length,0);
+  g.root.updateMatrixWorld(true);
+  for(const sign of [-1,1]) {
+    const ray=x=>new THREE.Raycaster(new THREE.Vector3(sign*x,3,-50),new THREE.Vector3(0,-1,0)).intersectObject(g.root,true)[0];
+    assert.ok(ray(48.05).point.y>1.31);assert.ok(ray(49.4).point.y<1.04);
+    assert.ok(ray(48.7).face.normal.y>.9);
+  }
+  g.dispose();stone.dispose();
+});
+
+test('rear paving rejects height discontinuities and dune suppression is reversible',()=>{
+  const city={w:{root:new THREE.Group(),ctx:{rects:[],free:()=>false,groundY:(x)=>x>0?1.28:1}}};
+  const dune=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshBasicMaterial());dune.userData.dubaiRearDune=true;city.w.root.add(dune);
+  const unrelated=new THREE.Object3D();city.w.root.add(unrelated);
+  const stone=new THREE.MeshStandardMaterial(),g=createDubaiGardens({THREE,city,stoneMaterial:stone});
+  for(const p of g.surfaces)assert.ok(!(p.x-p.w/2<=0&&p.x+p.w/2>0),'no floating slab across terrain step');
+  g.setEnabled(true);g.apply();assert.equal(dune.visible,false);assert.equal(unrelated.visible,true);
+  g.setEnabled(false);assert.equal(dune.visible,true);g.dispose();stone.dispose();dune.geometry.dispose();dune.material.dispose();
+});
+
+test('ordinary houses get physical stone bevels and controllable pre-AO ground return',()=>{
+  const city={w:{root:new THREE.Group(),ctx:{pools:{},buildings:[{x:0,z:-24,w:4,d:5,h:7,base:1.28,indices:{body:0}}]}}};
+  const s=createDubaiArchitecture({THREE,city,district:true});
+  assert.ok(s.stats.beveledPieces>50);
+  const m=s.root.children.find(m=>m.material.color.getHexString()==='dfd3bf').material;
+  const shader={uniforms:{},vertexShader:THREE.ShaderLib.standard.vertexShader,fragmentShader:THREE.ShaderLib.standard.fragmentShader};
+  m.onBeforeCompile(shader,{});s.setBounce(false);assert.equal(shader.uniforms.districtGroundBounce.value,0);
+  s.setBounce(true);assert.equal(shader.uniforms.districtGroundBounce.value,1);
+  assert.ok(shader.fragmentShader.indexOf('float districtReturn')<shader.fragmentShader.indexOf('#include <aomap_fragment>'));
+  s.dispose();
+  const material=new THREE.MeshStandardMaterial();material.onBeforeCompile=s=>s.uniforms.original={value:1};
+  installDistrictBounce(material,new THREE.Vector3(),{value:1});material.onBeforeCompile(shader,{});
+  assert.equal(shader.uniforms.original.value,1);material.dispose();
+});

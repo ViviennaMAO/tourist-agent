@@ -381,7 +381,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   }
   const stats={decorations:colliders.length,triangles:root.children.reduce((n,m)=>n+(m.geometry.index?.count||m.geometry.attributes.position.count)/3,0),drawCalls:root.children.length};
   function restore(){savedPools.forEach(s=>{if(s.valid){s.pool.set(s.index,s.matrix);s.pool.flush();s.valid=false;}});shore.forEach(m=>m.visible=true);}
-  return {root,stats,apply(time=0){
+  return {root,stats,footprints:colliders,apply(time=0){
     if(!enabled||disposed)return;
     fountainTime.value=time;
     savedPools.forEach(s=>{s.pool.m.getMatrixAt(s.index,s.matrix);s.valid=true;s.pool.hide(s.index);});

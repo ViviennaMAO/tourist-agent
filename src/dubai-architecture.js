@@ -3,6 +3,8 @@ import { appendDubaiHighrise } from './dubai-highrises.js';
 import { appendDubaiVilla } from './dubai-villas.js';
 import { installCurtainWallFinish } from './curtain-wall.js';
 import { installSkylineAtmosphere } from './skyline-atmosphere.js';
+import { chamferedBox } from './chamfered-box.js';
+import { installDistrictBounce } from './district-bounce.js';
 
 /** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
  * All details are opaque PBR meshes, merged by finish. Existing actors still own
@@ -39,12 +41,12 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     materials.push(material); batches.set(material, []); return material;
   }
   const ivory = limestone('#f3ebdb'), warm = limestone(district ? '#e5dac6' : '#d4cabb');
-  const trim = finish('#d8cfbc', .77);
+  const trim = limestone('#dfd3bf');
   const metal = finish('#5c5140', .36, .72);
-  const glass = finish(district ? '#40524c' : '#334b53', district ? .16 : .19, district ? .52 : .38, { envMapIntensity: district ? 1.7 : 1.25 });
+  const glass = finish(district ? '#536461' : '#334b53', district ? .16 : .19, district ? .52 : .38, { envMapIntensity: district ? 1.7 : 1.25 });
   const roof = finish('#9b9688', .94);
-  const recess = finish(district ? '#262b28' : '#4b4b43', .95);
-  const wood = district ? finish('#514032', .82) : null;
+  const recess = finish(district ? '#605746' : '#4b4b43', .95);
+  const wood = district ? finish('#6b513b', .82) : null;
   if (wood) {
     wood.onBeforeCompile = shader => {
       shader.vertexShader = 'varying vec3 vTimber;\n' + shader.vertexShader;
@@ -77,12 +79,17 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   if(skylineSpandrel){skylineSpandrel.userData.cityGlass=true;skylineSpandrel.userData.reflectionZone='skyline';}
   const skylineMetal = district ? finish('#71838d', .34, .55) : null;
   for (const m of [skylineGlass, skylineSpandrel, skylineMetal].filter(Boolean)) installSkylineAtmosphere(m);
+  const bounce={value:1};
+  if(district)for(const m of [ivory,warm,trim,recess,wood])installDistrictBounce(m,city.w.root.position.clone(),bounce);
+  let dressStone=false,beveledPieces=0;
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   let transform = new THREE.Matrix4();
   function box(material, x, y, z, w, h, d, angle = 0) {
     if (Math.min(w, h, d) <= 0) return;
-    const geometry = new THREE.BoxGeometry(w, h, d);
+    const dressed=dressStone&&[ivory,warm,trim].includes(material)&&Math.min(w,h,d)>=.05;
+    const geometry = dressed ? chamferedBox(w,h,d,.014) : new THREE.BoxGeometry(w, h, d);
+    if(dressed){beveledPieces++;geometry.setIndex(Array.from({length:geometry.attributes.position.count},(_,i)=>i));}
     quaternion.setFromAxisAngle(up, angle);
     matrix.compose(new THREE.Vector3(x, y, z), quaternion, new THREE.Vector3(1, 1, 1));
     geometry.applyMatrix4(matrix).applyMatrix4(transform);
@@ -94,6 +101,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     transform.setPosition(b.x, b.base, b.z);
     const { w, d } = b;
     const traditional = !district || b.z > -38 || b.h <= 8;
+    dressStone=district&&traditional;
     // District pass reshapes the skyline: two-storey foreground and a lower
     // backdrop leave the landmark legible. Horizontal collision footprints stay.
     const h = !district ? b.h : traditional
@@ -312,7 +320,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   }
   city.w.root.add(root);
   const mappings = { body: 'tower', crown: 'tower', roof: 'roof', pad: 'pad', antenna: 'ant', gable: 'gable' };
-  const stats = { buildings: selected.length, triangles, drawCalls: root.children.length,
+  const stats = { buildings: selected.length, triangles, drawCalls: root.children.length, beveledPieces,
     selected: selected.map(b => ({ x: b.x, z: b.z, w: b.w, d: b.d, h: b.h,
       base: b.base, ry: b.ry || 0, style: b.style || 'unknown', inStudy: inStudy(b), ...design.get(b) })) };
   function apply() {
@@ -333,7 +341,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     originals.forEach(({ pool, index, matrix: before }) => { pool.set(index, before); touched.add(pool); });
     touched.forEach(pool => pool.flush()); originals.clear();
   }
-  return { root, apply, stats, setEnabled(value) {
+  return { root, apply, stats, setBounce(value){bounce.value=value?1:0;}, setEnabled(value) {
     enabled = Boolean(value); root.visible = enabled && !disposed;
     if (!enabled) restore();
   }, dispose() {

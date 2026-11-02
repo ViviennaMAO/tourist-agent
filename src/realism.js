@@ -7,6 +7,7 @@ import { createDubaiLandscape } from './dubai-landscape.js';
 import { createWaterStudy } from './water-study.js';
 import { createDubaiLandmarks } from './dubai-landmarks.js';
 import { createDubaiBackdrop } from './dubai-backdrop.js';
+import { createDubaiGardens } from './dubai-gardens.js';
 import { createContactShadows } from './contact-shadows.js';
 import { createCityReflections } from './city-reflections.js';
 import leafUrl from './assets/ficus-leaf-v1.png';
@@ -211,6 +212,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     const waterfront = createDubaiWaterfront({ THREE, city:c, stoneMaterial:waterfrontStone });
     districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints }), createDubaiLandmarks({ THREE, city: c }));
     backdrop=createDubaiBackdrop({THREE,city:c});districtStudies.push(backdrop);
+    const occupied=districtStudies.flatMap(s=>s.footprints||[]);
+    districtStudies.push(createDubaiGardens({THREE,city:c,stoneMaterial:stone,leafTexture,exclusions:occupied}));
     probe=createCityReflections({renderer,scene,city:c});
     lakeSwaps.push(...swaps.filter(s => s.before === M.lake));
     syncStudies();
