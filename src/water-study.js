@@ -2,6 +2,18 @@
  * retained behind a uniform switch. No screen-space or reflected-scene claim. */
 export function createWaterStudy({ THREE, seaMat, lagoonMat }) {
   const records = [seaMat, lagoonMat].map(material => ({ material, fragment: material.fragmentShader }));
+  const noise = `
+    float waterHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+    // Analytic gradient of smooth value noise: irregular crossing ripples,
+    // without texture fetches or a single repeated direction across the bay.
+    vec2 waterSlope(vec2 p){
+      vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f),du=6.*f*(1.-f);
+      float a=waterHash(i),b=waterHash(i+vec2(1,0));
+      float c=waterHash(i+vec2(0,1)),d=waterHash(i+vec2(1,1));
+      float crossTerm=a-b-c+d;
+      return du*(vec2(b-a,c-a)+crossTerm*u.yx);
+    }
+  `;
   const body = `
     if (uRealism > .5) {
       vec2 p = vW.xz;
@@ -9,11 +21,17 @@ export function createWaterStudy({ THREE, seaMat, lagoonMat }) {
       float distanceToEye = length(cameraPosition - vW);
       float fine = 1. - smoothstep(55., 220., distanceToEye);
       vec2 slope = vec2(0.);
-      slope += vec2(.15,.045) * cos(dot(p,vec2(1.4,.42)) + t * 1.3);
-      slope += vec2(-.072,.12) * cos(dot(p,vec2(-.8,1.35)) - t * 1.1);
-      slope += vec2(.055,.11) * cos(dot(p,vec2(3.6,7.2)) - t * 2.1) * fine;
-      slope += vec2(-.07,.033) * cos(dot(p,vec2(-8.4,4.1)) + t * 2.7) * fine;
-      slope += vec2(.045,-.035) * cos(dot(p,vec2(15.6,-12.2)) + t * 3.1) * fine;
+      float warp=sin(dot(p,vec2(.7,.93))+t*.6)*.6;
+      slope += vec2(.075,.025) * cos(dot(p,vec2(1.4,.42)) + t * 1.3+warp);
+      slope += vec2(-.042,.075) * cos(dot(p,vec2(-.8,1.35)) - t * 1.1);
+      slope += waterSlope(p*2.7+vec2(t*.41,-t*.27))*.16*fine;
+      slope += waterSlope(mat2(.8,-.6,.6,.8)*p*8.3+vec2(-t*.5,t*.23))*.085*fine;
+      // Fade centimetre ripples when their projected wavelength approaches a
+      // pixel. Distance alone misses grazing views, where fine waves alias.
+      float footprint=max(length(dFdx(p)),length(dFdy(p)));
+      float capillary=fine*(1.-smoothstep(.025,.13,footprint));
+      slope+=vec2(.06,.035)*cos(dot(p,vec2(32.,19.))+t*4.7+warp)*capillary;
+      slope+=vec2(-.025,.055)*cos(dot(p,vec2(-23.,41.))-t*5.3)*capillary;
       vec3 N = normalize(vec3(-slope.x, 1., -slope.y));
       vec3 V = normalize(cameraPosition - vW);
       float fresnel = .025 + .975 * pow(1. - max(dot(N,V),0.), 5.);
@@ -23,7 +41,7 @@ export function createWaterStudy({ THREE, seaMat, lagoonMat }) {
       vec3 col = mix(water, reflection, .22 + fresnel*.68);
       vec3 H = normalize(V + normalize(uWaterSun));
       float glint = pow(max(dot(N,H),0.), 180.);
-      col += vec3(1.,.83,.58) * glint * 1.1;
+      col += vec3(1.,.87,.68) * (glint*1.3+pow(max(dot(N,H),0.),38.)*.22);
       col = mix(col, uWaterFog, smoothstep(uFogNear,uFogFar,distanceToEye));
       gl_FragColor = vec4(col,1.);
       #include <tonemapping_fragment>
@@ -35,7 +53,7 @@ export function createWaterStudy({ THREE, seaMat, lagoonMat }) {
     material.uniforms.uRealism = { value: 0 };
     material.uniforms.uWaterSun = { value: new THREE.Vector3(-.64,.88,.5).normalize() };
     material.uniforms.uWaterFog = { value: new THREE.Color('#e0e1d8') };
-    material.fragmentShader = 'uniform float uRealism; uniform vec3 uWaterSun,uWaterFog;\n' + material.fragmentShader.replace('void main(){', 'void main(){' + body);
+    material.fragmentShader = 'uniform float uRealism; uniform vec3 uWaterSun,uWaterFog;\n' + noise + material.fragmentShader.replace('void main(){', 'void main(){' + body);
     material.needsUpdate = true;
   }
   // Used only by the Dubai lake; it shares time but owns the material.

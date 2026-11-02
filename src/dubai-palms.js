@@ -20,22 +20,24 @@ export function createDubaiPalms({ THREE, city, district = false }) {
   }
   const ribs = [];
   for (let f = 0; f < (district ? 23 : 13); f++) {
-    const angle = f * 2.39996 + (district ? (random()-.5)*.48 : 0), upper = f >= (district ? 16 : 9);
+    const angle = f * 2.39996 + (district ? Math.sin(f*1.7)*.36+(random()-.5)*.6 : 0), upper = f >= (district ? 16 : 9);
+    const aged=district&&f<2;
     const length = district ? (upper ? 1.25+random()*.8 : 2.05+random()*.95) : upper ? 1.65 + (f % 3) * .14 : 2.35 + (f % 3) * .14;
-    const lift = district ? (upper ? 1.8+random()*.8 : .8+random()*.7) : upper ? 1.55 : .64;
-    const droop = district ? (upper ? .6+random()*.6 : 1.8+random()*.8) : upper ? .58 : 1.25;
+    const lift = aged?.3:district ? (upper ? 1.8+random()*.8 : .65+random()*.85) : upper ? 1.55 : .64;
+    const droop = aged?2.2:district ? (upper ? .6+random()*.6 : 1.8+random()*.8) : upper ? .58 : 1.25;
     const bend = district ? (random()-.5)*.5 : 0;
     const point = t => v(.8 + Math.cos(angle+bend*t) * length * t,
       3.6 + lift * t - droop * t * t, Math.sin(angle+bend*t) * length * t);
     const side = v(-Math.sin(angle), 0, Math.cos(angle));
     const curve = new THREE.CatmullRomCurve3(Array.from({ length: 7 }, (_, j) => point(j / 6)));
     ribs.push(new THREE.TubeGeometry(curve, 12, .012, 3, false));
-    const color = palettes[district && f<3 ? 4 : f % (district ? 4 : palettes.length)];
+    const color = palettes[aged ? 4 : f % (district ? 4 : palettes.length)].clone().multiplyScalar(.9+random()*.2);
     const leaflets=district ? 25 : 19;
     for (let j = 1; j <= leaflets; j++) {
       const t = .08 + (j+(district ? (random()-.5)*.45 : 0)) / (leaflets+1) * .89;
       const width = (district ? .42+random()*.19 : .50) * Math.pow(Math.sin(Math.PI * t), .75);
       for (const sign of [-1, 1]) {
+        if(aged&&j%5===0)continue;
         const base = point(t), next = point(Math.min(1, t + .10));
         const tip = next.clone().addScaledVector(side, width * sign); tip.y -= width * .43;
         const ridge = base.clone().lerp(tip, .45); ridge.y += .022;
@@ -94,6 +96,16 @@ export function createDubaiPalms({ THREE, city, district = false }) {
     trunk=mergeGeometries(bark);bark.forEach(g=>g.dispose());
   }
   const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .87, side: THREE.DoubleSide, envMapIntensity: .32 });
+  if(district){
+    leafMat.onBeforeCompile=shader=>{
+      shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+        vec3 leafSun=normalize((viewMatrix*vec4(-.9,.85,1.05,0.)).xyz);
+        float through=pow(max(dot(normalize(vViewPosition),-leafSun),0.),3.);
+        reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.17,.20,.08)*through;
+      `);
+    };
+    leafMat.customProgramCacheKey=()=> 'palm-thin-leaf-v1';
+  }
   const ribMat = new THREE.MeshStandardMaterial({ color: district ? '#686c38' : '#8a8e59', roughness: .91 });
   const trunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95 });
   const meshes = [[foliage, leafMat], [ribGeometry, ribMat], [trunk, trunkMat]].map(([geometry, material]) => {

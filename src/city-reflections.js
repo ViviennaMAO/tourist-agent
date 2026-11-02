@@ -56,7 +56,7 @@ export function createCityReflections({renderer,scene,city}) {
     const previous=renderer.getRenderTarget(),shadowAuto=renderer.shadowMap.autoUpdate;
     scene.updateMatrixWorld(true);restoreMaps();
     scene.traverse(o=>{
-      if(o.userData.character||o.name==='Dubai — detailed sedan traffic'||o.isSprite){hidden.push([o,o.visible]);o.visible=false;}
+      if(o.userData.character||o.userData.excludeReflection||o.name==='Dubai — detailed sedan traffic'||o.isSprite){hidden.push([o,o.visible]);o.visible=false;}
     });
     try {
       renderer.shadowMap.autoUpdate=false;

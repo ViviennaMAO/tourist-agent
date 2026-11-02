@@ -49,6 +49,14 @@ export function createContactShadows({renderer,scene,camera}) {
   pass.kernelRadius=.42;
   pass.ssaoMaterial.fragmentShader=pass.ssaoMaterial.fragmentShader.replace(
     'vec3( 1.0 - occlusion )','vec3( 1.0 - occlusion * .52 * (1.0-smoothstep(65.0,130.0,-viewZ)) )');
+  // Reject tiny/coplanar relief before counting it as an occluder.
+  // Thin paving edges otherwise produce dotted black seams at half resolution.
+  pass.ssaoMaterial.fragmentShader=pass.ssaoMaterial.fragmentShader.replace(
+    'occlusion += 1.0;',
+    `float neighbourDepth=getDepth(samplePointUv);
+     vec3 neighbour=getViewPosition(samplePointUv,neighbourDepth,getViewZ(neighbourDepth));
+     float aboveSurface=dot(neighbour-viewPosition,viewNormal);
+     occlusion += smoothstep(.025,.09,aboveSurface);`);
   // Blur only neighbours on the same surface. A box blur spreads occlusion
   // across the sky, thin foliage and window silhouettes as a grey fringe.
   Object.assign(pass.blurMaterial.uniforms,{

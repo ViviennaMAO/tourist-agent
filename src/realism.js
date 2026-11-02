@@ -67,13 +67,13 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       const i = (y * n + x) * 4, noise = (random() - .5), row = Math.floor(y / 64), xx = (x + (row % 2) * 64) % n;
       const masonry=kind==='stone'||kind==='limestone';
       const seam = masonry && (xx % 128 < (kind==='limestone'?1:2) || y % 64 < (kind==='limestone'?1:2));
-      const tileValue = masonry ? tile[row * 4 + Math.floor(xx / 128)]*(kind==='limestone'?.38:1) : 0;
+      const tileValue = masonry ? tile[row * 4 + Math.floor(xx / 128)]*(kind==='limestone'?.38:.65) : 0;
       const cloud = kind === 'grass' ? 0 : Math.sin(x * Math.PI * 8 / n) * Math.cos(y * Math.PI * 6 / n);
       const delta = noise * (kind === 'grass' ? 28 : 13) + tileValue + cloud * 2.5;
       const pore=kind==='limestone'&&random()>.986;
-      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.77) : base[k] + delta*(kind==='limestone'?.55:1)-(pore?13:0);
+      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.91) : base[k] + delta*(kind==='limestone'?.55:1)-(pore?13:0);
       data.data[i + 3] = 255;
-      const v = seam ? (kind==='limestone'?105:46) : pore?95:155 + noise * (kind === 'asphalt' ? 75 : 22);
+      const v = seam ? (kind==='limestone'?105:100) : pore?95:155 + noise * (kind === 'asphalt' ? 75 : 22);
       hd.data.set([v, v, v, 255], i);
     }
     ctx.putImageData(data, 0, 0); hc.putImageData(hd, 0, 0);
@@ -127,7 +127,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     mat.customProgramCacheKey = () => 'ta-surface-v1-' + kind;
     materials.push(mat); return mat;
   }
-  const stone = surface('stone', { scale: .25, roughness: .8, bump: .024 }); // slab = 1 x .5 world units
+  const stone = surface('stone', { scale: .25, roughness: .84, bump: .010 }); // slab = 1 x .5 world units
   const sand = surface('sand', { scale: .3, bump: .013 });
   const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });

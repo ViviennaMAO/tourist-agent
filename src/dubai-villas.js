@@ -9,7 +9,7 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
   const porch = Math.min(1.15, d * .28), shopZ = front - porch;
   const floor = Math.min(2.85, h * .47), ceiling = h - .3;
   const cols = w > 5 ? 3 : 2, edge = .23, bay = (w - 2 * edge) / cols;
-  const pier = .24, opening = bay - pier, radius = opening / 2;
+  const pier = .20, opening = bay - pier, radius = opening / 2;
   const spring = floor - .38 - radius;
   // The core ends behind the porch. This void is what creates long contact
   // shadows under the arches instead of painting an arch onto flat glass.
@@ -127,14 +127,14 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
     s.moveTo(-radius,spring);s.lineTo(-radius,floor-.18);s.lineTo(radius,floor-.18);s.lineTo(radius,spring);
     s.absarc(0,spring,radius,0,Math.PI,false);s.closePath();
     add(new THREE.ExtrudeGeometry(s,{depth:.38,curveSegments:16,bevelEnabled:false}).translate(x,0,front-.42),wall);
-    for(let k=0;k<13;k++) {
-      const a=k*Math.PI/13+.009, z=(k+1)*Math.PI/13-.009, outer=radius+.105;
+    for(let k=0;k<17;k++) {
+      const a=k*Math.PI/17+.0025, z=(k+1)*Math.PI/17-.0025, outer=radius+.065;
       const stone=new THREE.Shape();
       stone.moveTo(Math.cos(a)*radius,spring+Math.sin(a)*radius);
       stone.absarc(0,spring,radius,a,z,false);
       stone.lineTo(Math.cos(z)*outer,spring+Math.sin(z)*outer);
       stone.absarc(0,spring,outer,z,a,true);stone.closePath();
-      add(new THREE.ExtrudeGeometry(stone,{depth:.045,curveSegments:3,bevelEnabled:false}).translate(x,0,front-.046),k%4===0?wall:trim);
+      add(new THREE.ExtrudeGeometry(stone,{depth:.025,curveSegments:3,bevelEnabled:false}).translate(x,0,front-.026),trim);
     }
     // Pendant lantern hangs inside the shaded arcade, not on the glass plane.
     const ly=floor-.76, lz=front-porch*.56;
@@ -146,15 +146,15 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
   // Upper loggia has a continuous stone sill, patterned bronze balustrade and
   // an open timber canopy. No opaque box fills the air behind the railing.
   box(trim,0,floor+.08,front-.16,w-.12,.12,.3);
-  for(const yy of [floor+.23,floor+.92]) box(metal,0,yy,front-.1,w-.22,.035,.04);
+  for(const yy of [floor+.23,floor+.92]) box(metal,0,yy,front-.1,w-.22,.024,.03);
   const rails=Math.ceil((w-.4)/.23);
-  for(let k=0;k<=rails;k++) box(metal,-w/2+.2+(w-.4)*k/rails,floor+.55,front-.1,.018,.73,.025);
+  for(let k=0;k<=rails;k++) box(metal,-w/2+.2+(w-.4)*k/rails,floor+.55,front-.1,.013,.73,.02);
   for(let k=0;k<cols*2;k++) {
     const x=-w/2+.36+(w-.72)*(k+.5)/(cols*2);
-    const ring=new THREE.TorusGeometry(.105,.012,4,12).translate(x,floor+.58,front-.1);add(ring,metal);
+    const ring=new THREE.TorusGeometry(.105,.008,4,12).translate(x,floor+.58,front-.1);add(ring,metal);
   }
   for(const x of [-w/2+.14,w/2-.14]) {
-    box(wall,x,(floor+ceiling)/2,front-.17,.26,ceiling-floor,.3);
+    box(wall,x,(floor+ceiling)/2,front-.17,.21,ceiling-floor,.27);
     box(trim,x,ceiling-.06,front-.2,.28,.12,.4);
   }
   for(const z of [front-.16,shopZ+.03]) box(wood,0,ceiling-.14,z,w-.14,.13,.12);

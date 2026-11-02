@@ -67,10 +67,10 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   // Pale paving with modest colour variation and actual thin joints. A darker
   // border describes the square without a raised step in the walking route.
   transform.identity();
-  const pavers = ['#c4b69f', '#d3c6af', '#b9ad99'].map(c => {
-    const m=stoneMaterial.clone(); m.color.set(c); m.roughness=.9;
-    m.onBeforeCompile=stoneMaterial.onBeforeCompile; m.customProgramCacheKey=stoneMaterial.customProgramCacheKey;
-    materials.push(m); batches.set(m,[]); return m;
+  const pavers = ['#c9bea9', '#d0c6b3', '#c1b6a3'].map(c => {
+    // These slabs already have geometric joints. A second tiled wall map
+    // created dark dashes and false seams across their faces.
+    return finish(c,.9);
   });
   const y = ctx.groundY(-20, -9.4);
   for (let row = 0; row < 14; row++) {
@@ -91,6 +91,9 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
     if (!geos.length) continue;
     const g = mergeGeometries(geos); geos.forEach(p => p.dispose());
     const mesh = new THREE.Mesh(g, m); mesh.castShadow = !m.transparent; mesh.receiveShadow = true;
+    // Use the continuous ground below for contact depth. Millimetre joints
+    // are smaller than an AO texel and otherwise appear as broken black dots.
+    if (pavers.includes(m)) mesh.userData.skipContact = true;
     root.add(mesh);
   }
   city.w.root.add(root); root.visible = false;
