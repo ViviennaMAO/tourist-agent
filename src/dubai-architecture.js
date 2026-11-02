@@ -1,6 +1,7 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { appendDubaiHighrise } from './dubai-highrises.js';
 import { appendDubaiVilla } from './dubai-villas.js';
+import { installCurtainWallFinish } from './curtain-wall.js';
 
 /** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
  * All details are opaque PBR meshes, merged by finish. Existing actors still own
@@ -69,7 +70,10 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     skylineGlass.userData.reflectionZone='skyline';
     skylineGlass.color.set('#9bafb8');skylineGlass.metalness=.72;
     skylineGlass.roughness=.09;skylineGlass.envMapIntensity=1.5;
+    installCurtainWallFinish(skylineGlass);
   }
+  const skylineSpandrel=district?finish('#637b83',.26,.48,{envMapIntensity:1.15}):null;
+  if(skylineSpandrel){skylineSpandrel.userData.cityGlass=true;skylineSpandrel.userData.reflectionZone='skyline';}
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   let transform = new THREE.Matrix4();
@@ -95,7 +99,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     design.set(b, { treatment: traditional ? 'limestone' : 'glass', facadeHeight: h, originalHeight: b.h });
     if (!traditional) {
       Object.assign(design.get(b), appendDubaiHighrise({ b, h, index: buildingIndex,
-        finishes: { wall, trim, metal, skylineGlass, glass, amberGlass, roof, recess }, box }));
+        finishes: { wall, trim, metal, skylineGlass, skylineSpandrel, glass, amberGlass, roof, recess }, box }));
       return;
     }
     if (district) {

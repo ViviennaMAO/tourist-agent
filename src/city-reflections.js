@@ -22,8 +22,8 @@ export function createCityReflections({renderer,scene,city}) {
       const zone=zones[m.userData.reflectionZone||'courtyard'];
       const before={envMap:m.envMap,compile:m.onBeforeCompile,key:m.customProgramCacheKey,zone};
       const key=m.customProgramCacheKey();records.set(m,before);
-      m.onBeforeCompile=shader=>{
-        before.compile.call(m,shader);
+      m.onBeforeCompile=(shader,renderer)=>{
+        before.compile.call(m,shader,renderer);
         Object.assign(shader.uniforms,{cityProbeOrigin:zone.origin,cityProbeMin:zone.boxMin,cityProbeMax:zone.boxMax,cityProbeActive:zone.active});
         shader.vertexShader='varying vec3 cityGlassWorld;\n'+shader.vertexShader;
         shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>',`#include <worldpos_vertex>

@@ -1,4 +1,5 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { installCurtainWallFinish } from './curtain-wall.js';
 
 /** A second and third skyline layer on the existing mainland, with real
  * collision footprints. It never extends the island or covers a landmark. */
@@ -7,7 +8,7 @@ export function createDubaiBackdrop({THREE,city}) {
   const ctx=city.w.ctx,footprints=[],batches=new Map();let enabled=false,disposed=false;
   function finish(color,roughness,metalness=0){const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.9});batches.set(m,[]);return m;}
   const glass=finish('#718c9c',.24,.36),silver=finish('#a3afb0',.25,.45),sand=finish('#b9b5a6',.68),trim=finish('#72818a',.48,.5),roof=finish('#6d7778',.9);
-  for(const m of [glass,silver]){m.userData.cityGlass=true;m.userData.reflectionZone='skyline';}
+  for(const m of [glass,silver]){m.userData.cityGlass=true;m.userData.reflectionZone='skyline';installCurtainWallFinish(m);}
   function box(m,x,y,z,w,h,d,ry=0){batches.get(m).push(new THREE.BoxGeometry(w,h,d).rotateY(ry).translate(x,y,z));}
   for(let row=0;row<2;row++)for(let i=0;i<13;i++) {
     const x=-55+i*8.7+(row?.9:0),z=-65-row*13;

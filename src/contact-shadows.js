@@ -49,6 +49,37 @@ export function createContactShadows({renderer,scene,camera}) {
   pass.kernelRadius=.42;
   pass.ssaoMaterial.fragmentShader=pass.ssaoMaterial.fragmentShader.replace(
     'vec3( 1.0 - occlusion )','vec3( 1.0 - occlusion * .52 * (1.0-smoothstep(65.0,130.0,-viewZ)) )');
+  // Blur only neighbours on the same surface. A box blur spreads occlusion
+  // across the sky, thin foliage and window silhouettes as a grey fringe.
+  Object.assign(pass.blurMaterial.uniforms,{
+    tDepth:{value:pass.normalRenderTarget.depthTexture},
+    tNormal:{value:pass.normalRenderTarget.texture},
+    cameraNear:{value:camera.near},cameraFar:{value:camera.far}
+  });
+  pass.blurMaterial.fragmentShader=`
+    uniform sampler2D tDiffuse,tDepth,tNormal;
+    uniform vec2 resolution;
+    uniform float cameraNear,cameraFar;
+    varying vec2 vUv;
+    #include <packing>
+    void main(){
+      float depth=texture2D(tDepth,vUv).x;
+      if(depth>=.999999){gl_FragColor=vec4(1.);return;}
+      float z=perspectiveDepthToViewZ(depth,cameraNear,cameraFar);
+      vec3 n=unpackRGBToNormal(texture2D(tNormal,vUv).xyz);
+      float result=0.,total=0.;
+      for(int x=-2;x<=2;x++)for(int y=-2;y<=2;y++){
+        vec2 offset=vec2(float(x),float(y));
+        vec2 uv=vUv+offset/resolution;
+        float sampleZ=perspectiveDepthToViewZ(texture2D(tDepth,uv).x,cameraNear,cameraFar);
+        vec3 sampleN=unpackRGBToNormal(texture2D(tNormal,uv).xyz);
+        float weight=exp(-dot(offset,offset)*.32)
+          *exp(-abs(sampleZ-z)/max(.07,-z*.003))
+          *pow(max(dot(n,sampleN),0.),8.);
+        result+=texture2D(tDiffuse,uv).r*weight;total+=weight;
+      }
+      gl_FragColor=vec4(vec3(result/max(total,.0001)),1.);
+    }`;
   const size=new THREE.Vector2(), clearColor=new THREE.Color();
   return {render(){
     if(disposed)return;
@@ -59,6 +90,8 @@ export function createContactShadows({renderer,scene,camera}) {
     uniforms.cameraProjectionMatrix.value.copy(camera.projectionMatrix);
     uniforms.cameraInverseProjectionMatrix.value.copy(camera.projectionMatrixInverse);
     uniforms.cameraNear.value=camera.near;uniforms.cameraFar.value=camera.far;
+    pass.blurMaterial.uniforms.cameraNear.value=camera.near;
+    pass.blurMaterial.uniforms.cameraFar.value=camera.far;
     uniforms.kernelRadius.value=pass.kernelRadius;
     // SSAOPass compares normalized linear depth, whereas these limits are metres.
     uniforms.minDistance.value=.025/(camera.far-camera.near);

@@ -219,7 +219,6 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     refinements.forEach(r => r.apply(time));
     districtStudies.forEach(r => r.apply(time));
     nearDubai=!!dubai&&!overview&&Math.hypot(target.x-dubai.w.root.position.x,target.z-dubai.w.root.position.z)<110&&camera.position.distanceTo(target)<120;
-    if(nearDubai)probe?.captureIfNeeded();
     const span = overview ? 300 : Math.min(125, Math.max(24, camera.position.distanceTo(target) * .65));
     const texel = span * 2 / sun.shadow.mapSize.x;
     sun.target.position.set(Math.round(target.x / texel) * texel, 0, Math.round(target.z / texel) * texel);
@@ -262,6 +261,9 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       const reset=renderer.info.autoReset;renderer.info.autoReset=false;renderer.info.reset();
       try {
         renderer.render(scene,camera);
+        // Capture only after the current sun matrix and shadow texture exist.
+        // Sampling before this render baked a stale camera's shadows into glass.
+        if(nearDubai)probe?.captureIfNeeded();
         if(enabled&&refinementEnabled&&districtEnabled&&nearDubai&&contactEnabled){
           contact??=createContactShadows({renderer,scene,camera});contact.render();
         }

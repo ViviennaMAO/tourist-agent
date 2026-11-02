@@ -2,6 +2,7 @@
  * material batches; no per-window objects survive into the render loop. */
 export function appendDubaiHighrise({ b, h, index, finishes, box }) {
   const { wall, trim, metal, skylineGlass, glass, amberGlass, roof, recess } = finishes;
+  const spandrel=finishes.skylineSpandrel||glass;
   const { w, d } = b, variant = index % 3, lobby = 2.35;
   const crown = h - .72;
   const tiers = variant === 0
@@ -56,7 +57,7 @@ export function appendDubaiHighrise({ b, h, index, finishes, box }) {
       for (let f = 0; f < floors; f++) {
         const y = bottom + f * fh;
         // Spandrel panels and a projecting drip edge make each slab legible.
-        face(glass, 0, y + .13, .035, span - .13, .22, .055);
+        face(spandrel, 0, y + .09, .035, span - .13, .14, .055);
         face(metal, 0, y + .025, .015, span - .1, .04, .045);
         face(metal, 0, y + fh * .77, .027, span - .13, .018, .025);
         for (let j = 0; j < cols; j++) {

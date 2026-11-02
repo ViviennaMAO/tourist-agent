@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {createContactNormals} from '../src/contact-shadows.js';
+import {createContactNormals,createContactShadows} from '../src/contact-shadows.js';
 import {createDubaiBackdrop} from '../src/dubai-backdrop.js';
 import {createCityReflections} from '../src/city-reflections.js';
+import {installCurtainWallFinish} from '../src/curtain-wall.js';
 
 test('contact normal pass preserves cutouts, hidden objects and source resources even if drawing fails',()=>{
   const scene=new THREE.Scene(),texture=new THREE.Texture();
@@ -50,15 +51,47 @@ test('inland skyline adds bounded staggered buildings and restores only its own 
 
 test('reflection setup preserves material callbacks, original maps and shared resources on disposal',()=>{
   const map=new THREE.Texture(),material=new THREE.MeshStandardMaterial({envMap:map});
-  const originalCompile=shader=>{shader.uniforms.original={value:7};},originalKey=()=>'original-key';
+  const renderer={};let forwarded;
+  const originalCompile=(shader,r)=>{forwarded=r;shader.uniforms.original={value:7};},originalKey=()=>'original-key';
   material.userData.cityGlass=true;material.onBeforeCompile=originalCompile;material.customProgramCacheKey=originalKey;
+  installCurtainWallFinish(material);
+  const finishCompile=material.onBeforeCompile,finishKey=material.customProgramCacheKey;
   const root=new THREE.Group();root.add(new THREE.Mesh(new THREE.BoxGeometry(),material));
   let disposed=0;map.addEventListener('dispose',()=>disposed++);material.addEventListener('dispose',()=>disposed++);
-  const probe=createCityReflections({renderer:{},scene:new THREE.Scene(),city:{w:{root}}});
+  const probe=createCityReflections({renderer,scene:new THREE.Scene(),city:{w:{root}}});
   const shader={uniforms:{},vertexShader:'#include <worldpos_vertex>',fragmentShader:'#include <envmap_physical_pars_fragment>'};
-  material.onBeforeCompile(shader);
+  material.onBeforeCompile(shader,renderer);assert.equal(forwarded,renderer);
   assert.equal(shader.uniforms.original.value,7);assert.match(shader.fragmentShader,/cityProjectedReflection/);
   probe.setEnabled(true);probe.setEnabled(false);assert.equal(material.envMap,map);
-  probe.dispose();probe.dispose();assert.equal(material.onBeforeCompile,originalCompile);assert.equal(material.customProgramCacheKey,originalKey);assert.equal(disposed,0);
+  probe.dispose();probe.dispose();assert.equal(material.onBeforeCompile,finishCompile);assert.equal(material.customProgramCacheKey,finishKey);assert.equal(disposed,0);
   root.children[0].geometry.dispose();material.dispose();map.dispose();
+});
+
+test('contact filtering follows camera/viewport changes and restores renderer after a failed pass',()=>{
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(40,1,.5,6000);
+  const source=new THREE.MeshStandardMaterial(),mesh=new THREE.Mesh(new THREE.BoxGeometry(),source);scene.add(mesh);
+  const originalTarget={name:'caller target'},color=new THREE.Color('#365478');
+  let target=originalTarget,alpha=.4,size=new THREE.Vector2(1920,1080),fail=false,filter;
+  const renderer={autoClear:true,shadowMap:{autoUpdate:true},
+    getDrawingBufferSize:v=>v.copy(size),getRenderTarget:()=>target,setRenderTarget:v=>target=v,
+    getClearColor:v=>v.copy(color),getClearAlpha:()=>alpha,
+    setClearColor:(v,a=1)=>{color.set(v);alpha=a;},setClearAlpha:v=>alpha=v,clear(){},
+    render(object){
+      if(object===scene){assert.ok(mesh.material.isMeshNormalMaterial);return;}
+      if(object.material.uniforms.tNormal&&object.material.uniforms.tDiffuse){
+        filter=object.material;if(fail)throw new Error('filter failure');
+      }
+    }
+  };
+  const shadows=createContactShadows({renderer,scene,camera});shadows.render();
+  assert.equal(shadows.resolution,'800×450');
+  assert.ok(filter.uniforms.tDepth.value.isDepthTexture);
+  assert.equal(filter.uniforms.cameraFar.value,6000);
+  size.set(390,844);camera.near=.2;camera.far=1200;camera.updateProjectionMatrix();fail=true;
+  assert.throws(()=>shadows.render(),/filter failure/);
+  assert.equal(shadows.resolution,'293×633');
+  assert.equal(filter.uniforms.cameraNear.value,.2);assert.equal(filter.uniforms.cameraFar.value,1200);
+  assert.equal(target,originalTarget);assert.equal(renderer.autoClear,true);assert.equal(renderer.shadowMap.autoUpdate,true);
+  assert.equal(color.getHexString(),'365478');assert.equal(alpha,.4);assert.equal(mesh.material,source);
+  shadows.dispose();shadows.dispose();mesh.geometry.dispose();source.dispose();
 });

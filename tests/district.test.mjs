@@ -20,7 +20,8 @@ test('district architecture preserves horizontal collision envelopes after skyli
       {x:20,z:-48,w:5,d:4,h:height,base:1.28,ry:0,indices:{body:1}}];
     const city={w:{root:new THREE.Group(),ctx:{buildings,pools:{}}}};
     const study=createDubaiArchitecture({THREE,city,district:true});
-    assert.equal(study.stats.buildings,2);assert.ok(study.stats.drawCalls<=13);finite(study.root);
+    // One shared cooler spandrel finish adds one batch, not one per window.
+    assert.equal(study.stats.buildings,2);assert.ok(study.stats.drawCalls<=14);finite(study.root);
     study.root.traverse(o=>{if(!o.isMesh)return;const a=o.geometry.attributes.position;
       for(let i=0;i<a.count;i++) {
         const p=new THREE.Vector3().fromBufferAttribute(a,i);
