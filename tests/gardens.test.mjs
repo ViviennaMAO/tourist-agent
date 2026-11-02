@@ -5,6 +5,7 @@ import { createDubaiGardens } from '../src/dubai-gardens.js';
 import { createDubaiBackdrop } from '../src/dubai-backdrop.js';
 import { createDubaiArchitecture } from '../src/dubai-architecture.js';
 import { installDistrictBounce } from '../src/district-bounce.js';
+import { refinedWalkHeight } from '../src/walk-surfaces.js';
 
 const overlap=(a,b,gap=0)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+gap&&Math.abs(a.z-b.z)<(a.d+b.d)/2+gap;
 test('gardens avoid roads, landmarks, existing and deferred refinement footprints',()=>{
@@ -55,8 +56,46 @@ test('rear paving rejects height discontinuities and dune suppression is reversi
   const unrelated=new THREE.Object3D();city.w.root.add(unrelated);
   const stone=new THREE.MeshStandardMaterial(),g=createDubaiGardens({THREE,city,stoneMaterial:stone});
   for(const p of g.surfaces)assert.ok(!(p.x-p.w/2<=0&&p.x+p.w/2>0),'no floating slab across terrain step');
-  g.setEnabled(true);g.apply();assert.equal(dune.visible,false);assert.equal(unrelated.visible,true);
+  g.setEnabled(true);g.apply();g.apply();assert.equal(dune.visible,false);assert.equal(unrelated.visible,true);
   g.setEnabled(false);assert.equal(dune.visible,true);g.dispose();stone.dispose();dune.geometry.dispose();dune.material.dispose();
+});
+
+test('avatar surface follows both rendered ramps and paving across the old road end caps',()=>{
+  const other=()=>null;
+  const ctx={rects:[],walkSurfaces:[other],groundY:()=>1,free:()=>false,roads:[{A:[-48,-50],B:[48,-50],kind:'road',hw:2.3}]};
+  const city={w:{root:new THREE.Group(),ctx}},stone=new THREE.MeshStandardMaterial();
+  const g=createDubaiGardens({THREE,city,stoneMaterial:stone});
+  g.setEnabled(true);g.root.updateMatrixWorld(true);
+  for(const sign of [-1,1]) {
+    let previous=1.38;
+    for(let x=48.001;x<50.7;x+=.043) {
+      const y=refinedWalkHeight(ctx,sign*x,-50,1.38);
+      const hit=new THREE.Raycaster(new THREE.Vector3(sign*x,3,-50),new THREE.Vector3(0,-1,0)).intersectObject(g.root,true)[0];
+      assert.ok(hit);assert.ok(Math.abs(y-hit.point.y-.046)<.003,'feet follow the drawn slope and slabs');
+      assert.ok(Math.abs(y-previous)<.02,'no jump at the old circular road cap');previous=y;
+    }
+    assert.equal(refinedWalkHeight(ctx,sign*48,-47,1.28),1.28,'outside paving uses existing ground');
+  }
+  for(let i=0;i<3;i++){g.setEnabled(false);assert.deepEqual(ctx.walkSurfaces,[other]);g.setEnabled(true);assert.equal(ctx.walkSurfaces.length,2);}
+  g.dispose();assert.deepEqual(ctx.walkSurfaces,[other]);stone.dispose();
+});
+
+test('long mixed borders keep road openings and bridge the raised lawn edge',()=>{
+  const ctx={rects:[],groundY:x=>Math.abs(x)<48?1.28:1,free:(x,z,w,d)=>Math.abs(z+16)>2.9+d/2&&Math.abs(z+50)>2.9+d/2};
+  const city={w:{root:new THREE.Group(),ctx}},stone=new THREE.MeshStandardMaterial();
+  const g=createDubaiGardens({THREE,city,stoneMaterial:stone});
+  assert.equal(g.stats.borders,6);assert.ok(g.edging.length>0);
+  g.root.updateMatrixWorld(true);
+  for(const b of g.footprints.filter(b=>b.border)) {
+    assert.ok(ctx.free(b.x,b.z,b.w,b.d));assert.ok(b.d>4*b.w);
+    const hits=new THREE.Raycaster(new THREE.Vector3(b.x,3,b.z),new THREE.Vector3(0,-1,0)).intersectObject(g.root,true);
+    assert.ok(hits.some(h=>Math.abs(h.point.y-1.51)<.001),'earth covers the higher grass surface');
+  }
+  for(const b of g.edging)assert.ok(Math.abs(b.z+50)>2.9+b.d/2);
+  for(const sign of [-1,1])for(let z=-46;z<=-20;z+=.1) {
+    assert.ok(!g.footprints.some(q=>Math.abs(sign*50.7-q.x)<q.w/2+.45&&Math.abs(z-q.z)<q.d/2+.45),'continuous avatar clearance along each side path');
+  }
+  g.dispose();stone.dispose();
 });
 
 test('ordinary houses get physical stone bevels and controllable pre-AO ground return',()=>{

@@ -1,5 +1,6 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { chamferedBox } from './chamfered-box.js';
+import { createPavingSurface } from './walk-surfaces.js';
 
 const intersects = (a,b,gap=.65) => Math.abs(a.x-b.x)<(a.w+b.w)/2+gap && Math.abs(a.z-b.z)<(a.d+b.d)/2+gap;
 
@@ -7,7 +8,7 @@ const intersects = (a,b,gap=.65) => Math.abs(a.x-b.x)<(a.w+b.w)/2+gap && Math.ab
  * checked against source roads/landmarks AND all other refinement footprints. */
 export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,exclusions=[]}) {
   const ctx=city.w.ctx,root=new THREE.Group(); root.name='Dubai — district gardens and rear promenade';
-  const batches=new Map(),materials=[],footprints=[],surfaces=[];
+  const batches=new Map(),materials=[],footprints=[],surfaces=[],edging=[];
   let enabled=false,disposed=false,seed=19031,trees=0;
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   function finish(color,extra={}) { const m=new THREE.MeshStandardMaterial({color,roughness:.9,...extra});materials.push(m);return m; }
@@ -21,43 +22,52 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
   function add(g,m) { if(!g.index)g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));if(!batches.has(m))batches.set(m,[]);batches.get(m).push(g); }
   const box=(m,x,y,z,w,h,d)=>add(new THREE.BoxGeometry(w,h,d).translate(x,y,z),m);
   const up=new THREE.Vector3(0,1,0);
-  function branch(a,b,r) {const delta=b.clone().sub(a);add(new THREE.CylinderGeometry(r*.55,r,delta.length(),5,1,true).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize())).translate(...a.clone().add(b).multiplyScalar(.5).toArray()),bark);}
-  function leaves(x,y,z,rx,ry,rz,count,size=.12) {
+  function branch(a,b,r) {const delta=b.clone().sub(a);add(new THREE.CylinderGeometry(r*.55,r,delta.length(),r<.01?3:5,1,true).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize())).translate(...a.clone().add(b).multiplyScalar(.5).toArray()),bark);}
+  function leaves(x,y,z,rx,ry,rz,count,size=.12,groundcover=false) {
     for(let i=0;i<count;i++) {
       const az=random()*Math.PI*2,yy=random()*2-1,rr=Math.sqrt(1-yy*yy)*(.55+random()*.45);
       const g=new THREE.PlaneGeometry(size*1.45,size*2.1,size>=.12?2:1,1),p=g.attributes.position;
       for(let j=0;j<p.count;j++)p.setZ(j,(1-Math.abs(p.getX(j))/(size*.725))*.018);
-      g.computeVertexNormals();g.rotateX(-.9+random()*2).rotateY(az).rotateZ(random()*2.8);
+      g.computeVertexNormals();
+      if(groundcover)g.rotateZ(random()*2.8).rotateX(-Math.PI/2+(random()-.5)*.5).rotateY(az);
+      else g.rotateX(-.9+random()*2).rotateY(az).rotateZ(random()*2.8);
       g.translate(x+Math.cos(az)*rx*rr,y+yy*ry,z+Math.sin(az)*rz*rr);add(g,greens[i%2]);
     }
   }
   function plant(b,index) {
-    const y=ctx.groundY(b.x,b.z),rim=.13;
+    const heights=[ctx.groundY(b.x,b.z),ctx.groundY(b.x-b.w/2,b.z),ctx.groundY(b.x+b.w/2,b.z)];
+    const base=Math.min(...heights),y=Math.max(...heights),rim=.13,curbHeight=y-base+.25;
     // Rounded dressed-stone curbs with open earth, no large green solid blob.
     box(soil,b.x,y+.14,b.z,b.w-.15,.18,b.d-.15);
     for(const sign of [-1,1]) {
-      add(chamferedBox(b.w,.25,rim,.018).translate(b.x,y+.13,b.z+sign*(b.d-rim)/2),stone);
-      add(chamferedBox(rim,.25,b.d-.26,.018).translate(b.x+sign*(b.w-rim)/2,y+.13,b.z),stone);
+      add(chamferedBox(b.w,curbHeight,rim,.018).translate(b.x,base+curbHeight/2+.005,b.z+sign*(b.d-rim)/2),stone);
+      add(chamferedBox(rim,curbHeight,b.d-.26,.018).translate(b.x+sign*(b.w-rim)/2,base+curbHeight/2+.005,b.z),stone);
     }
-    for(let row=0;row<3;row++)for(let col=0;col<9;col++) {
-      const px=b.x+(col-4)*(b.w-.7)/8+(random()-.5)*.08;
-      const pz=b.z+(row-1)*(b.d-.85)/2+(random()-.5)*.08;
-      leaves(px,y+.43+random()*.13,pz,.27,.26,.26,24,.105);
+    const rows=b.border?Math.ceil(b.d/.5):3,cols=b.border?3:9;
+    for(let row=0;row<rows;row++)for(let col=0;col<cols;col++) {
+      const px=b.x+(col/(cols-1)-.5)*(b.w-.65)+(random()-.5)*.08;
+      const pz=b.z+(row/(rows-1)-.5)*(b.d-.65)+(random()-.5)*.08;
+      const tall=b.border&&col===1?.2+.14*Math.sin(row*1.7):0;
+      leaves(px,y+.43+random()*.13+tall,pz,.27,.26+tall*.4,.29,b.border?32:24,.105);
+      if(b.border)leaves(px,y+.3,pz,.31,.045,.31,12,.11,true);
     }
-    for(let i=0;i<7;i++) {
-      const x=b.x+(i-3)*(b.w-.65)/7,z=b.z+Math.sin(i*2.4+index)*b.d*.19;
+    const sprays=b.border?Math.ceil(b.d*2):7;
+    for(let i=0;i<sprays;i++) {
+      const x=b.border?b.x+Math.sin(i*2.4)*b.w*.21:b.x+(i-3)*(b.w-.65)/7;
+      const z=b.border?b.z+(i/(sprays-1)-.5)*(b.d-.65):b.z+Math.sin(i*2.4+index)*b.d*.19;
       // Small flower sprays sit among foliage, each on a visible fine stem.
       for(let k=0;k<4;k++) {
         const a=random()*6.28,px=x+Math.cos(a)*.2,pz=z+Math.sin(a)*.18,py=y+.56+random()*.22;
         branch(new THREE.Vector3(px,y+.24,pz),new THREE.Vector3(px+.025,py,pz),.004);
         for(let petal=0;petal<5;petal++) {
           const turn=petal*Math.PI*2/5;
-          add(new THREE.CircleGeometry(.025,3).rotateX(-Math.PI/2+.2).translate(px+Math.cos(turn)*.025,py,pz+Math.sin(turn)*.025),flowers[index%3===0?1:0]);
+          const petalGeometry=new THREE.CircleGeometry(.025,3);petalGeometry.setIndex([1,2,3]);
+          add(petalGeometry.rotateX(-Math.PI/2+.2).translate(px+Math.cos(turn)*.025,py,pz+Math.sin(turn)*.025),flowers[index%3===0?1:0]);
         }
       }
     }
     // Middle-height canopies join the flower beds to the palm/high-rise scale.
-    if(index%2===0) {
+    if(!b.border&&index%2===0) {
       trees++;const height=3.0+random()*.85,x=b.x+.15*Math.sin(index),z=b.z;
       const a=new THREE.Vector3(x,y+.2,z),fork=new THREE.Vector3(x+.09,y+height*.65,z+.035);
       const bend=new THREE.Vector3(x-.055,y+height*.33,z+.065);
@@ -71,6 +81,9 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
   // Plots follow three planted bands with deliberate gaps, then smaller side
   // gardens. Rejected candidates never create geometry or collision records.
   const candidates=[];
+  // Long, low mixed borders along the raised lawn edge; openings remain at
+  // street ends and wherever existing buildings or landmarks need clearance.
+  for(const x of [-48.45,48.45])for(const z of [-23,-31,-39])candidates.push({x,z,w:1.5,d:6.4,border:true});
   for(const z of [-64.8,-74.8])for(let i=0;i<13;i++)candidates.push({x:-55+i*8.7+Math.sin(i*1.9)*.55,z:z+Math.sin(i*2.7)*.65,w:3.2+(i%3)*.22,d:2.1});
   for(const z of [-22,-34,-43,-57])for(const x of [-54,-39,-28,-12,12,27,39,54])candidates.push({x,z,w:3.3,d:2.1});
   for(const x of [-46,-40,-27,-13,12,18,24,30,41,47])candidates.push({x,z:-37,w:3.3,d:2.1});
@@ -92,9 +105,24 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
         // Reject a tile straddling a raised land boundary rather than float it.
         if(Math.max(...heights)-Math.min(...heights)>.08)continue;
         const g=new THREE.PlaneGeometry(width-.012,depth-.012).rotateX(-Math.PI/2).translate(cx,heights[0]+.016,cz);
-        add(g,paving[(row*11+col*7)%9===0?1:(row+col)%7===0?2:0]);surfaces.push({x:cx,z:cz,w:width,d:depth});
+        add(g,paving[(row*11+col*7)%9===0?1:(row+col)%7===0?2:0]);surfaces.push({x:cx,z:cz,w:width,d:depth,y:heights[0]+.016});
       }
     }
+  }
+  // A thin retaining edge and a flush apron replace the raw lawn/sand join.
+  // Omit pieces covered by planted borders; never place a curb across a road.
+  for(const sign of [-1,1])for(let z=-45.4;z<-20;z+=1.2) {
+    const b={x:sign*48.12,z,w:.24,d:1.188};
+    if(!ctx.free(b.x,b.z,b.w,b.d)||footprints.some(q=>intersects(b,q,.02))||exclusions.some(q=>intersects(b,q,.1)))continue;
+    if(ctx.groundY(sign*47.9,z)<1.2)continue;
+    add(chamferedBox(.24,.32,1.188,.018).translate(b.x,1.17,z),stone);edging.push(b);
+  }
+  for(const sign of [-1,1])for(let z=-46;z<-20;z+=.9) {
+    const depth=Math.min(.9,-20-z),cx=sign*48.62,cz=z+depth/2;
+    const b={x:cx,z:cz,w:.76,d:depth};
+    if(footprints.some(q=>intersects(b,q,0)))continue;
+    add(new THREE.PlaneGeometry(.748,depth-.012).rotateX(-Math.PI/2).translate(cx,1.016,cz),paving[0]);
+    surfaces.push({...b,y:1.016});
   }
   // Grade down from the two existing rear-road ends to the new side paths.
   // These are walking surfaces, not raised curbs across the route.
@@ -108,7 +136,7 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
       const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
       g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));
       g.setIndex(sign>0?[0,2,1,0,3,2]:[0,1,2,0,2,3]);g.computeVertexNormals();add(g,paving[0]);
-      ramps.push({x,z,width,upper:1.334,lower:1.018});
+      ramps.push({x,z,width,length:1.45,upper:1.334,lower:1.018});
     }
   }
   const dunes=[];city.w.root.traverse(o=>{if(o.userData.dubaiRearDune)dunes.push({mesh:o,visible:o.visible});});
@@ -117,10 +145,11 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
     mesh.receiveShadow=true;mesh.castShadow=!paving.includes(m);if(paving.includes(m))mesh.userData.skipContact=true;root.add(mesh);
   }
   city.w.root.add(root);root.visible=false;
-  const stats={gardens:footprints.length,trees,pavers:surfaces.length,ramps:ramps.length,triangles:root.children.reduce((n,m)=>n+m.geometry.index.count/3,0),drawCalls:root.children.length};
-  return {root,footprints,surfaces,ramps,stats,apply(){if(enabled&&!disposed)for(const d of dunes){d.visible=d.mesh.visible;d.mesh.visible=false;}},setEnabled(v){
+  const walkSurface=createPavingSurface(surfaces,ramps);ctx.walkSurfaces??=[];
+  const stats={gardens:footprints.length,borders:footprints.filter(b=>b.border).length,trees,pavers:surfaces.length,ramps:ramps.length,edging:edging.length,triangles:root.children.reduce((n,m)=>n+m.geometry.index.count/3,0),drawCalls:root.children.length};
+  return {root,footprints,surfaces,ramps,edging,stats,apply(){if(enabled&&!disposed)for(const d of dunes){d.visible=d.visible||d.mesh.visible;d.mesh.visible=false;}},setEnabled(v){
     if(disposed||enabled===!!v)return;enabled=!!v;root.visible=enabled;
-    if(enabled)ctx.rects.push(...footprints);
-    else {for(const r of footprints){const i=ctx.rects.indexOf(r);if(i>=0)ctx.rects.splice(i,1);}for(const d of dunes)d.mesh.visible=d.visible;}
+    if(enabled){ctx.rects.push(...footprints);ctx.walkSurfaces.push(walkSurface);}
+    else {for(const r of footprints){const i=ctx.rects.indexOf(r);if(i>=0)ctx.rects.splice(i,1);}const i=ctx.walkSurfaces.indexOf(walkSurface);if(i>=0)ctx.walkSurfaces.splice(i,1);for(const d of dunes)d.mesh.visible=d.visible;}
   },dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());materials.forEach(m=>m.dispose());}};
 }
