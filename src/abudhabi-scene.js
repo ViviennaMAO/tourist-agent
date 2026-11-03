@@ -1,3 +1,4 @@
+import {installVenueFinish} from './abudhabi-venues.js';
 import {buildAbuDetails,ABU_DETAIL_OBSTACLES,palaceGarden} from './abudhabi-details.js';
 import {towerMassing,slopedCrown} from './tower-massing.js';
 import * as THREE from 'three';
@@ -146,6 +147,7 @@ export function createAbuDhabiScene({city,leafTexture}){
    l.asset.traverse(o=>{if(!o.isMesh)return;const before=o.material;
     const convert=m=>{
      const a=m.clone();a.color.set('#ffffff');a.emissiveIntensity=0;a.roughness=id==='grand_mosque'?.32:.66;a.metalness=.03;a.envMapIntensity=.7;
+     if(id==='ferrari_world'||id==='abrahamic'){installVenueFinish(a,id);owned.push(a);return a;}
      const prev=m.onBeforeCompile,key=m.customProgramCacheKey();
      a.onBeforeCompile=function(sh,r){prev.call(this,sh,r);sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
       float abuLum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));

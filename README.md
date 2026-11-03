@@ -4,6 +4,8 @@ An independent, Explore-only edition of Parallel World. Walk through four miniat
 
 The active edition loads 25 landmarks across these four cities. Dubai now includes an animated waterfront observation wheel and a circular observation-wheel island and a curved eight-vessel harbor with ten waterfront cafés/restaurants and five walkable finger piers, both connected to shore navigation and checkins. City navigation, collections, quests and the world map share the same roster; archived local checkins remain stored but are excluded from active progress. See [four-city validation](docs/four-city-edition.md).
 
+Abu Dhabi phase 7 refines the Ferrari/cultural venue envelopes: reflective glazing, stone finishes, measured roof edges and entrance hardware. See [implementation, validation and limits](docs/abudhabi-phase-7.md).
+
 Abu Dhabi phase 6 adds stone edges and flower ribbons to three lagoon islands, 12 further landscape beds, two venue shade courts and entrance paving. See [scope, verification and limits](docs/abudhabi-phase-6.md).
 
 Abu Dhabi phase 5 brings district details closer to Dubai: 13 garden beds, two lakefront shade structures, finer foliage, low-rise façade and tower-entry details, road finishes and 16 detailed vehicles. See [comparison, verification and remaining gaps](docs/abudhabi-phase-5.md).
