@@ -2,7 +2,7 @@
 
 An independent, Explore-only edition of Parallel World. Walk through four miniature cities — Dubai, Abu Dhabi, Tokyo, and Las Vegas —, visit landmarks, and collect local demonstration stamps and tickets.
 
-The active edition loads 25 landmarks across these four cities. Dubai now includes an animated waterfront observation wheel and a cruise pier with a berthed ship, both connected to shore navigation and checkins. City navigation, collections, quests and the world map share the same roster; archived local checkins remain stored but are excluded from active progress. See [four-city validation](docs/four-city-edition.md).
+The active edition loads 25 landmarks across these four cities. Dubai now includes an animated waterfront observation wheel and an eight-vessel marina with ten waterfront cafés/restaurants and five walkable finger piers, both connected to shore navigation and checkins. City navigation, collections, quests and the world map share the same roster; archived local checkins remain stored but are excluded from active progress. See [four-city validation](docs/four-city-edition.md).
 
 This repository has its own history and Vercel project. It does not merge changes into `parallel-world-cities-opening`.
 

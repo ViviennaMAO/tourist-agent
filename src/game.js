@@ -531,9 +531,10 @@ class Ctx {
     this.camKeys = []; this.orbit = null; this.T = 50; this.title = null;
     this.roads = []; this.circles = []; this.rects = []; this.fronds = []; this.crescent = null;
     this.raised = [];   // 抬高地块：{ test(x,z), y }，决定树、楼落在多高
-    this.walkSurfaces = [];
+    this.walkSurfaces = [];this.walkAreas=[];
     this.islands = [];  // 岛屿轮廓：{ kind, args }，河道据此判断哪里是陆地、哪里该降到海面
     for (const c of Object.values(city.landmarks)) {
+      if(c.walkAreas)for(const a of c.walkAreas){this.walkAreas.push(a);this.walkSurfaces.push((x,z)=>Math.abs(x-a.x)<=a.w/2&&Math.abs(z-a.z)<=a.d/2?a.height:null);}
       if(c.walkSurface){const {bounds:[x1,z1,x2,z2],height}=c.walkSurface;this.walkSurfaces.push((x,z)=>x>=x1&&x<=x2&&z>=z1&&z<=z2?height:null);}
       if(c.walkObstacles)this.rects.push(...c.walkObstacles.map(q=>({...q,x:q.x+c.pos[0],z:q.z+c.pos[1]})));
       else this.circles.push({ x: c.pos[0], z: c.pos[1], r: c.r });
@@ -1535,7 +1536,7 @@ const LM_DESC = {
   'Sheikh Zayed Grand Mosque': '阿联酋最大的清真寺，白色大理石与 82 座穹顶。',
   'Capital Gate': '向西倾斜 18 度的「斜塔」摩天楼。',
   'Dubai Waterfront Wheel': '东侧海湾的观景摩天轮，24 个座舱随轮缘缓慢运行，面向海湾与迪拜天际线。',
-  'Dubai Cruise Pier': '沿海步道连接的邮轮码头，设候船厅、登船廊桥和邮轮泊位。当前可探索岸上区域。',
+  'Dubai Cruise Pier': '多泊位滨海港湾，停靠不同尺度的观光邮轮与游艇；沿岸咖啡厅、餐厅和露台围绕水面，可沿步道和指状码头探索。',
   'Ferrari World': '全球首个法拉利主题公园，标志性的红色屋顶。',
   'Etihad Towers': '阿布扎比海滨的玻璃塔楼群。',
   'Emirates Palace': '阿布扎比海边的宫殿式酒店，金色穹顶。',
@@ -1798,7 +1799,7 @@ function walkable(x, z) {
   const c = exploreCityAt(x, z); if (!c) return null;
   const [ox, oz] = CITY_GRID[c.id], lx = x - ox, lz = z - oz, ctx = c.w.ctx;
   const onRoad = ctx.roads.some(r => r.kind !== 'canal' && segDist2(lx, lz, r.A, r.B) < r.hw);
-  const onLand = ctx.islands.some(il => insideShape(il.kind, il.args, lx, lz) || (c.id==='dubai'&&il.kind==='crescent'&&il.outline&&pointInPolygon(il.outline,lx,lz)));
+  const onLand = ctx.walkAreas.some(a=>Math.abs(lx-a.x)<=a.w/2&&Math.abs(lz-a.z)<=a.d/2)||ctx.islands.some(il => insideShape(il.kind, il.args, lx, lz) || (c.id==='dubai'&&il.kind==='crescent'&&il.outline&&pointInPolygon(il.outline,lx,lz)));
   if (!onLand && !onRoad) return null;
   if (!onRoad) {
     for (const r of ctx.roads) if (r.kind === 'canal' && segDist2(lx, lz, r.A, r.B) < r.hw - 0.6) return null;
@@ -2299,7 +2300,9 @@ function setReviewCamera(kind) {
   const [x, z] = CITY_GRID.dubai;
   const shots = {
     wheel: {p:[91,28,82],q:[58,16,29],name:'滨海摩天轮',start:[58,43]},
-    cruise: {p:[115,24,58],q:[88,4,13],name:'邮轮码头',start:[82,23]},
+    cruise: {p:[124,31,62],q:[83,3,18],name:'邮轮码头',start:[82,23]},
+    marinaPier: {p:[119,8,25],q:[89,2,18],name:'泊位步行',start:[90,18]},
+    marinaDining: {p:[105,9,34],q:[77,2.7,25],name:'滨水餐饮街',start:[83,22]},
     harbor: {p:[122,75,111],q:[58,6,13],name:'东湾全景',start:[48,14]},
     burjUp: { p: [0, 2.7, -16], q: [0, 33, -33], name: '哈利法塔底仰视', start: [0,-16] },
     panorama: { p: [-20, 49, 108], q: [0, 19, -35], name: '城市全景比例' },
@@ -2380,7 +2383,7 @@ function setupReview() {
   panel.innerHTML = `<strong>视觉验收 · 第三十六轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第三十一轮 · 石墙、树冠与侧缘花庭</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   const coverageShots = document.createElement('div'); coverageShots.className = 'reviewBtns reviewCoverage';
-  for (const [shot, label] of [['wheel','滨海摩天轮'],['cruise','邮轮码头'],['harbor','东湾全景'],['burjUp', '塔底仰视'], ['promenade', '步道花境'], ['sideGarden', '侧缘花庭'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
+  for (const [shot, label] of [['marinaPier','泊位步行'],['marinaDining','滨水餐饮街'],['wheel','滨海摩天轮'],['cruise','邮轮码头'],['harbor','东湾全景'],['burjUp', '塔底仰视'], ['promenade', '步道花境'], ['sideGarden', '侧缘花庭'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
     const button = document.createElement('button'); button.dataset.shot = shot; button.textContent = label;
     coverageShots.append(button);
   }
