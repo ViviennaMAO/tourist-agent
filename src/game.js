@@ -1,3 +1,4 @@
+import { configureExploreCamera, keepCameraAboveGround, resetWalkingCamera, EXPLORE_DISTANCE_LIMIT } from './explore-camera.js';
 import { inPlot } from './island-layout.js';
 import * as THREE from 'three';
 import {pointInPolygon} from './shore-profile.js';
@@ -2752,7 +2753,7 @@ function travelTo(id) {
 function goLandmark(L) { const P = V3(); L.holder.getWorldPosition(P); arrive(P, L.size ? L.size[1] : L.H, Math.max(L.rXZ, L.cfg.r), L, L.city.id); }
 function arrive(P, h, r, L, id) {
   if (!spawnNear(P, r)) return;
-  EX.overview = false; document.body.classList.remove('overview'); $('worldHint').style.display = 'none';
+  EX.overview = false; EX.inspect = false; configureExploreCamera(controls); document.body.classList.remove('overview'); $('worldHint').style.display = 'none';
   // 构图：她在前景，地标整栋入画——距离按地标高度放大，视线对准她和地标之间、地标半腰
   // hTop：地标顶端离她脚下的高度（含山体/底座，如山顶的基督像）；35° 视角下让她和整栋地标同时入画
   const hTop = P.y + h - EX.y, dir = P.clone().sub(EX.pos).setY(0).normalize(), back = Math.max(22, hTop * 1.7, r * 1.8);
@@ -2770,7 +2771,7 @@ function arrive(P, h, r, L, id) {
 function toggleOverview(on = !EX.overview) {
   review.fixed = false; review.camera = on ? '世界地图' : '自由探索';
   EX.overview = on; document.body.classList.toggle('overview', on); hideCard(); $('worldHint').style.display = on ? 'block' : 'none';
-  controls.maxDistance = on ? 5000 : 90;
+  configureExploreCamera(controls, on);
   if (on) {
     EX.back = { p: camera.position.clone(), q: controls.target.clone() };
     // Fit the wide eleven-city layout on portrait screens as well as desktop.
@@ -2781,12 +2782,24 @@ function toggleOverview(on = !EX.overview) {
 }
 
 let girl = null;
+const previousExploreCamera = V3();
 function setupExplore() {
   document.body.classList.add('explore');
   girl = makeGirl(); scene.add(girl.root);
   spawnAt('dubai');
   controls.enabled = true; state.userCam = true; state.playing = false;
-  Object.assign(controls, { minDistance: 4.5, maxDistance: 90, maxPolarAngle: 1.38, enablePan: false });
+  configureExploreCamera(controls);
+  controls.addEventListener('start', () => {
+    if (EX.overview || GUI.loading || uiBusy()) return;
+    camFly = null; EX.inspect = true; EX.hold = true; previousExploreCamera.copy(camera.position);
+    review.fixed = false; review.camera = '自由观察';
+    const distance = camera.position.distanceTo(controls.target);
+    configureExploreCamera(controls); controls.maxDistance = Math.max(EXPLORE_DISTANCE_LIMIT, distance);
+  });
+  controls.addEventListener('change', constrainExploreCamera);
+  const reset = document.createElement('button'); reset.id = 'cameraReset';
+  reset.textContent = '重置视角'; reset.title = '回到 Eva 身后（R）';
+  reset.onclick = resetExploreView; stageEl.append(reset);
   camera.position.copy(EX.pos).add(V3(0, 13, 24)); controls.target.copy(EX.pos).add(V3(0, 2, 0));
   // Start beside the pilot square only when the detailed district is active.
   // The spawn is validated against the same collision map as player movement.
@@ -2799,15 +2812,15 @@ function setupExplore() {
   }
   $('worldHint').textContent = '点击任意一座城市，直达它的中心地标 · Esc 返回';
 
-  $('hint').textContent = '方向键 / WASD 走动 · Shift 奔跑 · 拖动转视角 · 点地标看介绍 · 点城市按钮或远处的岛直达 · M 地图';
+  $('hint').textContent = '方向键 / WASD 走动 · Shift 奔跑 · 上下拖动俯仰、左右环绕 · R 重置视角 · 点地标看介绍 · 点城市按钮或远处的岛直达 · M 地图';
   $('city').onchange = e => { const v = e.target.value; if (CITIES[v]) travelTo(v); else goCity(v); };
   // 顶部城市快捷按钮：一点直达该城的中心地标
   $('cityChips').innerHTML = Object.values(CITIES).sort((a, b) => a.index - b.index).map(c => `<button data-id="${c.id}">${c.nameZh}</button>`).join('') + '<button id="mapBtn" title="世界地图（M）">🗺 地图</button>';
   $('cityChips').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; b.id === 'mapBtn' ? toggleOverview() : travelTo(b.dataset.id); });
   setupGameUI();
-  addEventListener('keydown', e => { if (/INPUT|SELECT/.test(e.target.tagName) || uiBusy()) return; if (e.code === 'KeyM') toggleOverview(); if (e.key === 'Escape' && EX.overview) toggleOverview(false); });
+  addEventListener('keydown', e => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.target.isContentEditable || uiBusy()) return; if (e.code === 'KeyR') { e.preventDefault(); resetExploreView(); } if (e.code === 'KeyM') toggleOverview(); if (e.key === 'Escape' && EX.overview) toggleOverview(false); });
   const KEYMAP = { ArrowUp: 'u', KeyW: 'u', ArrowDown: 'd', KeyS: 'd', ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', ShiftLeft: 'run', ShiftRight: 'run' };
-  addEventListener('keydown', e => { if (/INPUT|SELECT/.test(e.target.tagName) || uiBusy()) return; const k = KEYMAP[e.code]; if (k) { EX.keys.add(k); e.preventDefault(); } }, true);
+  addEventListener('keydown', e => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.target.isContentEditable || uiBusy()) return; const k = KEYMAP[e.code]; if (k) { EX.keys.add(k); e.preventDefault(); } }, true);
   addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) EX.keys.delete(k); }, true);
   addEventListener('blur', () => EX.keys.clear());
   // 手机方向键：按住移动
@@ -2816,12 +2829,32 @@ function setupExplore() {
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
   });
 }
+function cameraGroundY(x, z) {
+  for (const b of world.explore.bridges) if (segDist2(x,z,b.A,b.B) < b.hw) return 1.52;
+  const c=exploreCityAt(x,z); if (!c) return 0;
+  const [ox,oz]=CITY_GRID[c.id],lx=x-ox,lz=z-oz,ctx=c.w.ctx;
+  const road=ctx.roads.find(r=>r.kind!=='canal'&&segDist2(lx,lz,r.A,r.B)<r.hw);
+  if(road)return road.kind==='pier'?1.25:1.38;
+  return ctx.islands.some(i=>i.outline?pointInPolygon(i.outline,lx,lz):insideShape(i.kind,i.args,lx,lz))?ctx.groundY(lx,lz):0;
+}
+function constrainExploreCamera() {
+  if (!girl || EX.overview || camFly) { previousExploreCamera.copy(camera.position); return; }
+  keepCameraAboveGround(camera,controls,cameraGroundY(camera.position.x,camera.position.z),1,
+    EX.inspect && EX.keys.size===0 ? previousExploreCamera : null);
+  previousExploreCamera.copy(camera.position);
+}
+function resetExploreView() {
+  if (!GUI.ready || uiBusy() || EX.overview) return;
+  camFly=null; EX.inspect=false; EX.hold=false; EX.keys.clear();
+  review.fixed=false; review.camera='自由探索';
+  resetWalkingCamera(camera,controls,girl.root.position,EX.yaw);
+}
 function exploreStep(dt, now) {
   if (camFly) {
     const u = clamp01((now - camFly.t0) / camFly.dur), e = u * u * (3 - 2 * u);
     camera.position.lerpVectors(camFly.fromP, camFly.toP, e); camera.position.y += Math.sin(Math.PI * e) * camFly.arc;
     controls.target.lerpVectors(camFly.fromQ, camFly.toQ, e);
-    if (u >= 1) { camFly = null; if (!EX.overview) controls.maxDistance = 90; }
+    if (u >= 1) { camFly = null; if (!EX.overview) controls.maxDistance = Math.max(EXPLORE_DISTANCE_LIMIT, camera.position.distanceTo(controls.target) * 1.05); }
   }
   const K = (GUI.loading || uiBusy() || camFly || EX.overview) ? new Set() : EX.keys, fx = (K.has('r') ? 1 : 0) - (K.has('l') ? 1 : 0), fz = (K.has('u') ? 1 : 0) - (K.has('d') ? 1 : 0);
   // 方向相对画面：上 = 远离镜头
@@ -2842,9 +2875,9 @@ function exploreStep(dt, now) {
   const w = walkable(EX.pos.x, EX.pos.z), gy = w ? w.y : EX.y; EX.y += (gy - EX.y) * Math.min(1, dt * 10);
   girl.root.position.set(EX.pos.x, EX.y, EX.pos.z); girl.root.rotation.y = EX.yaw;
   girl.animate(dt, review.fixed && review.character ? review.poseSpeed : speed, now / 1000);
-  if (speed > 0) EX.hold = false;   // 一走动，视线高度慢慢回到她身上
+  if (speed > 0 && !EX.inspect) EX.hold = false;   // 默认视角随行走回正；手动观察保留仰角，R 可回到人物身后
   if (!camFly && !EX.overview && !EX.hold) controls.target.y += (EX.y + 2 - controls.target.y) * Math.min(1, dt * 6);
-  controls.update();
+  controls.update(); constrainExploreCamera();
   // 进城横幅、靠近地标自动弹出介绍卡
   const c = w && w.c ? w.c : null;
   if (c && c !== EX.city) { EX.city = c; $('cityBanner').innerHTML = `<b>${c.city.name}</b> ${c.city.nameZh}<span>${String(c.city.index).padStart(2, '0')} / 11</span>`; $('cityBanner').classList.remove('show'); void $('cityBanner').offsetWidth; $('cityBanner').classList.add('show'); markWatched(c.id);  cityMusic(c.id); onCityEnter(c); }
@@ -3113,7 +3146,7 @@ function gameLoadProgress() {
 function enterGame() {
   if (GUI.ready) return;
   $('gameLoad').classList.add('out'); setTimeout(() => $('gameLoad').style.display = 'none', 650);
-  clearInterval(GUI.tipTimer); GUI.loading = false; GUI.ready = true;
+  clearInterval(GUI.tipTimer); GUI.loading = false; GUI.ready = true; document.body.classList.add('gameReady');
   if (state.music) musicNow.play().then(musicUI).catch(() => {});   // 点击即用户手势，浏览器会放行自动播放
   makeAvatar(); hudRefresh();
   setTimeout(() => $('hint').classList.add('fade'), 15000);
@@ -3149,7 +3182,7 @@ function setupGameUI() {
   $('hudMenuPop').onclick = e => { const b = e.target.closest('button'); if (!b) return; hideMenu(); const m = b.dataset.m;
     if (m === 'music') $('music').click();
     else if (m === 'help') showPop(`<div class="gp-card" style="padding-left:22px"><button class="gp-x" aria-label="关闭">×</button><h2>操作说明</h2><ul class="gp-help">
-      <li>方向键 / WASD 走动，按住 Shift 奔跑；手机用左下角方向键</li><li>拖动画面转视角，滚轮缩放</li><li>走近地标：弹出介绍并点亮城市印记；介绍卡里可用 PWV 买门票</li>
+      <li>方向键 / WASD 走动，按住 Shift 奔跑；手机用左下角方向键</li><li>上下拖动可俯视或仰望高楼，左右拖动环绕；滚轮或双指缩放；按 R 或点「重置视角」回到 Eva 身后</li><li>走近地标：弹出介绍并点亮城市印记；介绍卡里可用 PWV 买门票</li>
       <li>右下角 GO 前往下一座城；底部城市按钮一点直达</li><li>M 打开世界地图，Esc 关闭弹窗</li></ul><div class="gp-btns"><button class="ok" data-go="close">知道了</button></div></div>`);
     else if (m === 'reset' && confirm('清空本浏览器里的演示数据（打卡、门票订单、PWV 余额、优惠券）并重新开始？')) {
       [CHECK_KEY, GIFT_KEY, WALLET_KEY, ORDERS_KEY, COUPON_KEY, WATCH_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} }); location.reload();
@@ -3182,13 +3215,14 @@ const REVIEW = QS.get('review') === '1';
 const review = { enabled: realism.enabled, frozen: false, fixed: false, time: 0, errors: [], fps: 0, camera: '自由探索', character: false, poseSpeed: 0 };
 function setReviewCamera(kind) {
   review.fixed = true; review.character = false;
-  controls.minDistance = 4.5; controls.maxPolarAngle = 1.38;
+  configureExploreCamera(controls); EX.inspect = false;
   for (let i = 0; i < 3 && GUI.pop; i++) closePop();
   closePanel(); hideCard(); camFly = null;
   EX.overview = false; EX.hold = true; EX.keys.clear(); document.body.classList.remove('overview');
   controls.maxDistance = 3000;
   const [x, z] = CITY_GRID.dubai;
   const shots = {
+    burjUp: { p: [0, 2.7, -16], q: [0, 33, -33], name: '哈利法塔底仰视', start: [0,-16] },
     panorama: { p: [-20, 49, 108], q: [0, 19, -35], name: '城市全景比例' },
     promenade: { p: [58, 4.5, -15], q: [56, 1.3, -8.1], name: '东侧滨水花境', start: [55,-11] },
     landmarkContact: { p: [30, 5, -9], q: [21, 2.8, -27], name: '博物馆接地' },
@@ -3263,10 +3297,10 @@ function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第二十八轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第二十八轮 · 步道花境与塔楼构件</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第二十九轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第二十九轮 · 高楼仰视与相机控制</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   const coverageShots = document.createElement('div'); coverageShots.className = 'reviewBtns reviewCoverage';
-  for (const [shot, label] of [['promenade', '步道花境'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
+  for (const [shot, label] of [['burjUp', '塔底仰视'], ['promenade', '步道花境'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
     const button = document.createElement('button'); button.dataset.shot = shot; button.textContent = label;
     coverageShots.append(button);
   }
@@ -3299,7 +3333,7 @@ function setupReview() {
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   };
   const updateDistrictButton = () => {
-    $('reviewDistrict').textContent = realism.districtEnabled ? '第二十八轮 · 步道花境与塔楼构件' : '第二轮 · 局部样本';
+    $('reviewDistrict').textContent = realism.districtEnabled ? '第二十九轮 · 高楼仰视与相机控制' : '第二轮 · 局部样本';
     $('reviewDistrict').setAttribute('aria-pressed', String(realism.districtEnabled));
   };
   updateDistrictButton();

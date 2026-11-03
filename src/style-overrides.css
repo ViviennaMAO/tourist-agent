@@ -121,3 +121,7 @@ body.reviewClean #reviewPanel { width:auto; max-height:none; }
 body.reviewClean #reviewPanel > :not(#reviewCollapse) { display:none; }
 body.reviewClean #reviewCollapse { margin:0; }
 body.reviewClean #hud, body.reviewClean #cityChips, body.reviewClean #cityBanner { display:none; }
+
+#cameraReset { position:absolute; right:22px; bottom:140px; z-index:20; min-height:44px; padding:8px 14px; border:1px solid #d7cdb899; border-radius:10px; background:#243b31ed; color:#f3efe4; cursor:pointer; }
+body.overview #cameraReset,body.reviewClean #cameraReset,body:not(.gameReady) #cameraReset { display:none; }
+@media(max-width:900px) { #cameraReset { right:18px; bottom:112px; } }
