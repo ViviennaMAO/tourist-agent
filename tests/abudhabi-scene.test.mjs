@@ -23,7 +23,7 @@ test('Abu Dhabi refinement restores source instances/materials and removes only 
  const scene=createAbuDhabiScene({city,leafTexture:tex});let disposed=0;
  for(const o of [source,geo,tex])o.addEventListener('dispose',()=>disposed++);
  for(const mesh of scene.root.children)for(const a of Object.values(mesh.geometry.attributes))assert.ok(a.array.every(Number.isFinite));
- assert.ok(scene.stats.triangles<80000);assert.ok(scene.stats.drawCalls<20);
+ assert.ok(scene.stats.triangles<80000);assert.ok(scene.stats.drawCalls<24);
  scene.setEnabled(true);scene.apply();scene.setEnabled(true);assert.equal(ctx.rects.length,1+ABU_OBSTACLES.length+ABU_DETAIL_OBSTACLES.length);assert.equal(ctx.walkSurfaces.length,2);
  assert.notEqual(asset.children[0].material,source);
  assert.equal(ctx.walkSurfaces[1](-15,42),1.115);

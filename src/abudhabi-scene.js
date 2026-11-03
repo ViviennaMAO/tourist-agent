@@ -22,6 +22,9 @@ export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
  const tileTrim=finish('#dbd8cc',.65);tileTrim.userData.floorFinish=true;installSurfaceFinish(tileTrim,'paving');
  installSurfaceFinish(stone,'limestone');installSurfaceFinish(trim,'paving');installSurfaceFinish(wood,'wood');
  glass.userData.cityGlass=true;glass.userData.reflectionZone='skyline';installCurtainWallFinish(glass);
+ const towerGlass=['#527280','#768891','#6e6b60'].map(c=>{const m=finish(c,.21,.28);m.userData.cityGlass=true;m.userData.reflectionZone='skyline';installCurtainWallFinish(m);return m;});
+ const spandrel=finish('#495d64',.5,.32),silver=finish('#a9b7b8',.4,.6),towerStone=finish('#cfc8b6',.82);installSurfaceFinish(towerStone,'limestone');
+
  green.map=leafTexture||null;green.alphaTest=.42;green.side=THREE.DoubleSide;installLeafDaylight(green);
  marble.onBeforeCompile=sh=>{
   sh.vertexShader='varying vec3 abuStone;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nabuStone=position;');
@@ -84,7 +87,7 @@ export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
    const g=new THREE.BoxGeometry(ww,hh,dd).translate(x,y,z).rotateY(ry).translate(b.x,b.base,b.z);add(g,m);
   };
   if(tall){
-   const {family,tiers}=towerMassing(w,d,h,index,1.9);
+   const {family,tiers}=towerMassing(w,d,h,index,1.9),facade=index%4,towerPane=towerGlass[index%3];
    part(stone,0,.25,0,w,.5,d);part(glass,0,1.2,0,w*.86,1.4,d*.86);
    // Human-scale entrance glazing and slender canopy beneath each tower.
    for(const side of [0,1,2,3]){
@@ -96,13 +99,28 @@ export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
     entry(trim,0,.53,.11,span*.72,.06,.24);
    }
    for(const t of tiers){
-    part(glass,t.x,(t.bottom+t.top)/2,0,t.w,t.top-t.bottom,t.d);
-    part(trim,t.x,t.bottom,0,t.w+.045,.065,t.d+.045);
-    const floor=family===3?1.45:1.12;
-    for(let y=t.bottom+.15;y<t.top;y+=floor)part(trim,t.x,y,0,t.w+.04,.035,t.d+.04);
-    for(const sign of [-1,1]){
-     for(let x=-t.w/2+.12;x<t.w/2;x+=family===1?.65:1.1)part(trim,t.x+x,(t.top+t.bottom)/2,sign*(t.d/2+.02),.025,t.top-t.bottom,.04);
-     for(let z=-t.d/2+.12;z<t.d/2;z+=1.1)part(trim,t.x+sign*(t.w/2+.02),(t.top+t.bottom)/2,z,.04,t.top-t.bottom,.025);
+    part(facade===1?towerStone:towerPane,t.x,(t.bottom+t.top)/2,0,t.w,t.top-t.bottom,t.d);
+    part(silver,t.x,t.bottom,0,t.w+.045,.065,t.d+.045);
+    const floor=facade===1?1.5:facade===2?1.28:1.12;
+    for(let side=0;side<4;side++){
+     const angle=side*Math.PI/2,span=side%2?t.d:t.w,depth=side%2?t.w:t.d;
+     const face=(m,u,y,off,ww,hh,dd)=>add(new THREE.BoxGeometry(ww,hh,dd).translate(u,y,depth/2+off).rotateY(angle).translate(t.x,0,0).rotateY(ry).translate(b.x,b.base,b.z),m);
+     if(facade===1){
+      const cols=Math.max(2,Math.floor(span/1.2)),bay=span/cols;
+      for(let y=t.bottom+.74;y<t.top-.3;y+=floor)for(let j=0;j<cols;j++){
+       const u=-span/2+(j+.5)*bay;
+       face(towerPane,u,y,.025,bay*.68,1.02,.04);
+       face(trim,u,y-.54,.12,bay*.81,.055,.24);
+       face(bronze,u,y,.06,.025,1.04,.045);
+       if(index%3===0&&Math.floor(y/floor)%3===1){face(towerStone,u,y-.6,.21,bay*.9,.08,.42);face(silver,u,y-.2,.4,bay*.85,.025,.025);for(const q of [-.36,0,.36])face(silver,u+q*bay,y-.4,.4,.022,.42,.025);}
+      }
+     }else{
+      for(let y=t.bottom+.18;y<t.top;y+=floor){face(spandrel,0,y,.024,span,facade===3?.2:.09,.045);if(facade===0)face(silver,0,y+.06,.045,span,.018,.055);}
+      const step=facade===2?.48:facade===3?1.35:.85;
+      for(let u=-span/2+.15;u<span/2;u+=step)face(facade===3?bronze:silver,u,(t.top+t.bottom)/2,facade===2?.09:.04,facade===2?.045:.022,t.top-t.bottom,facade===2?.18:.055);
+     }
+     // Two narrow corner returns catch a different light from the window planes.
+     for(const sign of [-1,1])face(facade===1?trim:silver,sign*(span/2-.035),(t.top+t.bottom)/2,.025,.07,t.top-t.bottom,.09);
     }
    }
    const t=tiers.at(-1);

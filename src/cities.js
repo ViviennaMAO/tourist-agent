@@ -1,3 +1,4 @@
+import {ABU_COAST} from './abudhabi-coastline.js';
 import {VEGAS_RESERVATIONS} from './vegas-layout.js';
 import {MARINA_OBSTACLES,MARINA_PIERS,MARINA_OUTLINE} from './dubai-marina-layout.js';
 // Active Explore edition. Removed recipes remain available in Git history.
@@ -130,7 +131,7 @@ wait(2.3)
 cam([12,175,175],[0,0,-18])
 
 stage(2,'沙洲升起',4)
-island('mainland','rect',[-72,-80,72,46],12)     // 阿布扎比主岛
+island('mainland','polygon',${JSON.stringify(ABU_COAST)},0)     // 阿布扎比主岛
 cam([30,128,160],[0,0,-18])
 wait(0.8)
 plaza([-38,-50,38,12],6)                          // 中心广场地块

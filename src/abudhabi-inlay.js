@@ -26,5 +26,5 @@ export function createMosqueInlay({city}){
  }
  for(const z of [40.06,44.42])add(new THREE.PlaneGeometry(32.9,.035).rotateX(-Math.PI/2).translate(-15,b.y+.002,z),gold);
  for(const [m,parts] of batches){const g=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.receiveShadow=true;mesh.userData.skipContact=true;root.add(mesh);}
- return {root,stats:{marbleFlowers:flowers,drawCalls:root.children.length},apply(){},setEnabled(v){root.visible=!!v&&!disposed;},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());materials.forEach(m=>m.dispose());}};
+ return {root,materials,stats:{marbleFlowers:flowers,drawCalls:root.children.length},apply(){},setEnabled(v){root.visible=!!v&&!disposed;},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());materials.forEach(m=>m.dispose());}};
 }

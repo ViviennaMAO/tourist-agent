@@ -1,3 +1,5 @@
+import {createAbuCoastalWalk} from './abudhabi-coastline.js';
+import {createMarbleReflection} from './marble-reflection.js';
 import {createVegasScene} from './vegas-scene.js';
 import {createVegasLake} from './vegas-lake.js';
 import {createVegasSphere} from './vegas-sphere.js';
@@ -42,8 +44,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const qs = new URLSearchParams(location.search);
   let enabled = qs.get('look') !== 'original';
   let refinementEnabled = qs.get('detail') !== 'off';
-  const refinements = [], districtStudies = [], lakeSwaps = [], abuStudies=[],tokyoStudies=[],vegasStudies=[];
-  let vegas=null,vegasProbe=null,nearVegas=false,abu=null,abuProbe=null,nearAbu=false,tokyo=null,tokyoProbe=null,nearTokyo=false;
+  const cityRoots=[],refinements = [], districtStudies = [], lakeSwaps = [], abuStudies=[],tokyoStudies=[],vegasStudies=[];
+  let vegas=null,vegasProbe=null,nearVegas=false,abu=null,abuProbe=null,abuMarble=null,nearAbu=false,tokyo=null,tokyoProbe=null,nearTokyo=false;
   let districtEnabled = qs.get('district') !== 'off';
   let contactEnabled=qs.get('ao')!=='off',reflectionsEnabled=qs.get('reflections')!=='off',skylineEnabled=qs.get('skyline')!=='off';
   let bounceEnabled=qs.get('bounce')!=='off';
@@ -217,6 +219,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();vegasProbe?.invalidate();
   }
   function enhanceCity(c) {
+    cityRoots.push(c.w.root,c.landmarkGroup);
     if(c.id==='lasvegas'){
       vegas=c;const vegasMaterials=new Map(replacement);vegasMaterials.set(M.rock,surface('sand',{color:'#aa8f75',scale:.16,roughness:.96,bump:.012}));
       c.w.root.traverse(o=>{if(!o.isMesh)return;const before=o.material,after=Array.isArray(before)?before.map(m=>vegasMaterials.get(m)||m):vegasMaterials.get(before)||before;
@@ -253,8 +256,9 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         colors.push({mesh,before,after});mesh.instanceColor.array.set(enabled?after:before);mesh.instanceColor.needsUpdate=true;
       }
       const realm=createAbuPublicRealm({city:c,leafTexture}),landscape=createAbuLandscape({city:c,leafTexture,existing:realm.plots});
-      const infill=planAbuInfill(c.w.ctx,[...realm.plots,...landscape.plots]);
-      abuStudies.push(createAbuDhabiScene({city:c,leafTexture,extraBuildings:infill}),createAbuTowers({city:c}),createMosqueInlay({city:c}),createAbuDhabiLandmarks({city:c}),createAbuVenues({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,landscape,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      const infill=planAbuInfill(c.w.ctx,[...realm.plots,...landscape.plots]),inlay=createMosqueInlay({city:c});
+      abuMarble=createMarbleReflection({renderer,scene,camera,city:c,inlay,excludeObjects:()=>cityRoots.filter(r=>r&&r!==c.w.root&&r!==c.landmarkGroup)});
+      abuStudies.push(createAbuDhabiScene({city:c,leafTexture,extraBuildings:infill}),createAbuTowers({city:c}),inlay,createAbuCoastalWalk({city:c}),createAbuDhabiLandmarks({city:c}),createAbuVenues({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,landscape,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
       abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{etihad:{position:[56,12,-20],min:[39,0,-38],max:[73,31,-2]},culture:{position:[49,5,24],min:[28,0,10],max:[70,15,46]},courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
       syncStudies();return;
     }
@@ -338,7 +342,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     const active = enabled && refinementEnabled;
     vegasStudies.forEach(r=>r.setEnabled(active));vegasProbe?.setEnabled(active&&reflectionsEnabled);
     tokyoStudies.forEach(r=>r.setEnabled(active));tokyoProbe?.setEnabled(active&&reflectionsEnabled);
-    abuStudies.forEach(r=>r.setEnabled(active));abuProbe?.setEnabled(active&&reflectionsEnabled);
+    abuStudies.forEach(r=>r.setEnabled(active));abuProbe?.setEnabled(active&&reflectionsEnabled);abuMarble?.setEnabled(active&&reflectionsEnabled);
     (districtEnabled ? districtStudies : refinements).forEach(r => r.setEnabled(active));
     if(backdrop)backdrop.setEnabled(active&&districtEnabled&&skylineEnabled);
     probe?.setEnabled(active&&districtEnabled&&reflectionsEnabled);
@@ -361,7 +365,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         // Capture only after the current sun matrix and shadow texture exist.
         // Sampling before this render baked a stale camera's shadows into glass.
         if(nearDubai)probe?.captureIfNeeded();
-        if(nearAbu)abuProbe?.captureIfNeeded();
+        if(nearAbu){abuProbe?.captureIfNeeded();abuMarble?.capture();}
         if(nearTokyo)tokyoProbe?.captureIfNeeded();
         if(nearVegas)vegasProbe?.captureIfNeeded();
         waterStudy.capture(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu||nearTokyo||nearVegas)&&reflectionsEnabled);
@@ -381,7 +385,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     get enabled() { return enabled; }, dispose() {
     setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
     vegasProbe?.dispose();vegasStudies.forEach(r=>r.dispose());
-    tokyoProbe?.dispose();tokyoStudies.forEach(r=>r.dispose());contact?.dispose();probe?.dispose();abuProbe?.dispose();abuStudies.forEach(r=>r.dispose());
+    tokyoProbe?.dispose();tokyoStudies.forEach(r=>r.dispose());contact?.dispose();probe?.dispose();abuProbe?.dispose();abuMarble?.dispose();abuStudies.forEach(r=>r.dispose());
     refinements.forEach(r => r.dispose()); districtStudies.forEach(r => r.dispose()); waterStudy.dispose();
     sky.material.fragmentShader = skyFragment; delete sky.material.uniforms.taAtmosphere; sky.material.needsUpdate = true;
     textures.forEach(t => t.dispose()); materials.forEach(m => m.dispose()); envTarget.dispose();

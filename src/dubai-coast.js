@@ -34,7 +34,8 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
   const root=new THREE.Group();root.name='Dubai — complete island revetments';
   const halos=[];
   city.w.root.traverse(mesh=>{if(mesh.isMesh&&mesh.userData.shoreline){const before=mesh.material,after=before.clone();after.color.set('#647d7c');after.opacity=before.opacity*.08;halos.push({mesh,before,after});}});
-  const samples=coastSamples(city.w.ctx.islands,city.w.ctx.roads,.48,city.id==='dubai');
+  const coastRoads=city.w.ctx.roads.map(r=>city.id==='abudhabi'&&r.kind==='canal'?{...r,kind:'road'}:r);
+  const samples=coastSamples(city.w.ctx.islands,coastRoads,.48,city.id==='dubai');
   const cap=stoneMaterial.clone();cap.onBeforeCompile=stoneMaterial.onBeforeCompile;cap.customProgramCacheKey=stoneMaterial.customProgramCacheKey;cap.color.set('#c9bba2');
   const rock=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96});
   rock.onBeforeCompile=shader=>{
