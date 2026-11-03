@@ -1,3 +1,4 @@
+import { createCurvedLeaf } from './curved-leaf.js';
 import { installLeafDaylight } from './leaf-daylight.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { chamferedBox } from './chamfered-box.js';
@@ -27,11 +28,11 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
   const box=(m,x,y,z,w,h,d)=>add(new THREE.BoxGeometry(w,h,d).translate(x,y,z),m);
   const up=new THREE.Vector3(0,1,0);
   function branch(a,b,r) {const delta=b.clone().sub(a);add(new THREE.CylinderGeometry(r*.55,r,delta.length(),r<.01?3:5,1,true).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize())).translate(...a.clone().add(b).multiplyScalar(.5).toArray()),bark);}
-  function leaves(x,y,z,rx,ry,rz,count,size=.12,groundcover=false) {
+  function leaves(x,y,z,rx,ry,rz,count,size=.12,groundcover=false,curved=false) {
     for(let i=0;i<count;i++) {
       const az=random()*Math.PI*2,yy=random()*2-1,rr=Math.sqrt(1-yy*yy)*Math.cbrt(random());
-      const g=new THREE.PlaneGeometry(size*1.45,size*2.1,!groundcover&&size>=.12?2:1,1),p=g.attributes.position;
-      for(let j=0;j<p.count;j++)p.setZ(j,(1-Math.abs(p.getX(j))/(size*.725))*.018);
+      const g=curved?createCurvedLeaf(THREE,size,1,false):new THREE.PlaneGeometry(size*1.45,size*2.1,!groundcover&&size>=.12?2:1,1),p=g.attributes.position;
+      if(!curved)for(let j=0;j<p.count;j++)p.setZ(j,(1-Math.abs(p.getX(j))/(size*.725))*.018);
       g.computeVertexNormals();
       if(groundcover)g.rotateZ(random()*2.8).rotateX(-Math.PI/2+(random()-.5)*.5).rotateY(az);
       else g.rotateX(-.9+random()*2).rotateY(az).rotateZ(random()*2.8);
@@ -102,7 +103,7 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
         branch(fork,tip,.033);
         for(let twig=0;twig<3;twig++) {
           const end=tip.clone().add(new THREE.Vector3(Math.cos(angle+twig*2.1)*.30,.12+twig*.08,Math.sin(angle+twig*2.1)*.26));
-          branch(tip,end,.010);leaves(end.x,end.y,end.z,.40,.46,.38,26,.095);
+          branch(tip,end,.010);leaves(end.x,end.y,end.z,.40,.46,.38,18,.104,false,true);
         }
       }
     }

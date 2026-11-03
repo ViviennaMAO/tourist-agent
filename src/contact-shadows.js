@@ -28,13 +28,14 @@ export function createContactNormals() {
       if(o.isPoints||o.isLine||o.isSprite) {saved.push([o,o.visible,null]);o.visible=false;}
       else if(o.isMesh) {
         const mats=Array.isArray(o.material)?o.material:[o.material];
-        saved.push([o,o.visible,o.material]);
+        saved.push([o,o.visible,o.material,o.geometry]);
+        if(o.userData.contactGeometry)o.geometry=o.userData.contactGeometry;
         if(mats.some(m=>m.transparent||m.depthWrite===false)||o.userData.skipContact) o.visible=false;
         else o.material=Array.isArray(o.material)?mats.map(proxy):proxy(o.material);
       }
     });
     try {return draw();} finally {
-      for(const [o,visible,material] of saved) {o.visible=visible;if(material)o.material=material;}
+      for(const [o,visible,material,geometry] of saved) {o.visible=visible;if(material)o.material=material;if(geometry)o.geometry=geometry;}
     }
   },dispose(){for(const m of cache.values())m.dispose();cache.clear();}};
 }

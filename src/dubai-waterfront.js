@@ -32,7 +32,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const interiorWall=roof,ceramic=glass,linen=trim;
   const finishes = { interiorWall,ceramic,linen, wall, trim, metal, glass, shopGlass, roof, recess, wood, amberGlass, lanternGlass, plantGreen, flowers };
   const bounce={value:1};
-  for(const m of [wall,trim,recess,wood,roof])installCourtyardBounce(m,city.w.root.position.clone(),bounce);
+  for(const m of [wall,trim,recess,wood,roof,glass,amberGlass])installCourtyardBounce(m,city.w.root.position.clone(),bounce);
   let transform = new THREE.Matrix4();
   function add(g, m) {
     if (!g.index) g.setIndex(Array.from({length:g.attributes.position.count}, (_, i) => i));
@@ -97,9 +97,9 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
       box(pavers[hash%7<4?0:hash%2+1], x, y+.022, z, width-.014, .022, .511);
     }
   }
-  for (const z of [-13.04, -5.76]) box(trim, -20, y+.023, z, 24, .025, .12);
+  for (const z of [-13.04, -5.76]) box(pavers[1], -20, y+.023, z, 24, .025, .12);
   const ring = new THREE.RingGeometry(2.66, 3.02, 80).rotateX(-Math.PI/2).translate(-20,y+.038,-9.4);
-  add(ring, trim);
+  add(ring, pavers[1]);
   for (const [m, geos] of batches) {
     if (!geos.length) continue;
     const g = mergeGeometries(geos); geos.forEach(p => p.dispose());

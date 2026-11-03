@@ -116,3 +116,14 @@ test('skyline air preserves curtain-wall and reflection callbacks before tone ma
   assert.ok(air>0&&air<shader.fragmentShader.indexOf('#include <tonemapping_fragment>'));
   material.dispose();
 });
+
+test('continuous contact geometry is temporary and restored even if rendering fails',()=>{
+  const scene=new THREE.Scene(),source=new THREE.BoxGeometry(2,.12,.6),proxy=new THREE.BoxGeometry(2,.12,.6,2,1,1);
+  const material=new THREE.MeshStandardMaterial(),mesh=new THREE.Mesh(source,material);mesh.userData.contactGeometry=proxy;scene.add(mesh);
+  const normals=createContactNormals();let sourceDisposed=0,proxyDisposed=0;
+  source.addEventListener('dispose',()=>sourceDisposed++);proxy.addEventListener('dispose',()=>proxyDisposed++);
+  assert.throws(()=>normals.withMaterials(scene,()=>{assert.equal(mesh.geometry,proxy);assert.notEqual(mesh.material,material);throw new Error('draw failed');}),/draw failed/);
+  assert.equal(mesh.geometry,source);assert.equal(mesh.material,material);assert.equal(mesh.visible,true);
+  normals.dispose();assert.equal(sourceDisposed,0);assert.equal(proxyDisposed,0);
+  source.dispose();proxy.dispose();material.dispose();
+});

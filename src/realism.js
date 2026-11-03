@@ -115,6 +115,12 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         uniform sampler2D taColor, taHeight;
         uniform float taScale, taBump, taDetail;
         vec2 taUV;
+        float taMineralHash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
+        float taMineralNoise(vec3 p){
+          vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+          return mix(mix(mix(taMineralHash(i),taMineralHash(i+vec3(1,0,0)),f.x),mix(taMineralHash(i+vec3(0,1,0)),taMineralHash(i+vec3(1,1,0)),f.x),f.y),
+          mix(mix(taMineralHash(i+vec3(0,0,1)),taMineralHash(i+vec3(1,0,1)),f.x),mix(taMineralHash(i+vec3(0,1,1)),taMineralHash(i+vec3(1,1,1)),f.x),f.y),f.z);
+        }
         vec3 taBumpNormal(vec3 N, float H) {
           vec3 dx = dFdx(-vViewPosition), dy = dFdy(-vViewPosition);
           vec3 a = cross(dy, N), b = cross(N, dx);
@@ -125,13 +131,18 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
         vec3 taN = abs(normalize(cross(dFdx(taWorld), dFdy(taWorld))));
         taUV = (taN.y > .5 ? taWorld.xz : (taN.x > taN.z ? taWorld.zy : taWorld.xy)) * taScale;
-        diffuseColor.rgb *= mix(vec3(1.0), texture2D(taColor, taUV).rgb, taDetail);`);
+        diffuseColor.rgb *= mix(vec3(1.0), texture2D(taColor, taUV).rgb, taDetail);
+        ${kind==='limestone'?`float mineral=taMineralNoise(taWorld*3.1)*.65+taMineralNoise(taWorld*17.)*.35;
+        diffuseColor.rgb*=mix(.96,1.025,mineral);`:''}`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        normal = taBumpNormal(normal, texture2D(taHeight, taUV).r * taBump);`);
+        float heightDetail=texture2D(taHeight,taUV).r*taBump;
+        ${kind==='limestone'?`float stonePixel=max(length(dFdx(taWorld)),length(dFdy(taWorld)));
+        heightDetail+=taMineralNoise(taWorld*95.)*.00045*(1.-smoothstep(.008,.04,stonePixel));`:''}
+        normal = taBumpNormal(normal,heightDetail);`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = clamp(roughnessFactor + (texture2D(taHeight, taUV).r - .5) * .16, .1, 1.0);`);
     };
-    mat.customProgramCacheKey = () => 'ta-surface-v1-' + kind;
+    mat.customProgramCacheKey = () => 'ta-surface-v2-' + kind;
     materials.push(mat); return mat;
   }
   const stone = surface('stone', { scale: .25, roughness: .84, bump: .010 }); // slab = 1 x .5 world units

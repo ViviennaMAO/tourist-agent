@@ -1,3 +1,4 @@
+import { createCurvedLeaf } from './curved-leaf.js';
 import { installLeafDaylight } from './leaf-daylight.js';
 import { shoreBulge, shoreSlope, promenadePolygon } from './shore-profile.js';
 import { quayCells, createQuayStone } from './quay-stones.js';
@@ -19,7 +20,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   stone.customProgramCacheKey = stoneMaterial.customProgramCacheKey; ownedMaterials.push(stone);
   const dark = material('#393c30',.64,{metalness:.55}), wood = material('#99784d'), soil = material('#4e4935');
   const bark=material('#6e5844',.94);
-  const leafOptions={side:THREE.DoubleSide,envMapIntensity:.4,...(leafTexture ? {map:leafTexture,alphaTest:.28,alphaToCoverage:true,bumpMap:leafTexture,bumpScale:.006} : {})};
+  const leafOptions={side:THREE.DoubleSide,envMapIntensity:.4,...(leafTexture ? {map:leafTexture,alphaTest:.28,alphaToCoverage:true} : {})};
   const greens = [material(leafTexture?'#c6cbb2':'#344f28',.88,leafOptions),material(leafTexture?'#f0edd0':'#657b3b',.86,leafOptions)];
   greens.forEach(installLeafDaylight);
   const bloom = [material('#b7446e',.88,{side:THREE.DoubleSide}),material('#f1e7c9',.9,{side:THREE.DoubleSide})];
@@ -78,13 +79,16 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         diffuseColor.rgb*=(.85+.22*quarryGrain)*mix(1.,.56,wet);
       `);
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
-        float relief=quarryGrain*.004+quarryNoise(quarryPosition*13.)*.006;
+        float quarryPixel=max(length(dFdx(quarryPosition)),length(dFdy(quarryPosition)));
+        float closeGrain=1.-smoothstep(.008,.04,quarryPixel);
+        float relief=quarryNoise(quarryPosition*13.)*.0035+quarryNoise(quarryPosition*67.)*.0012*closeGrain;
+        relief+=quarryNoise(quarryPosition*vec3(8.,31.,8.))*.0018;
         vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition);
         vec3 rx=cross(dy,normal),ry=cross(normal,dx);float det=dot(dx,rx);
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
       `);
     };
-    quarry.customProgramCacheKey=()=> 'pilot-quarry-v4';
+    quarry.customProgramCacheKey=()=> 'pilot-quarry-v5';
     const mortar=material('#968873',.98);
     const backing=new THREE.BoxGeometry(26,.94,.14,96,1,1).translate(-20,.5,-4.55);
     const bp=backing.attributes.position;
@@ -94,7 +98,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     for(let i=0;i<=96;i++){const x=-7-i*26/96;pavement.lineTo(x,4.87-shoreBulge(x));}pavement.closePath();
     add(new THREE.ShapeGeometry(pavement).rotateX(-Math.PI/2).translate(0,1.014,0),stone);
     for(const cell of quayCells()) add(createQuayStone(cell),quarry);
-    const coping=material('#c9bda7',.88);
+    const coping=material('#c9bda7',.88);coping.userData.thinCoping=true;
     for(let j=0;j<32;j++) {
       const x=-33+(j+.5)*26/32;
       box(coping,x,1.06,-4.91+shoreBulge(x),26/32*Math.sqrt(1+shoreSlope(x)**2)-.012,.12,.64,-Math.atan(shoreSlope(x)));
@@ -115,7 +119,9 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       // catches light without looking like low-poly balls or flat confetti.
       const length=fine?.055+random()*.05:crown?.085+random()*.065:.105+random()*.095,width=length*(.35+random()*.12);
       let leaf;
-      if(leafTexture) {
+      if(leafTexture&&crown) {
+        leaf=createCurvedLeaf(THREE,length,.94+random()*.10).rotateX(-Math.PI/2);
+      } else if(leafTexture) {
         // Alpha-tested folded cards keep visible veins and smooth leaf edges.
         // Four triangles per leaf allow denser clusters at the same mesh budget.
         leaf=new THREE.PlaneGeometry(length*2.1,length*2.1,2,1).rotateX(-Math.PI/2);
@@ -417,7 +423,15 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   cube.dispose();
   for(const [m,geometries] of batches) {
     const g=mergeGeometries(geometries); geometries.forEach(x=>x.dispose());
-    const mesh=new THREE.Mesh(g,m); mesh.castShadow=true; mesh.receiveShadow=true; root.add(mesh);
+    const mesh=new THREE.Mesh(g,m); mesh.castShadow=true; mesh.receiveShadow=true;
+    // A continuous same-height proxy closes subpixel coping seams only in
+    // the contact pass; it cannot project the lower rocks onto the cap.
+    if(m.userData.thinCoping){
+      const proxy=new THREE.BoxGeometry(26,.12,.64,32,1,1).translate(-20,1.06,-4.91),p=proxy.attributes.position;
+      for(let i=0;i<p.count;i++)p.setZ(i,p.getZ(i)+shoreBulge(p.getX(i)));
+      proxy.computeVertexNormals();mesh.userData.contactGeometry=proxy;
+    }
+    root.add(mesh);
   }
   city.w.root.add(root); root.visible=false;
   const shore=[], savedPools=[];
@@ -440,5 +454,5 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     const next=!!v; if(next===enabled)return; enabled=next;root.visible=next;
     if(next){ctx.rects.push(...colliders);if(promenade&&ctx.islands&&!ctx.islands.includes(promenade))ctx.islands.push(promenade);}
     else {if(promenade&&ctx.islands){const i=ctx.islands.indexOf(promenade);if(i>=0)ctx.islands.splice(i,1);}for(const r of colliders){const i=ctx.rects.indexOf(r);if(i>=0)ctx.rects.splice(i,1);}restore();}
-  },dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());ownedMaterials.forEach(m=>m.dispose());}};
+  },dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>{m.geometry.dispose();m.userData.contactGeometry?.dispose();});ownedMaterials.forEach(m=>m.dispose());}};
 }
