@@ -9,7 +9,7 @@ export function createDubaiBackdrop({THREE,city}) {
   const root=new THREE.Group();root.name='Dubai — inland skyline layers';
   const ctx=city.w.ctx,footprints=[],batches=new Map();let enabled=false,disposed=false;
   function finish(color,roughness,metalness=0){const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.9});batches.set(m,[]);return m;}
-  const glass=finish('#99aebb',.3,.32),silver=finish('#b6c1c6',.32,.4),sand=finish('#c2c3bd',.75),trim=finish('#9baeb8',.48,.4),roof=finish('#9ba7aa',.9);
+  const glass=finish('#68869c',.26,.45),silver=finish('#8b9fae',.31,.48),sand=finish('#a7adae',.78),trim=finish('#7b8c98',.4,.48),roof=finish('#7d898e',.9);
   for(const m of [glass,silver]){m.userData.cityGlass=true;m.userData.reflectionZone='skyline';installCurtainWallFinish(m);}
   for(const m of batches.keys())installSkylineAtmosphere(m,.26);
   function box(m,x,y,z,w,h,d,ry=0){batches.get(m).push(new THREE.BoxGeometry(w,h,d).rotateY(ry).translate(x,y,z));}
@@ -38,7 +38,9 @@ export function createDubaiBackdrop({THREE,city}) {
       box(roof,xx,base+t.top-.035,z,ww,.07,dd);
       // Quiet horizontal joints; vertical lines carry the distant silhouette.
       for(let yy=t.bottom+.65;yy<t.top-.1;yy+=1.35)for(const side of [-1,1]) {
+        box(roof,xx,base+yy-.045,z+side*(dd/2+.004),ww,.09,.012);
         box(trim,xx,base+yy,z+side*(dd/2+.008),ww,.022,.016);
+        box(roof,xx+side*(ww/2+.004),base+yy-.045,z,.012,.09,dd);
         box(trim,xx+side*(ww/2+.008),base+yy,z,.016,.022,dd);
       }
       for(const sign of [-1,1])for(const u of [-.32,0,.32]) {

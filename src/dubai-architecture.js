@@ -74,13 +74,13 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   }
   if(skylineGlass){
     skylineGlass.userData.reflectionZone='skyline';
-    skylineGlass.color.set('#829ead');skylineGlass.metalness=.62;
-    skylineGlass.roughness=.12;skylineGlass.envMapIntensity=1.35;
+    skylineGlass.color.set('#607e91');skylineGlass.metalness=.48;
+    skylineGlass.roughness=.18;skylineGlass.envMapIntensity=1.05;
     installCurtainWallFinish(skylineGlass);
   }
-  const skylineSpandrel=district?finish('#718996',.32,.36,{envMapIntensity:.9}):null;
+  const skylineSpandrel=district?finish('#475f70',.38,.32,{envMapIntensity:.7}):null;
   if(skylineSpandrel){skylineSpandrel.userData.cityGlass=true;skylineSpandrel.userData.reflectionZone='skyline';}
-  const skylineMetal = district ? finish('#71838d', .34, .55) : null;
+  const skylineMetal = district ? finish('#82919a', .37, .58) : null;
   for (const m of [skylineGlass, skylineSpandrel, skylineMetal].filter(Boolean)) installSkylineAtmosphere(m);
   const bounce={value:1};
   if(district)for(const m of [ivory,warm,trim,recess,wood])installDistrictBounce(m,city.w.root.position.clone(),bounce);

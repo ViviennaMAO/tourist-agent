@@ -52,7 +52,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       if(taAtmosphere>.5){
         vec3 d=normalize(vD);
         float elevation=smoothstep(0.,.12,max(d.y,0.));
-        c=mix(vec3(.45,.56,.68),vec3(.15,.29,.52),elevation);
+        c=mix(vec3(.48,.59,.72),vec3(.20,.35,.58),elevation);
         vec2 uv=d.xz/max(d.y+.12,.08)*2.4;
         float wisps=smoothstep(.52,.75,taCloud(uv*vec2(.65,1.8)));
         float cloud=wisps*smoothstep(.02,.18,d.y)*.43;
@@ -171,13 +171,13 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   function applyEnvironment() {
     const district = enabled && refinementEnabled && districtEnabled;
     sky.material.uniforms.taAtmosphere.value = district ? 1 : 0;
-    renderer.toneMappingExposure = enabled ? (district ? .97 : .99) : original.exposure;
+    renderer.toneMappingExposure = enabled ? (district ? .94 : .99) : original.exposure;
     scene.environment = enabled ? envTarget.texture : original.env;
-    hemi.color.copy(enabled ? new THREE.Color('#cbdcf1') : original.hemi);
-    hemi.groundColor.copy(enabled ? new THREE.Color('#b6aaa0') : original.ground);
-    hemi.intensity = enabled ? (district ? 1.0 : 1.1) : original.hi;
-    sun.color.copy(enabled ? new THREE.Color('#ffe2b5') : original.sun);
-    sun.intensity = enabled ? (district ? 3.55 : 2.65) : original.si;
+    hemi.color.copy(enabled ? new THREE.Color('#d5e3f5') : original.hemi);
+    hemi.groundColor.copy(enabled ? new THREE.Color('#c4b9aa') : original.ground);
+    hemi.intensity = enabled ? (district ? 1.32 : 1.1) : original.hi;
+    sun.color.copy(enabled ? new THREE.Color('#ffe5c2') : original.sun);
+    sun.intensity = enabled ? (district ? 2.95 : 2.65) : original.si;
     sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
     sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
     sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color('#e0e1d8') : original.horizon);

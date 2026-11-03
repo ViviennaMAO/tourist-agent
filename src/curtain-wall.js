@@ -18,7 +18,7 @@ export function installCurtainWallFinish(material) {
       curtainVariation=curtainHash(floor(curtainUv));
       // Suppress per-pane variation once a pane falls below a few pixels.
       float curtainDetail=1.-smoothstep(.18,.8,max(fwidth(curtainUv.x),fwidth(curtainUv.y)));
-      diffuseColor.rgb*=1.+(curtainVariation-.5)*.07*curtainDetail;
+      diffuseColor.rgb*=1.+(curtainVariation-.5)*.12*curtainDetail;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
       roughnessFactor=clamp(roughnessFactor+(curtainVariation-.5)*.035*curtainDetail,.065,1.);

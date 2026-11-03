@@ -9,7 +9,7 @@ export function createCityReflections({renderer,scene,city}) {
   const records=new Map(),hidden=[];
   const zones={
     courtyard:{position:[-20,4.8,-9],min:[-40,0,-22],max:[0,11,4]},
-    skyline:{position:[15,6.5,-50],min:[-64,0,-84],max:[64,32,-15]}
+    skyline:{position:[15,16,-50],min:[-64,0,-84],max:[64,32,-15]}
   };
   for(const zone of Object.values(zones)) {
     zone.origin={value:new THREE.Vector3(...zone.position)};
