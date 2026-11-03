@@ -22,24 +22,25 @@ export function createWaterStudy({ THREE, seaMat, lagoonMat, renderer, scene, ca
       float t = uT * .65;
       float distanceToEye = length(cameraPosition - vW);
       float fine = 1. - smoothstep(55., 220., distanceToEye);
-      vec2 slope = vec2(0.);
-      float warp=sin(dot(p,vec2(.7,.93))+t*.6)*.6;
-      slope += vec2(.075,.025) * cos(dot(p,vec2(1.4,.42)) + t * 1.3+warp);
-      slope += vec2(-.042,.075) * cos(dot(p,vec2(-.8,1.35)) - t * 1.1);
-      slope += waterSlope(p*2.7+vec2(t*.41,-t*.27))*.16*fine;
-      slope += waterSlope(mat2(.8,-.6,.6,.8)*p*8.3+vec2(-t*.5,t*.23))*.085*fine;
-      // Fade centimetre ripples when their projected wavelength approaches a
-      // pixel. Distance alone misses grazing views, where fine waves alias.
+      // Irregular long waves survive distance filtering; periodic sine bands
+      // previously dominated the horizon after the small waves faded out.
       float footprint=max(length(dFdx(p)),length(dFdy(p)));
-      float capillary=fine*(1.-smoothstep(.025,.13,footprint));
-      slope+=vec2(.06,.035)*cos(dot(p,vec2(32.,19.))+t*4.7+warp)*capillary;
-      slope+=vec2(-.025,.055)*cos(dot(p,vec2(-23.,41.))-t*5.3)*capillary;
+      float broad=1.-smoothstep(.6,2.8,footprint);
+      float mid=1.-smoothstep(.08,.6,footprint);
+      vec2 drift=vec2(t*.18,-t*.11);
+      vec2 slope=waterSlope(p*.72+drift)*.115*broad;
+      mat2 crossing=mat2(.8,-.6,.6,.8);
+      slope+=mat2(.8,.6,-.6,.8)*waterSlope(crossing*p*1.4-drift)*.07*broad;
+      slope+=waterSlope(p*2.7+vec2(t*.41,-t*.27))*.14*mid;
+      slope+=mat2(.8,.6,-.6,.8)*waterSlope(crossing*p*8.3+vec2(-t*.5,t*.23))*.08*fine*(1.-smoothstep(.025,.16,footprint));
+      float capillary=fine*(1.-smoothstep(.012,.07,footprint));
+      slope+=waterSlope(p*23.+vec2(t*.7,-t*.8))*.075*capillary;
       vec3 N = normalize(vec3(-slope.x, 1., -slope.y));
       vec3 V = normalize(cameraPosition - vW);
       float fresnel = .025 + .975 * pow(1. - max(dot(N,V),0.), 5.);
       vec3 reflection = mix(vec3(.20,.30,.35), vec3(.55,.65,.69), clamp(reflect(-V,N).y,0.,1.));
       vec4 projected=uWaterReflectionMatrix*vec4(vW,1.);
-      vec2 reflectionUV=projected.xy/max(projected.w,.0001)+slope*.018;
+      vec2 reflectionUV=projected.xy/max(projected.w,.0001)+slope*.026;
       float edge=min(min(reflectionUV.x,1.-reflectionUV.x),min(reflectionUV.y,1.-reflectionUV.y));
       float captureWeight=uWaterReflectionReady*smoothstep(.0,.06,edge)*step(.001,projected.w);
       if(captureWeight>.001){
@@ -47,8 +48,8 @@ export function createWaterStudy({ THREE, seaMat, lagoonMat, renderer, scene, ca
         reflection=mix(reflection,reflected,captureWeight*.88);
       }
       float swell = .5 + .5 * sin(p.x*.21 + p.y*.13+t*.4) * sin(p.y*.28-t*.3);
-      vec3 water = mix(vec3(.025,.10,.125), vec3(.065,.19,.20), swell);
-      vec3 col = mix(water, reflection, .22 + fresnel*.68);
+      vec3 water = mix(vec3(.018,.066,.082), vec3(.038,.12,.135), swell);
+      vec3 col = mix(water, reflection, .14 + fresnel*.76);
       vec3 H = normalize(V + normalize(uWaterSun));
       float glint = pow(max(dot(N,H),0.), 180.);
       col += vec3(1.,.87,.68) * (glint*1.3+pow(max(dot(N,H),0.),38.)*.22);

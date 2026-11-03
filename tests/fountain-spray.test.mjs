@@ -20,11 +20,23 @@ test('fountain jets land separately inside the basin and droplets freeze determi
     for(let i=0;i<a.count;i++){
       const point=new THREE.Vector3().fromBufferAttribute(a,i);
       assert.ok([point.x,point.y,point.z].every(Number.isFinite));
-      assert.ok(point.y>0&&point.y<1.15);assert.ok(Math.hypot(point.x,point.z)<1.37);
+      assert.ok(point.y>0&&point.y<(i%8===7?1.55:1.15));assert.ok(Math.hypot(point.x,point.z)<1.37);
       assert.ok(spray.mesh.geometry.boundingSphere.containsPoint(point));
     }
   }
   const before=a.array.slice();spray.update(100000.1);assert.notDeepEqual(a.array,before);
   assert.equal(spray.mesh.material.depthWrite,false);assert.equal(spray.mesh.userData.excludeReflection,true);
   spray.mesh.geometry.dispose();spray.mesh.material.dispose();
+});
+
+
+test('central plume clears the outer jets and returns inside the central splash area',()=>{
+  const apex=fountainPoint(7,.5);
+  assert.ok(apex[1]>1.45);
+  for(let step=0;step<=100;step++){
+    const p=fountainPoint(7,step/100);
+    assert.ok(p[1]>=.025&&p[1]<=1.51);
+    assert.ok(Math.hypot(p[0],p[2])<.24);
+  }
+  assert.equal(fountainPoint(7,0)[1],fountainPoint(7,1)[1]);
 });

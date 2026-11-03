@@ -296,18 +296,24 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         vertexShader:`varying vec2 vUv; varying vec3 vWorld;
           void main(){vUv=uv;vec4 p=modelMatrix*vec4(position,1.);vWorld=p.xyz;gl_Position=projectionMatrix*viewMatrix*p;}`,
         fragmentShader:`uniform float uTime; varying vec2 vUv; varying vec3 vWorld;
+          float foamHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+          float foamNoise(vec2 p){
+            vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+            return mix(mix(foamHash(i),foamHash(i+vec2(1,0)),f.x),mix(foamHash(i+vec2(0,1)),foamHash(i+vec2(1,1)),f.x),f.y);
+          }
           void main(){
             vec2 p=(vUv-.5)*4.8;float t=uTime;
             float r=max(length(p),.001);float wave=sin(r*28.-t*4.);
             vec2 slope=p/r*cos(r*28.-t*4.)*.045;
             slope+=vec2(cos(p.x*15.+p.y*9.+t*1.7),sin(p.y*19.-p.x*7.-t*2.))*.035;
-            float landingFoam=0.;
+            float landingFoam=exp(-r*r*55.)*(.8+.2*sin(t*11.));
             for(int j=0;j<7;j++){
               float angle=float(j)*6.283185/7.;vec2 impact=vec2(cos(angle),sin(angle))*1.3;
               vec2 delta=p-impact;float d=max(length(delta),.001);
               float ripple=cos(d*43.-t*7.+float(j))*exp(-d*5.);
               slope+=delta/d*ripple*.025;
-              landingFoam+=exp(-d*d*100.)*(.6+.4*sin(t*9.+float(j)));
+              float foamBreak=.3+.7*foamNoise(delta*75.+vec2(t*2.,-t*1.4));
+              landingFoam+=exp(-d*d*100.)*(.6+.4*sin(t*9.+float(j)))*foamBreak;
             }
             vec3 N=normalize(vec3(-slope.x,1.,-slope.y));
             vec3 V=normalize(cameraPosition-vWorld);
@@ -315,9 +321,11 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
             float a=sin(p.x*12.+sin(p.y*8.+t*.6)+t*.8);
             float b=sin(p.y*13.+sin(p.x*9.-t*.7)-t*.5);
             float caustic=pow(max(0.,1.-abs(a+b)*1.6),7.);
-            vec3 col=mix(vec3(.055,.23,.24),vec3(.27,.46,.49),.3+fresnel*.55);
-            col+=vec3(.24,.32,.26)*caustic*.32;
-            col=mix(col,vec3(.52,.65,.62),clamp(landingFoam*.35,0.,.4));
+            // Broken flecks rather than continuous bright contour lines.
+            caustic*=smoothstep(-.2,.7,sin(p.x*21.-p.y*16.+t)*sin(p.y*23.+t*.6));
+            vec3 col=mix(vec3(.028,.105,.12),vec3(.19,.32,.36),.2+fresnel*.65);
+            col+=vec3(.24,.32,.26)*caustic*.12;
+            col=mix(col,vec3(.52,.65,.62),clamp(landingFoam*.60,0.,.65));
             col+=vec3(.18,.23,.22)*pow(max(wave,0.),12.)*exp(-r*.8)*.22;
             float sun=pow(max(dot(N,normalize(V+normalize(vec3(-1.1,.72,.85)))),0.),100.);
             col+=vec3(1.,.87,.65)*sun*.65;
@@ -339,10 +347,30 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     const water=new THREE.Mesh(new THREE.CircleGeometry(fountainR,64).rotateX(-Math.PI/2),basinMaterial);
     water.position.set(fountainX,y+.435,fountainZ); root.add(water);
     const rim=new THREE.TorusGeometry(2.48,.10,8,80).rotateX(Math.PI/2); add(rim,stone,fountainX,y+.46,fountainZ);
-    const spray=material('#c4dedc',.12,{transparent:true,opacity:.32,depthWrite:false});
-    for(let j=0;j<7;j++) {
+    const spray=material('#e0eeeb',.16,{transparent:true,opacity:.52,depthWrite:false});
+    spray.onBeforeCompile=shader=>{
+      shader.uniforms.uFountainTime=fountainTime;
+      shader.vertexShader='varying vec2 vSprayUv;\n'+shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\nvSprayUv=uv;');
+      shader.fragmentShader='uniform float uFountainTime; varying vec2 vSprayUv;\n'+shader.fragmentShader.replace('#include <alphamap_fragment>',`#include <alphamap_fragment>
+        float breakup=smoothstep(.28,.95,vSprayUv.x);
+        float strands=.5+.5*sin(vSprayUv.x*260.+vSprayUv.y*17.-uFountainTime*18.);
+        diffuseColor.a*=mix(.8,.12+.88*strands,breakup);`);
+    };
+    spray.customProgramCacheKey=()=> 'fountain-stream-breakup-v1';
+    for(let j=0;j<8;j++) {
       const curve=new THREE.CatmullRomCurve3(Array.from({length:17},(_,i)=>new THREE.Vector3(...fountainPoint(j,i/16))));
-      const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,24,.012,4,false),spray);
+      const geometry=new THREE.TubeGeometry(curve,24,j===7?.024:.016,4,false);
+      // Narrow the flow toward its broken landing instead of a constant wire.
+      const positions=geometry.attributes.position;
+      for(let row=0;row<=24;row++) {
+        const t=row/24,center=curve.getPointAt(t),width=1.-.56*t;
+        for(let k=0;k<=4;k++) {
+          const i=row*5+k;
+          positions.setXYZ(i,center.x+(positions.getX(i)-center.x)*width,center.y+(positions.getY(i)-center.y)*width,center.z+(positions.getZ(i)-center.z)*width);
+        }
+      }
+      geometry.computeVertexNormals();
+      const mesh=new THREE.Mesh(geometry,spray);
       mesh.position.set(fountainX,y+.435,fountainZ); root.add(mesh);
     }
     droplets=createFountainSpray();droplets.mesh.position.set(fountainX,y+.435,fountainZ);
@@ -352,7 +380,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   for (const [x,z,small] of [...(exclusions.length?[[-25,-10.4,true],[-15,-10.4,true]]:[]),[-39,-8.6,false],[-6,-8.6,false],[7,-8.6,false],[36,-8.6,false]]) {
     if (!reserve(x,z,small?2.4:3.4,small?2.4:3.2)) continue;
     const y=ctx.groundY(x,z);
-    cylinder(dark,x,y+.5,z,.065,.09,1); cylinder(wood,x,y+1.02,z,.65,.65,.08,24);
+    cylinder(dark,x,y+.4,z,.045,.075,.8); cylinder(wood,x,y+.83,z,.65,.65,.045,24);
     cylinder(wood,x,y+1.6,z,.035,.035,3.2,8);
     const canopyRadius=small?1.15:1.6;
     add(new THREE.ConeGeometry(canopyRadius,.42,12),fabric,x,y+3.2,z,Math.PI/8);
@@ -366,7 +394,23 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       const mid=(a+b)/2;
       box(fabric,x+Math.sin(mid)*canopyRadius*.966,y+2.955,z+Math.cos(mid)*canopyRadius*.966,canopyRadius*.518,.09,.018,mid);
     }
-    for(const dx of (small?[-.75,.75]:[-.95,.95])) { box(wood,x+dx,y+.53,z,.45,.07,.45); box(wood,x+dx,y+.88,z-.2,.45,.52,.055); for(const a of [-.16,.16]) for(const b of [-.16,.16]) box(dark,x+dx+a,y+.27,z+b,.03,.52,.03); }
+    for(const dx of (small?[-.75,.75]:[-.95,.95])) {
+      // Chairs face the table. Open slats and slim metal frames let the ground
+      // and light read through the back rather than a solid rectangular slab.
+      const ry=-Math.sign(dx)*Math.PI/2;
+      const chairPart=(mat,lx,ly,lz,w,h,d)=>{
+        const xx=x+dx+lx*Math.cos(ry)+lz*Math.sin(ry),zz=z-lx*Math.sin(ry)+lz*Math.cos(ry);
+        box(mat,xx,y+ly,zz,w,h,d,ry);
+      };
+      for(let slat=0;slat<5;slat++)chairPart(wood,0,.53,-.176+slat*.088,.45,.028,.073);
+      for(const side of [-1,1]) {
+        chairPart(dark,side*.20,.50,0,.024,.04,.45);
+        chairPart(dark,side*.195,.27,.175,.024,.50,.024);
+        chairPart(dark,side*.195,.53,-.19,.024,1.02,.024);
+      }
+      for(let slat=0;slat<3;slat++)chairPart(wood,0,.75+slat*.095,-.19,.40,.065,.023);
+      chairPart(dark,0,1.045,-.19,.44,.024,.024);
+    }
   }
   cube.dispose();
   for(const [m,geometries] of batches) {
@@ -380,7 +424,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     const p=ctx.pools[name]; if(!p) continue;
     for(let i=0;i<p.m.count;i++) savedPools.push({pool:p,index:i,matrix:new THREE.Matrix4(),valid:false});
   }
-  const stats={decorations:colliders.length,triangles:root.children.reduce((n,m)=>n+(m.geometry.index?.count||m.geometry.attributes.position.count)/3,0),drawCalls:root.children.length};
+  const stats={decorations:colliders.length,triangles:root.children.reduce((n,m)=>n+(m.isMesh?(m.geometry.index?.count||m.geometry.attributes.position.count)/3:0),0),drawCalls:root.children.length};
   function restore(){savedPools.forEach(s=>{if(s.valid){s.pool.set(s.index,s.matrix);s.pool.flush();s.valid=false;}});shore.forEach(m=>m.visible=true);}
   return {root,stats,footprints:colliders,apply(time=0){
     if(!enabled||disposed)return;
