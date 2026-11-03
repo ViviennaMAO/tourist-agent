@@ -1,3 +1,4 @@
+import {buildMosqueArcade,MOSQUE_ARCADE_CUTS} from './mosque-arcade.js';
 import {carveGeometryBox} from './geometry-carve.js';
 import {buildPalaceInterior,PALACE_ENTRANCE_CUT} from './palace-interior.js';
 import * as THREE from 'three';
@@ -20,7 +21,8 @@ export function refineLandmarkGeometry(source,toHolder,id){
  for(let i=0;i<pos.count;i++){const p=new THREE.Vector3().fromBufferAttribute(pos,i).applyMatrix4(toHolder);points.push(p);p.toArray(metric,i*3);}
  for(let i=0;i<indices.length;i+=3){const tri=[indices[i],indices[i+1],indices[i+2]];if(!tri.every(v=>replacedRegion(id,points[v])))keep.push(...tri);}
  geometry.setIndex(keep);geometry.clearGroups();geometry.setAttribute('surfacePosition',new THREE.BufferAttribute(metric,3));
- if(id==='emirates_palace'){const cut=carveGeometryBox(geometry,PALACE_ENTRANCE_CUT.min,PALACE_ENTRANCE_CUT.max);geometry.dispose();return cut;}return geometry;
+ if(id==='emirates_palace'){const cut=carveGeometryBox(geometry,PALACE_ENTRANCE_CUT.min,PALACE_ENTRANCE_CUT.max);geometry.dispose();return cut;}
+ if(id==='grand_mosque'){let result=geometry;for(const c of MOSQUE_ARCADE_CUTS){const cut=carveGeometryBox(result,c.min,c.max);result.dispose();result=cut;}return result;}return geometry;
 }
 export function domeGeometry(r,h,onion=true){
  const curve=new THREE.CatmullRomCurve3((onion?[[.92,0],[.99,.16],[1,.36],[.94,.56],[.78,.76],[.5,.92],[.12,1]]:[[1,0],[.96,.22],[.82,.49],[.62,.74],[.35,.94],[.12,1]]).map(([x,y])=>new THREE.Vector3(x*r,y*h,0)));
@@ -79,6 +81,10 @@ export function createAbuDhabiLandmarks({city}){
    for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){
     for(const y of [1.15,2.6])box(shade,x+Math.sin(a)*.737,y,z+Math.cos(a)*.737,.1,.7,.018,a);
    }
+  }
+  if(id==='grand_mosque'){
+   const arcadeMarble=mat('#edf0ee',.34);installSurfaceFinish(arcadeMarble,'paint');
+   buildMosqueArcade({add,box,cylinder,white:arcadeMarble,stone,gold,shade});
   }
   if(id==='emirates_palace'){
    buildPalaceInterior({mat,add,box,cylinder,white,stone,gold,shade});

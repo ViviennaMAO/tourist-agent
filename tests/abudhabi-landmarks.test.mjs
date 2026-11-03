@@ -5,7 +5,7 @@ import {createAbuDhabiLandmarks,refineLandmarkGeometry,domeGeometry} from '../sr
 
 test('Landmark surgery preserves unrelated triangles and source attributes',()=>{
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([0,8,-6, .1,8,-6, 0,8.1,-6, 20,0,20,21,0,20,20,1,20],3));g.setIndex([0,1,2,3,4,5]);g.computeVertexNormals();
- const original=Array.from(g.index.array),next=refineLandmarkGeometry(g,new THREE.Matrix4(),'grand_mosque');assert.deepEqual(Array.from(next.index.array),[3,4,5]);assert.deepEqual(Array.from(g.index.array),original);assert.equal(next.attributes.surfacePosition.count,6);assert.notEqual(next.attributes.position,g.attributes.position);
+ const original=Array.from(g.index.array),next=refineLandmarkGeometry(g,new THREE.Matrix4(),'grand_mosque');assert.deepEqual(Array.from(next.attributes.position.array),[20,0,20,21,0,20,20,1,20]);assert.deepEqual(Array.from(g.index.array),original);assert.equal(next.attributes.surfacePosition.count,3);assert.notEqual(next.attributes.position,g.attributes.position);
  next.dispose();g.dispose();
 });
 test('Dome geometry has finite normals and stays within its designed envelope',()=>{

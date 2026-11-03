@@ -125,7 +125,26 @@ export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
    }
    const t=tiers.at(-1);
    if(family===4)add(slopedCrown(THREE,t.w+.08,t.d+.08,h,.72).translate(t.x,0,0).rotateY(ry).translate(b.x,b.base,b.z),trim);
-   else{part(trim,t.x,h-.64,0,t.w+.08,.16,t.d+.08);part(roof,t.x,h-.34,0,t.w*.72,.45,t.d*.72);}
+   else{
+    part(trim,t.x,h-.64,0,t.w+.08,.16,t.d+.08);
+    // Set-back plant room, service louvers and a slim parapet sit inside the roof.
+    part(roof,t.x,h-.49,0,t.w*.91,.12,t.d*.91);
+    const rw=t.w*.48,rd=t.d*.46,rh=.55+(index%3)*.18;
+    part(spandrel,t.x,h-.42+rh/2,0,rw,rh,rd);
+    part(silver,t.x,h-.4+rh,0,rw+.1,.07,rd+.1);
+    for(let y=h-.35;y<h-.42+rh;y+=.12)for(const z of [-1,1])part(silver,t.x,y,z*(rd/2+.025),rw,.025,.055);
+    for(const sign of [-1,1]){
+     part(trim,t.x+sign*(t.w/2-.07),h-.38,0,.09,.36,t.d);
+     part(trim,t.x,h-.38,sign*(t.d/2-.07),t.w,.36,.09);
+    }
+    if(family===0||family===2){
+     // Open crown fins leave sky gaps and cast changing shadows over the roof.
+     for(let u=-t.w*.42;u<=t.w*.43;u+=.45)for(const z of [-1,1])part(family===2?bronze:silver,t.x+u,h+.15,z*t.d*.42,.045,1.05,.09);
+     for(const z of [-1,1])part(silver,t.x,h+.67,z*t.d*.42,t.w*.9,.055,.1);
+    }else{
+     for(const sign of [-1,1])part(trim,t.x+sign*t.w*.33,h-.02,0,t.w*.17,.38,t.d*.8);
+    }
+   }
    if(family===1||family===3)for(const sign of [-1,1])part(trim,sign*w*.41,h*.53,0,.1,h*.94,d*.84);
    continue;
   }

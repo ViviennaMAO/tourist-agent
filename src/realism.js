@@ -1,3 +1,4 @@
+import {createAbuCoastGardens} from './abudhabi-coast-gardens.js';
 import {createAbuCoastalWalk} from './abudhabi-coastline.js';
 import {createMarbleReflection} from './marble-reflection.js';
 import {createVegasScene} from './vegas-scene.js';
@@ -258,7 +259,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       const realm=createAbuPublicRealm({city:c,leafTexture}),landscape=createAbuLandscape({city:c,leafTexture,existing:realm.plots});
       const infill=planAbuInfill(c.w.ctx,[...realm.plots,...landscape.plots]),inlay=createMosqueInlay({city:c});
       abuMarble=createMarbleReflection({renderer,scene,camera,city:c,inlay,excludeObjects:()=>cityRoots.filter(r=>r&&r!==c.w.root&&r!==c.landmarkGroup)});
-      abuStudies.push(createAbuDhabiScene({city:c,leafTexture,extraBuildings:infill}),createAbuTowers({city:c}),inlay,createAbuCoastalWalk({city:c}),createAbuDhabiLandmarks({city:c}),createAbuVenues({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,landscape,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      abuStudies.push(createAbuDhabiScene({city:c,leafTexture,extraBuildings:infill}),createAbuTowers({city:c}),inlay,createAbuCoastalWalk({city:c}),createAbuCoastGardens({city:c,leafTexture,reserved:[...realm.plots,...landscape.plots,...infill]}),createAbuDhabiLandmarks({city:c}),createAbuVenues({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,landscape,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
       abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{etihad:{position:[56,12,-20],min:[39,0,-38],max:[73,31,-2]},culture:{position:[49,5,24],min:[28,0,10],max:[70,15,46]},courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
       syncStudies();return;
     }
