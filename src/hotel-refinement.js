@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { chamferedBox } from './chamfered-box.js';
+import { addHotelRoofDetails } from './hotel-roof.js';
 import { landmarkFinish } from './landmark-finish.js';
 function landmarkFinishForBase(){const source=new THREE.MeshStandardMaterial(),m=landmarkFinish(source,'atlantis');source.dispose();m.color.set('#a99d89');delete m.userData.cityGlass;delete m.userData.reflectionZone;return m;}
 
@@ -18,6 +19,15 @@ export function hotelSurface(material,id,floor=false){
     shader.fragmentShader='varying vec3 vHotelPosition;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       vec3 hp=vHotelPosition;
+      ${id==='burj_al_arab'&&!floor?`
+      // Atlas luminance contains obsolete painted shadows. Retain dark joints
+      // and blue glazing, but let current scene lighting shade neutral cladding.
+      float shellMask=(1.-landmarkBlue)*(1.-landmarkGreen)*smoothstep(.035,.18,landmarkLum);
+      vec3 shellAlbedo=vec3(.72,.735,.73)+vec3((landmarkLum-.5)*.035);
+      diffuseColor.rgb=mix(diffuseColor.rgb,shellAlbedo,shellMask);
+      `:''}
+      ${id==='atlantis'?`float roofMetal=landmarkGreen*smoothstep(4.0,4.7,hp.y);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.29,.34,.27),roofMetal*.78);`:''}
+
       // Triplanar choice from geometric derivatives, independent of atlas UVs.
       vec3 hn=abs(normalize(cross(dFdx(hp),dFdy(hp))));
       vec2 st=hn.y>.65?hp.xz:(hn.z>hn.x?hp.xy:hp.zy);
@@ -40,7 +50,7 @@ export function hotelSurface(material,id,floor=false){
     `);
     if(floor)shader.fragmentShader=shader.fragmentShader.replace('roughnessFactor=mix(.86,.26,landmarkBlue*(1.-landmarkGreen));','roughnessFactor=.88;').replace('metalnessFactor=mix(.02,.48,landmarkBlue*(1.-landmarkGreen));','metalnessFactor=.02;');
   };
-  material.customProgramCacheKey=()=>key+'-hotel-surface-v1-'+id+'-'+floor;
+  material.customProgramCacheKey=()=>key+'-hotel-surface-v2-'+id+'-'+floor;
   return material;
 }
 
@@ -92,13 +102,14 @@ export function refineHotel(landmark){
   const glass=new THREE.MeshStandardMaterial({color:'#637e85',roughness:.24,metalness:.42,envMapIntensity:.85});
   glass.userData.cityGlass=true;glass.userData.reflectionZone='skyline';
   const bronze=new THREE.MeshStandardMaterial({color:'#8f7b59',roughness:.43,metalness:.5});
-  const materials=[stone,recess,glass,bronze];
+  const materials=[stone,recess,glass,bronze];let roofStats={roofEdges:0,roofBrackets:0};
   function add(g,m){if(g.index){const next=g.toNonIndexed();g.dispose();g=next;}if(!parts.has(m))parts.set(m,[]);parts.get(m).push(g);}
   function bayBox(b,u,y,depth,w,h,d,m){
     const p=b.point.clone();p[b.other]+=u;p.y+=y;p[b.axis]+=b.sign*depth;
     add(chamferedBox(w,h,d,.006).rotateY(b.axis==='x'?Math.PI/2:0).translate(...p.toArray()),m);
   }
   if(id==='atlantis'){
+    roofStats=addHotelRoofDetails(asset,add,stone,bronze);
     // The source wings project beyond the narrow crescent: a low, continuous
     // foundation follows their footprint instead of leaving walls over water.
     if(feet.length>2){
@@ -138,7 +149,7 @@ export function refineHotel(landmark){
     }
   }
   for(const [m,geos] of parts){const geometry=mergeGeometries(geos);geos.forEach(g=>g.dispose());const mesh=new THREE.Mesh(geometry,m);mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);}
-  let disposed=false;const stats={hotelBays:bays.length,drawCalls:root.children.length,triangles:root.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0)};
+  let disposed=false;const stats={...roofStats,hotelBays:bays.length,drawCalls:root.children.length,triangles:root.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0)};
   const result={root,swaps,bays,stats,setEnabled(v){root.visible=!!v&&!disposed;for(const s of swaps)s.mesh.geometry=v&&!disposed?s.after:s.before;},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());materials.forEach(m=>m.dispose());swaps.forEach(s=>s.after.dispose());}};
   result.setEnabled(false);return result;
 }

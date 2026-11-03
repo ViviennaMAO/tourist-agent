@@ -1,3 +1,4 @@
+import { createBridgeRefinement } from './bridge-refinement.js';
 import { createResortGardens } from './resort-gardens.js';
 import { createIslandGardens } from './island-gardens.js';
 import { createDubaiWaterfront } from './dubai-waterfront.js';
@@ -214,6 +215,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
     const waterfront = createDubaiWaterfront({ THREE, city:c, stoneMaterial:waterfrontStone });
     districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints, fullCoast:true }), createDubaiLandmarks({ THREE, city: c }));
+    for(const r of c.w.ctx.roads||[])if(r.bridge&&r.visual){const length=Math.hypot(r.B[0]-r.A[0],r.B[1]-r.A[1]);districtStudies.push(createBridgeRefinement({...r.visual,length,halfWidth:r.hw,top:1.33,start:-r.e0*r.hw,end:length+r.e1*r.hw}));}
     const islandVillas=createDubaiArchitecture({THREE,city:c,stoneMaterial:facadeStone,district:true,island:true});
     districtStudies.push(islandVillas,createIslandGardens({THREE,city:c,plots:islandVillas.islandPlots,stoneMaterial:stone,leafTexture}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
     districtStudies.push(createResortGardens({city:c,stoneMaterial:stone,leafTexture}));
@@ -269,7 +271,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     syncStudies();
   }
   applyEnvironment();
-  return { enhanceCity, update, setEnabled, setRefinementEnabled, setDistrictEnabled,
+  return { enhanceCity, enhanceBridge(spec){districtStudies.push(createBridgeRefinement(spec));syncStudies();}, update, setEnabled, setRefinementEnabled, setDistrictEnabled,
     render(){
       const reset=renderer.info.autoReset;renderer.info.autoReset=false;renderer.info.reset();
       try {
