@@ -217,7 +217,7 @@ end(50)`
     bgm: ASSET + 'media/tokyo/bgm.mp3',
     landmarks: {
       tokyo_tower:     { key: 'Tokyo_Tower__Tokyo_Tower',           tex: 'Tokyo_Tower.png',            name: 'Tokyo Tower',     zh: '东京塔',     pos: [-24, -22], h: 26, base: 1.25, r: 7,  rot: 0, dur: 5.5 },
-      imperial_palace: { key: 'Tokyo_Kokyo__Tokyo_Kokyo',           tex: 'Tokyo_Kokyo.png',            name: 'Imperial Palace', zh: '皇居',       pos: [12, -30],  h: 17, base: 1.75, r: 9, rot: 0, dur: 3 },
+      imperial_palace: { arrival:[12,-12],checkinSpot:{pos:[12,-12],radius:3},key: 'Tokyo_Kokyo__Tokyo_Kokyo',           tex: 'Tokyo_Kokyo.png',            name: 'Imperial Palace', zh: '皇居',       pos: [12, -30],  h: 17, base: 1.75, r: 9, rot: 0, dur: 3 },
       sensoji:         { key: 'Tokyo_Asakusa_2__Tokyo_Asakusa_2',   tex: 'Tokyo_Asakusa_2.png',        name: 'Sensoji Temple',  zh: '浅草寺',     pos: [-24, -44], h: 17, base: 1.25, r: 6,  rot: 0, dur: 3 },
       skytree:         { key: 'Tokyo_Tower2__Tokyo_Tower2',         tex: 'Tokyo_Tower2.png',           name: 'Tokyo Skytree',   zh: '东京晴空塔', pos: [58, -62],  h: 42, base: 1.25, r: 6,  rot: 0, dur: 5 },
       akihabara:       { key: 'Tokoyo_Akiba__Tokoyo_Akiba',         tex: 'Tokoyo_Akiba_BaseColor.png', name: 'Akihabara',       zh: '秋叶原',     pos: [56, 22],   h: 11, base: 1.25, r: 8,  rot: 0, dur: 3 },
