@@ -1,3 +1,4 @@
+import {palaceShrubPosition,palaceGarden} from './abudhabi-details.js';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {installLeafDaylight} from './leaf-daylight.js';
@@ -14,7 +15,11 @@ export function createAbuDhabiShrubs({city,leafTexture}){
  const material=new THREE.MeshStandardMaterial({color:'#c8d1ad',map:leafTexture||null,alphaTest:.42,side:THREE.DoubleSide,roughness:.94,envMapIntensity:.5});
  installLeafDaylight(material);
  const root=new THREE.InstancedMesh(geometry,material,count);root.name='Abu Dhabi — layered shrubs';root.castShadow=true;root.receiveShadow=true;root.instanceMatrix.setUsage(THREE.DynamicDrawUsage);city.w.root.add(root);
- const saved=Array.from({length:count},()=>new THREE.Matrix4());let enabled=false,valid=false,disposed=false;
- function restore(){if(!valid)return;for(let i=0;i<count;i++)pool.set(i,saved[i]);pool.flush();valid=false;}
- return {root,stats:{shrubs:count,triangles:count*geometry.index.count/3,drawCalls:1},apply(){if(!enabled||disposed)return;for(let i=0;i<count;i++){pool.m.getMatrixAt(i,saved[i]);root.setMatrixAt(i,saved[i]);pool.hide(i);}valid=true;pool.flush();root.instanceMatrix.needsUpdate=true;root.computeBoundingSphere();},setEnabled(v){enabled=!!v&&!disposed;root.visible=enabled;if(!enabled)restore();},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();geometry.dispose();material.dispose();root.dispose();}};
+ const saved=Array.from({length:count},()=>new THREE.Matrix4());const movedObstacles=new Set();let enabled=false,valid=false,disposed=false;
+ function restore(){if(!valid)return;for(let i=0;i<count;i++)pool.set(i,saved[i]);pool.flush();valid=false;for(const o of movedObstacles)if(!city.w.ctx.rects.includes(o))city.w.ctx.rects.push(o);movedObstacles.clear();}
+ return {root,stats:{shrubs:count,triangles:count*geometry.index.count/3,drawCalls:1},apply(){if(!enabled||disposed)return;for(let i=0;i<count;i++){pool.m.getMatrixAt(i,saved[i]);const displayed=saved[i].clone(),e=displayed.elements;
+ if(palaceGarden(e[12],e[14])){
+ const obstacles=city.w.ctx.rects||[];const obstacle=obstacles.find(o=>Math.abs(o.x-e[12])<.001&&Math.abs(o.z-e[14])<.001&&Math.abs(o.w-.96)<.001&&Math.abs(o.d-.96)<.001);
+ if(obstacle){movedObstacles.add(obstacle);obstacles.splice(obstacles.indexOf(obstacle),1);}const [x,y,z]=palaceShrubPosition(i);displayed.scale(new THREE.Vector3(.55,.65,.55));displayed.setPosition(x,y,z);}
+ root.setMatrixAt(i,displayed);pool.hide(i);}valid=true;pool.flush();root.instanceMatrix.needsUpdate=true;root.computeBoundingSphere();},setEnabled(v){enabled=!!v&&!disposed;root.visible=enabled;if(!enabled)restore();},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();geometry.dispose();material.dispose();root.dispose();}};
 }

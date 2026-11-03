@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createAbuDhabiScene} from '../src/abudhabi-scene.js';
+import {ABU_DETAIL_OBSTACLES} from '../src/abudhabi-details.js';
 import {ABU_OBSTACLES,abuPromenade} from '../src/abudhabi-layout.js';
 
 const clear=(x,z)=>ABU_OBSTACLES.every(o=>Math.abs(x-o.x)>o.w/2+.45||Math.abs(z-o.z)>o.d/2+.45);
@@ -22,8 +23,8 @@ test('Abu Dhabi refinement restores source instances/materials and removes only 
  const scene=createAbuDhabiScene({city,leafTexture:tex});let disposed=0;
  for(const o of [source,geo,tex])o.addEventListener('dispose',()=>disposed++);
  for(const mesh of scene.root.children)for(const a of Object.values(mesh.geometry.attributes))assert.ok(a.array.every(Number.isFinite));
- assert.ok(scene.stats.triangles<40000);assert.ok(scene.stats.drawCalls<20);
- scene.setEnabled(true);scene.apply();scene.setEnabled(true);assert.equal(ctx.rects.length,1+ABU_OBSTACLES.length);assert.equal(ctx.walkSurfaces.length,2);
+ assert.ok(scene.stats.triangles<80000);assert.ok(scene.stats.drawCalls<20);
+ scene.setEnabled(true);scene.apply();scene.setEnabled(true);assert.equal(ctx.rects.length,1+ABU_OBSTACLES.length+ABU_DETAIL_OBSTACLES.length);assert.equal(ctx.walkSurfaces.length,2);
  assert.notEqual(asset.children[0].material,source);
  assert.equal(ctx.walkSurfaces[1](-15,42),1.115);
  scene.setEnabled(false);assert.deepEqual(ctx.rects,[obstacle]);assert.deepEqual(ctx.walkSurfaces,[surface]);assert.equal(asset.children[0].material,source);
@@ -44,4 +45,20 @@ test('Abu Dhabi shrubs release owned resources and restore animated source trans
  study.setEnabled(false);source.getMatrixAt(0,visible);assert.deepEqual(visible.elements,matrix.elements);
  study.dispose();study.dispose();assert.equal(city.w.root.children.length,0);assert.equal(borrowedDisposals,0);
  geo.dispose();material.dispose();texture.dispose();source.dispose();
+});
+
+ test('Palace garden preserves arrival and a continuous central approach',()=>{
+ for(let z=11;z<=30;z+=.2)for(const x of [-55,-54,-53])assert.ok(ABU_DETAIL_OBSTACLES.every(o=>Math.abs(x-o.x)>o.w/2+.45||Math.abs(z-o.z)>o.d/2+.45));
+ });
+
+test('Relocating a palace shrub removes its old collision and restores it on disable',async()=>{
+ const {createAbuDhabiShrubs}=await import('../src/abudhabi-shrubs.js');
+ const geo=new THREE.SphereGeometry(),mat=new THREE.MeshStandardMaterial(),mesh=new THREE.InstancedMesh(geo,mat,1);
+ const before=new THREE.Matrix4().makeTranslation(-54,2,16);mesh.setMatrixAt(0,before);
+ const obstacle={x:-54,z:16,w:.96,d:.96},unrelated={x:-60,z:16,w:3,d:3};
+ const ctx={rects:[obstacle,unrelated],pools:{bush:{n:1,m:mesh,set(i,m){mesh.setMatrixAt(i,m);},hide(i){mesh.setMatrixAt(i,new THREE.Matrix4().makeScale(0,0,0));},flush(){}}}};
+ const city={w:{root:new THREE.Group(),ctx}};const study=createAbuDhabiShrubs({city});study.setEnabled(true);study.apply();
+ assert.deepEqual(ctx.rects,[unrelated]);const displayed=new THREE.Matrix4();study.root.getMatrixAt(0,displayed);assert.notEqual(displayed.elements[12],-54);
+ study.setEnabled(false);assert.ok(ctx.rects.includes(obstacle));assert.equal(ctx.rects.length,2);mesh.getMatrixAt(0,displayed);assert.deepEqual(displayed.elements,before.elements);
+ study.dispose();geo.dispose();mat.dispose();mesh.dispose();
 });

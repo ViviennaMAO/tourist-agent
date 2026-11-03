@@ -1,3 +1,5 @@
+import {buildAbuDetails,ABU_DETAIL_OBSTACLES,palaceGarden} from './abudhabi-details.js';
+import {towerMassing,slopedCrown} from './tower-massing.js';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {installSurfaceFinish} from './surface-finish.js';
@@ -11,6 +13,7 @@ export function createAbuDhabiScene({city,leafTexture}){
  const root=new THREE.Group();root.name='Abu Dhabi — marble forecourt and Corniche';city.w.root.add(root);
  const ctx=city.w.ctx,batches=new Map(),owned=[],saved=new Map(),swaps=[],styled=new Set();let enabled=false,disposed=false;
  const finish=(color,roughness=.8,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.55});owned.push(m);batches.set(m,[]);return m;};
+ const arcade=finish('#eeeae1',.42);
  const marble=finish('#eeeae1',.32),stone=finish('#cfbea0',.85),trim=finish('#dbd8cc',.65),bronze=finish('#796446',.35,.7),wood=finish('#826444',.72),soil=finish('#594f39',1),green=finish('#b8c49c',.9),flower=finish('#ece6cc',.85),glass=finish('#6d8792',.16,.24),roof=finish('#a29e90',.9);
  installSurfaceFinish(stone,'limestone');installSurfaceFinish(trim,'paving');installSurfaceFinish(wood,'wood');
  glass.userData.cityGlass=true;glass.userData.reflectionZone='skyline';installCurtainWallFinish(glass);
@@ -61,6 +64,7 @@ export function createAbuDhabiScene({city,leafTexture}){
    if(n%4===0)add(new THREE.SphereGeometry(.045,5,3).translate(x,y+.12,z),flower);
   }
  }leaf.dispose();
+ buildAbuDetails({add,box,marble:arcade,paving:marble,stone,trim,bronze,green,flower,soil});
  // Refine ordinary buildings within their existing footprint and collision.
  const buildings=(ctx.buildings||[]).filter(b=>b.indices&&b.w>=2.5&&b.d>=2.5);
  for(const [index,b] of buildings.entries()){
@@ -68,6 +72,25 @@ export function createAbuDhabiScene({city,leafTexture}){
   const part=(m,x,y,z,ww,hh,dd)=>{
    const g=new THREE.BoxGeometry(ww,hh,dd).translate(x,y,z).rotateY(ry).translate(b.x,b.base,b.z);add(g,m);
   };
+  if(tall){
+   const {family,tiers}=towerMassing(w,d,h,index,1.9);
+   part(stone,0,.25,0,w,.5,d);part(glass,0,1.2,0,w*.86,1.4,d*.86);
+   for(const t of tiers){
+    part(glass,t.x,(t.bottom+t.top)/2,0,t.w,t.top-t.bottom,t.d);
+    part(trim,t.x,t.bottom,0,t.w+.045,.065,t.d+.045);
+    const floor=family===3?1.45:1.12;
+    for(let y=t.bottom+.15;y<t.top;y+=floor)part(trim,t.x,y,0,t.w+.04,.035,t.d+.04);
+    for(const sign of [-1,1]){
+     for(let x=-t.w/2+.12;x<t.w/2;x+=family===1?.65:1.1)part(trim,t.x+x,(t.top+t.bottom)/2,sign*(t.d/2+.02),.025,t.top-t.bottom,.04);
+     for(let z=-t.d/2+.12;z<t.d/2;z+=1.1)part(trim,t.x+sign*(t.w/2+.02),(t.top+t.bottom)/2,z,.04,t.top-t.bottom,.025);
+    }
+   }
+   const t=tiers.at(-1);
+   if(family===4)add(slopedCrown(THREE,t.w+.08,t.d+.08,h,.72).translate(t.x,0,0).rotateY(ry).translate(b.x,b.base,b.z),trim);
+   else{part(trim,t.x,h-.64,0,t.w+.08,.16,t.d+.08);part(roof,t.x,h-.34,0,t.w*.72,.45,t.d*.72);}
+   if(family===1||family===3)for(const sign of [-1,1])part(trim,sign*w*.41,h*.53,0,.1,h*.94,d*.84);
+   continue;
+  }
   part(skin,0,h/2,0,w,h,d);part(trim,0,.13,0,w+.08,.26,d+.08);part(roof,0,h+.08,0,w,.16,d);
   for(const side of [0,1,2,3]){
    const angle=side*Math.PI/2,span=side%2?d:w,depth=side%2?w:d;
@@ -86,8 +109,8 @@ export function createAbuDhabiScene({city,leafTexture}){
  }
  for(const [m,gs] of batches){if(!gs.length)continue;const g=mergeGeometries(gs);gs.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==water&&m!==marble;mesh.receiveShadow=true;if(m===marble)mesh.userData.skipContact=true;root.add(mesh);}
  const mapping={body:'tower',crown:'tower',roof:'roof',pad:'pad',antenna:'ant',gable:'gable'};
- const surface=(x,z)=>enabled&&abuPromenade(x,z)?1.115:null;
- const obstacles=ABU_OBSTACLES.map(o=>({...o}));let registered=false;
+ const surface=(x,z)=>enabled?(abuPromenade(x,z)?1.115:palaceGarden(x,z)?1.09:null):null;
+ const obstacles=[...ABU_OBSTACLES,...ABU_DETAIL_OBSTACLES].map(o=>({...o}));let registered=false;
  function register(v){if(v===registered)return;registered=v;if(v){ctx.rects.push(...obstacles);ctx.walkSurfaces.push(surface);}else{ctx.rects=ctx.rects.filter(o=>!obstacles.includes(o));const i=ctx.walkSurfaces.indexOf(surface);if(i>=0)ctx.walkSurfaces.splice(i,1);}}
  function styleAssets(){
   for(const [id,l] of Object.entries(city.LM||{})){
