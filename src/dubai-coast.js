@@ -9,7 +9,7 @@ const distanceToRoad=(x,z,r)=>{
 
 /** Exposed shore of the UNION of source islands. No wall at frond/trunk
  * intersections, hotel-pad overlaps, the pilot promenade or bridge landings. */
-export function coastSamples(islands,roads=[],step=.48) {
+export function coastSamples(islands,roads=[],step=.48,skipPromenade=true) {
   const outlines=islands.filter(i=>i.outline?.length>2),samples=[];
   for(const [sourceIndex,island] of outlines.entries()) {
     const p=island.outline;
@@ -20,7 +20,7 @@ export function coastSamples(islands,roads=[],step=.48) {
       const tx=dx/length,tz=dz/length,nx=tz*Math.sign(area),nz=-tx*Math.sign(area),n=Math.ceil(length/step);
       for(let j=0;j<n;j++) {
         const t=(j+.5)/n,x=a[0]+dx*t,z=a[1]+dz*t;
-        if(island.id==='mainland'&&x>=-33&&x<=-7&&z>-5.1)continue;
+        if(skipPromenade&&island.id==='mainland'&&x>=-33&&x<=-7&&z>-5.1)continue;
         if(outlines.some((other,k)=>k!==sourceIndex&&pointInPolygon(other.outline,x+nx*.53,z+nz*.53)))continue;
         if(roads.some(r=>r.kind!=='canal'&&distanceToRoad(x,z,r)<(r.hw||2.3)+.6))continue;
         samples.push({x,z,tx,tz,nx,nz,length:length/n,id:island.id,sourceIndex});
@@ -34,7 +34,7 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
   const root=new THREE.Group();root.name='Dubai — complete island revetments';
   const halos=[];
   city.w.root.traverse(mesh=>{if(mesh.isMesh&&mesh.userData.shoreline){const before=mesh.material,after=before.clone();after.color.set('#647d7c');after.opacity=before.opacity*.08;halos.push({mesh,before,after});}});
-  const samples=coastSamples(city.w.ctx.islands,city.w.ctx.roads);
+  const samples=coastSamples(city.w.ctx.islands,city.w.ctx.roads,.48,city.id==='dubai');
   const cap=stoneMaterial.clone();cap.onBeforeCompile=stoneMaterial.onBeforeCompile;cap.customProgramCacheKey=stoneMaterial.customProgramCacheKey;cap.color.set('#c9bba2');
   const rock=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96});
   rock.onBeforeCompile=shader=>{

@@ -125,3 +125,6 @@ body.reviewClean #hud, body.reviewClean #cityChips, body.reviewClean #cityBanner
 #cameraReset { position:absolute; right:22px; bottom:140px; z-index:20; min-height:44px; padding:8px 14px; border:1px solid #d7cdb899; border-radius:10px; background:#243b31ed; color:#f3efe4; cursor:pointer; }
 body.overview #cameraReset,body.reviewClean #cameraReset,body:not(.gameReady) #cameraReset { display:none; }
 @media(max-width:900px) { #cameraReset { right:18px; bottom:112px; } }
+
+/* Full-screen collections own pointer input while open, including review mode. */
+body.panelOpen #reviewPanel { display:none; }

@@ -1,3 +1,5 @@
+import {createAbuDhabiShrubs} from './abudhabi-shrubs.js';
+import {createAbuDhabiScene} from './abudhabi-scene.js';
 import { createPromenadeGardens } from './promenade-gardens.js';
 import { createBridgeRefinement } from './bridge-refinement.js';
 import { createResortGardens } from './resort-gardens.js';
@@ -25,7 +27,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const qs = new URLSearchParams(location.search);
   let enabled = qs.get('look') !== 'original';
   let refinementEnabled = qs.get('detail') !== 'off';
-  const refinements = [], districtStudies = [], lakeSwaps = [];
+  const refinements = [], districtStudies = [], lakeSwaps = [], abuStudies=[];
+  let abu=null,abuProbe=null,nearAbu=false;
   let districtEnabled = qs.get('district') !== 'off';
   let contactEnabled=qs.get('ao')!=='off',reflectionsEnabled=qs.get('reflections')!=='off',skylineEnabled=qs.get('skyline')!=='off';
   let bounceEnabled=qs.get('bounce')!=='off';
@@ -196,9 +199,24 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     scene.fog.color.copy(enabled ? sky.material.uniforms.hor.value : original.fog);
     // Static reflection captures must be refreshed after exposure/environment
     // or detail changes, otherwise panes keep the previous lighting setup.
-    probe?.invalidate();
+    probe?.invalidate();abuProbe?.invalidate();
   }
   function enhanceCity(c) {
+    if(c.id==='abudhabi'){
+      abu=c;
+      c.w.root.traverse(o=>{if(!o.isMesh)return;const before=o.material,after=Array.isArray(before)?before.map(m=>replacement.get(m)||m):replacement.get(before)||before;
+        if(Array.isArray(before)?after.some((m,i)=>m!==before[i]):after!==before){swaps.push({mesh:o,before,after});o.material=enabled?after:before;}
+      });
+      for(const name of ['bush','canopy','tower','roof']){
+        const mesh=c.w.ctx.pools[name]?.m;if(!mesh?.instanceColor)continue;
+        const before=mesh.instanceColor.array.slice(),after=before.slice(),palette=name==='bush'?['#647851','#819363','#5b704c']:name==='canopy'?['#ddd5bd','#d0c5a9']:['#91a4ab','#b5b5aa','#c5baa4'];
+        for(let i=0;i<mesh.count;i++)new THREE.Color(palette[i%palette.length]).toArray(after,i*3);
+        colors.push({mesh,before,after});mesh.instanceColor.array.set(enabled?after:before);mesh.instanceColor.needsUpdate=true;
+      }
+      abuStudies.push(createAbuDhabiScene({city:c,leafTexture}),createAbuDhabiShrubs({city:c,leafTexture}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
+      syncStudies();return;
+    }
     if (c.id !== 'dubai') return;
     dubai=c;
     c.w.root.traverse(o => {
@@ -248,6 +266,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     // Must follow the source actors: they restore the original instances each frame.
     refinements.forEach(r => r.apply(time));
     districtStudies.forEach(r => r.apply(time));
+    abuStudies.forEach(r=>r.apply?.(time));
+    nearAbu=!!abu&&!overview&&Math.hypot(target.x-abu.w.root.position.x,target.z-abu.w.root.position.z)<115&&camera.position.distanceTo(target)<140;
     nearDubai=!!dubai&&!overview&&Math.hypot(target.x-dubai.w.root.position.x,target.z-dubai.w.root.position.z)<110&&camera.position.distanceTo(target)<120;
     const span = overview ? 300 : Math.min(125, Math.max(24, camera.position.distanceTo(target) * .65));
     const texel = span * 2 / sun.shadow.mapSize.x;
@@ -273,6 +293,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     refinements.forEach(r => r.setEnabled(false));
     districtStudies.forEach(r => r.setEnabled(false));
     const active = enabled && refinementEnabled;
+    abuStudies.forEach(r=>r.setEnabled(active));abuProbe?.setEnabled(active&&reflectionsEnabled);
     (districtEnabled ? districtStudies : refinements).forEach(r => r.setEnabled(active));
     if(backdrop)backdrop.setEnabled(active&&districtEnabled&&skylineEnabled);
     probe?.setEnabled(active&&districtEnabled&&reflectionsEnabled);
@@ -295,23 +316,24 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         // Capture only after the current sun matrix and shadow texture exist.
         // Sampling before this render baked a stale camera's shadows into glass.
         if(nearDubai)probe?.captureIfNeeded();
-        waterStudy.capture(enabled&&refinementEnabled&&districtEnabled&&nearDubai&&reflectionsEnabled);
-        if(enabled&&refinementEnabled&&districtEnabled&&nearDubai&&contactEnabled){
+        if(nearAbu)abuProbe?.captureIfNeeded();
+        waterStudy.capture(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu)&&reflectionsEnabled);
+        if(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu)&&contactEnabled){
           contact??=createContactShadows({renderer,scene,camera});contact.render();
         }
       } finally {renderer.info.autoReset=reset;}
     },
     get contactEnabled(){return contactEnabled;},setContactEnabled(v){contactEnabled=!!v;},
-    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));probe?.invalidate();},
+    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));probe?.invalidate();abuProbe?.invalidate();},
     get reflectionsEnabled(){return reflectionsEnabled;},setReflectionsEnabled(v){reflectionsEnabled=!!v;syncStudies();},
-    get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();},
-    get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&nearDubai?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?probe?.status||'准备中':'关'}`;},
+    get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();abuProbe?.invalidate();},
+    get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&(nearDubai||nearAbu)?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?(nearAbu?abuProbe:probe)?.status||'准备中':'关'}`;},
     get districtEnabled() { return districtEnabled; },
     get refinementEnabled() { return refinementEnabled; },
-    get refinementStats() { return (districtEnabled ? districtStudies : refinements).map(r => r.stats); },
+    get refinementStats() { return (nearAbu?abuStudies:(districtEnabled ? districtStudies : refinements)).map(r => r.stats); },
     get enabled() { return enabled; }, dispose() {
     setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
-    contact?.dispose();probe?.dispose();
+    contact?.dispose();probe?.dispose();abuProbe?.dispose();abuStudies.forEach(r=>r.dispose());
     refinements.forEach(r => r.dispose()); districtStudies.forEach(r => r.dispose()); waterStudy.dispose();
     sky.material.fragmentShader = skyFragment; delete sky.material.uniforms.taAtmosphere; sky.material.needsUpdate = true;
     textures.forEach(t => t.dispose()); materials.forEach(m => m.dispose()); envTarget.dispose();

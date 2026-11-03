@@ -135,7 +135,7 @@ wait(0.8)
 plaza([-38,-50,38,12],6)                          // 中心广场地块
 plaza([-68,-78,24,-52],5)                         // 北区地块
 plaza([44,-46,70,10],5)                           // 东区地块
-rocks(16,[-70,30,70,45])
+// Forecourt is reserved for marble paving and planted edges.
 rocks(10,[26,-80,70,-74])
 
 stage(3,'运河与潟湖',9)
@@ -172,8 +172,9 @@ landmark('grand_mosque')
 cam([22,36,72],[-15,8,26])
 palmsLine([4.4,14],[4.4,42],6)                    // 运河两岸
 palmsLine([15.6,14],[15.6,42],6)
-palmsLine([-34,41],[3,41],9)                      // 清真寺前庭棕榈
-umbrellas([-66,42],[66,42],16)
+palmsLine([-34,41],[-26,41],2)
+palmsLine([-4,41],[3,41],2)                      // 清真寺前庭棕榈
+// Corniche seating and shade use the refined waterfront module.
 
 stage(6,'城市长高',26.5)
 cam([66,84,24],[16,6,-52])

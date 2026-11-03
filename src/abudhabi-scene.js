@@ -1,0 +1,120 @@
+import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {installSurfaceFinish} from './surface-finish.js';
+import {installCurtainWallFinish} from './curtain-wall.js';
+import {chamferedBox} from './chamfered-box.js';
+import {installLeafDaylight} from './leaf-daylight.js';
+import {createCurvedLeaf} from './curved-leaf.js';
+import {ABU_POOLS,ABU_BEDS,ABU_BENCHES,ABU_OBSTACLES,abuPromenade} from './abudhabi-layout.js';
+
+export function createAbuDhabiScene({city,leafTexture}){
+ const root=new THREE.Group();root.name='Abu Dhabi — marble forecourt and Corniche';city.w.root.add(root);
+ const ctx=city.w.ctx,batches=new Map(),owned=[],saved=new Map(),swaps=[],styled=new Set();let enabled=false,disposed=false;
+ const finish=(color,roughness=.8,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.55});owned.push(m);batches.set(m,[]);return m;};
+ const marble=finish('#eeeae1',.32),stone=finish('#cfbea0',.85),trim=finish('#dbd8cc',.65),bronze=finish('#796446',.35,.7),wood=finish('#826444',.72),soil=finish('#594f39',1),green=finish('#b8c49c',.9),flower=finish('#ece6cc',.85),glass=finish('#6d8792',.16,.24),roof=finish('#a29e90',.9);
+ installSurfaceFinish(stone,'limestone');installSurfaceFinish(trim,'paving');installSurfaceFinish(wood,'wood');
+ glass.userData.cityGlass=true;glass.userData.reflectionZone='skyline';installCurtainWallFinish(glass);
+ green.map=leafTexture||null;green.alphaTest=.42;green.side=THREE.DoubleSide;installLeafDaylight(green);
+ marble.onBeforeCompile=sh=>{
+  sh.vertexShader='varying vec3 abuStone;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nabuStone=position;');
+  sh.fragmentShader='varying vec3 abuStone;\n'+sh.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+   float vein=sin(abuStone.x*3.1+abuStone.z*2.6+sin(abuStone.x*.7+abuStone.y*1.1)*1.6);
+   float fine=1.-smoothstep(.08,.3,length(fwidth(abuStone)));
+   float mineral=pow(abs(vein),22.)*fine;
+   diffuseColor.rgb*=1.-mineral*.035;
+  `).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor+=mineral*.05;');
+ };marble.customProgramCacheKey=()=> 'abu-white-marble-v1';
+ const add=(g,m)=>{if(g.index){const n=g.toNonIndexed();g.dispose();g=n;}batches.get(m).push(g);};
+ const box=(m,x,y,z,w,h,d,ry=0)=>add((m===stone&&Math.min(w,h,d)>.16?chamferedBox(w,h,d,.018):new THREE.BoxGeometry(w,h,d)).rotateY(ry).translate(x,y,z),m);
+ const cyl=(m,x,y,z,r,h)=>add(new THREE.CylinderGeometry(r,r,h,10).translate(x,y,z),m);
+ // Continuous low promenade, interrupted only at the existing canal mouth.
+ for(const [a,b] of [[-66,6],[14,66]]){
+  box(marble,(a+b)/2,1.025,41.35,b-a,.05,7.3);
+  for(let x=a+.6;x<b;x+=1.2)for(let z=38.3;z<45;z+=1.2)box((Math.round(x*5+z)%7)?marble:trim,x,1.059,z,1.18,.018,1.18);
+  box(stone,(a+b)/2,1.1,45,b-a,.2,.25);
+  for(let x=a+1;x<b;x+=2){cyl(bronze,x,1.49,45,.025,.78);}
+  box(bronze,(a+b)/2,1.87,45,b-a,.035,.035);
+ }
+ // Formal mosque approach, with a broad dry central aisle between shallow pools.
+ box(marble,-15,1.04,36,34,.08,5);
+ for(const p of ABU_POOLS){
+  box(stone,p.x,1.1,p.z,p.w+.22,.2,p.d+.22);
+  box(marble,p.x,1.22,p.z,p.w+.3,.08,p.d+.3);
+ }
+ const water=new THREE.MeshPhysicalMaterial({color:'#3b8897',roughness:.1,metalness:.18,clearcoat:1,envMapIntensity:1.5});owned.push(water);batches.set(water,[]);water.userData.cityGlass=true;water.userData.reflectionZone='courtyard';
+ for(const p of ABU_POOLS)box(water,p.x,1.267,p.z,p.w-.15,.015,p.d-.15);
+ const lamp=finish('#efdab0',.6);lamp.emissive.set('#e9bc77');lamp.emissiveIntensity=.22;
+ for(const x of [-63,-51,-39,-31,1,18,30,42,54,65]){
+  cyl(bronze,x,2.2,44.3,.035,2.3);box(bronze,x,3.3,44.3,.23,.4,.23);box(lamp,x,3.3,44.3,.17,.32,.17);
+ }
+ for(const b of ABU_BENCHES){
+  for(let j=0;j<4;j++)box(wood,b.x,1.55,b.z-.22+j*.14,b.w,.065,.1);
+  for(let j=0;j<3;j++)box(wood,b.x,1.77+j*.12,b.z-.34,b.w,.08,.05);
+  for(const x of [b.x-.8,b.x+.8]){box(bronze,x,1.29,b.z,.055,.5,.5);box(bronze,x,1.72,b.z-.34,.055,.8,.05);}
+ }
+ const leaf=createCurvedLeaf(THREE,.18,.75,true);
+ for(const [i,b] of ABU_BEDS.entries()){
+  box(stone,b.x,1.25,b.z,b.w,.45,b.d);box(soil,b.x,1.485,b.z,b.w-.18,.02,b.d-.18);
+  for(let n=0;n<140;n++){
+   const x=b.x+Math.sin(n*5.13+i)*(b.w/2-.22),z=b.z+Math.cos(n*2.4)*.5,y=1.55+((n*31)%97)/97*.58;
+   add(leaf.clone().rotateX(-.5+(n%5)*.22).rotateY(n*2.399).translate(x,y,z),green);
+   if(n%4===0)add(new THREE.SphereGeometry(.045,5,3).translate(x,y+.12,z),flower);
+  }
+ }leaf.dispose();
+ // Refine ordinary buildings within their existing footprint and collision.
+ const buildings=(ctx.buildings||[]).filter(b=>b.indices&&b.w>=2.5&&b.d>=2.5);
+ for(const [index,b] of buildings.entries()){
+  const h=b.h,w=b.w,d=b.d,tall=h>8,skin=tall?glass:stone,ry=b.ry||0;
+  const part=(m,x,y,z,ww,hh,dd)=>{
+   const g=new THREE.BoxGeometry(ww,hh,dd).translate(x,y,z).rotateY(ry).translate(b.x,b.base,b.z);add(g,m);
+  };
+  part(skin,0,h/2,0,w,h,d);part(trim,0,.13,0,w+.08,.26,d+.08);part(roof,0,h+.08,0,w,.16,d);
+  for(const side of [0,1,2,3]){
+   const angle=side*Math.PI/2,span=side%2?d:w,depth=side%2?w:d;
+   const face=(m,u,y,offset,ww,hh,dd)=>{const g=new THREE.BoxGeometry(ww,hh,dd).translate(u,y,depth/2+offset).rotateY(angle+ry).translate(b.x,b.base,b.z);add(g,m);};
+   const floors=Math.max(1,Math.floor(h/(tall?1.05:2.5))),fh=h/floors,cols=Math.max(2,Math.floor(span/(tall?.85:1.5))),bay=span/cols;
+   for(let f=0;f<floors;f++){
+    face(trim,0,(f+1)*fh,.035,span,.045,.08);
+    for(let j=0;j<cols;j++){
+     const u=-span/2+(j+.5)*bay;
+     if(!tall)face(glass,u,f*fh+fh*.52,.015,bay*.65,fh*.64,.035);
+     face(tall?trim:bronze,u-bay*.37,f*fh+fh*.52,.045,.025,fh*.75,.045);
+    }
+   }
+   if(!tall){face(wood,0,h-.35,.38,span,.1,.8);face(bronze,0,1.05,.06,.035,1.9,.045);}
+  }
+ }
+ for(const [m,gs] of batches){if(!gs.length)continue;const g=mergeGeometries(gs);gs.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==water&&m!==marble;mesh.receiveShadow=true;if(m===marble)mesh.userData.skipContact=true;root.add(mesh);}
+ const mapping={body:'tower',crown:'tower',roof:'roof',pad:'pad',antenna:'ant',gable:'gable'};
+ const surface=(x,z)=>enabled&&abuPromenade(x,z)?1.115:null;
+ const obstacles=ABU_OBSTACLES.map(o=>({...o}));let registered=false;
+ function register(v){if(v===registered)return;registered=v;if(v){ctx.rects.push(...obstacles);ctx.walkSurfaces.push(surface);}else{ctx.rects=ctx.rects.filter(o=>!obstacles.includes(o));const i=ctx.walkSurfaces.indexOf(surface);if(i>=0)ctx.walkSurfaces.splice(i,1);}}
+ function styleAssets(){
+  for(const [id,l] of Object.entries(city.LM||{})){
+   if(!l.asset||styled.has(l))continue;
+   l.asset.traverse(o=>{if(!o.isMesh)return;const before=o.material;
+    const convert=m=>{
+     const a=m.clone();a.color.set('#ffffff');a.emissiveIntensity=0;a.roughness=id==='grand_mosque'?.32:.66;a.metalness=.03;a.envMapIntensity=.7;
+     const prev=m.onBeforeCompile,key=m.customProgramCacheKey();
+     a.onBeforeCompile=function(sh,r){prev.call(this,sh,r);sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+      float abuLum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+      float abuBlue=smoothstep(.03,.2,diffuseColor.b-max(diffuseColor.r,diffuseColor.g*.85));
+      float abuGold=smoothstep(.06,.25,diffuseColor.r-diffuseColor.b);
+      ${id==='ferrari_world'?`diffuseColor.rgb=mix(vec3(abuLum),diffuseColor.rgb,.82);`:`diffuseColor.rgb=mix(vec3(abuLum)*vec3(${id==='emirates_palace'?'1.06,.98,.85':'1.01,1.,.97'}),vec3(.29,.42,.48)*(.7+abuLum*.3),abuBlue*.8);${id==='grand_mosque'?"diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.57,.30)*(.7+abuLum*.3),abuGold*.8);":''}`}
+     `).replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>\nroughnessFactor=mix(${id==='grand_mosque'?'.32':'.76'},.18,abuBlue);`).replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=mix(.02,.25,abuBlue);');};
+     a.customProgramCacheKey=()=>key+'-abu-landmark-v1-'+id;owned.push(a);return a;
+    };
+    const after=Array.isArray(before)?before.map(convert):convert(before);swaps.push({mesh:o,before,after});o.material=enabled?after:before;
+   });styled.add(l);
+  }
+ }
+ function restore(){for(const s of saved.values()){s.pool.set(s.index,s.matrix);s.pool.flush();}saved.clear();}
+ return {root,stats:{buildings:buildings.length,triangles:root.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0),drawCalls:root.children.length},footprints:obstacles,
+  apply(){if(disposed)return;styleAssets();if(!enabled)return;for(const b of buildings)for(const [key,name] of Object.entries(mapping)){
+   const index=b.indices[key],pool=ctx.pools[name];if(!pool||!Number.isInteger(index)||index<0)continue;
+   const id=name+index;if(!saved.has(id))saved.set(id,{pool,index,matrix:new THREE.Matrix4()});pool.m.getMatrixAt(index,saved.get(id).matrix);pool.hide(index);pool.flush();
+  }},
+  setEnabled(v){enabled=!!v&&!disposed;root.visible=enabled;register(enabled);if(!enabled)restore();swaps.forEach(s=>s.mesh.material=enabled?s.after:s.before);},
+  dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());owned.forEach(m=>m.dispose());}
+ };
+}
