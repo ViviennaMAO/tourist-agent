@@ -1,3 +1,4 @@
+import { ASSET, CITIES, CITY_ORDER, CITY_COUNT, CITY_GRID, activeCheckinKeys, overviewFrame } from './cities.js';
 import { configureExploreCamera, keepCameraAboveGround, resetWalkingCamera, EXPLORE_DISTANCE_LIMIT } from './explore-camera.js';
 import { inPlot } from './island-layout.js';
 import * as THREE from 'three';
@@ -17,940 +18,12 @@ import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 /* =====================================================================
    1. 城市配置 —— 换城市只改这里（地标表 + 施工脚本）
    ===================================================================== */
-const ASSET = 'https://resources.parallelworld.com/assets/';
-
-const CITIES = {
-  dubai: {
-    id: 'dubai', name: 'DUBAI', nameLocal: 'دبي', nameZh: '迪拜', index: 2, total: 11,
-    bgm: ASSET + 'media/dubai/bgm.mp3',
-    // pos 落点 [x,z]；h 目标高度；base 地面高度；r 占地半径（排楼时避让）；rot 朝向
-    landmarks: {
-      burj_khalifa:    { key: 'Dubai_Halifa__Dubai_Halifa',       tex: 'Dubai_Halifa_D.png',    name: 'Burj Khalifa',         zh: '哈利法塔',     pos: [0, -33],  h: 46, base: 1.34, r: 5, rot: 0,    dur: 5.5 },
-      dubai_frame:     { key: 'Dubai_Kuang__Dubai_Kuang',         tex: 'Dubai_Kuang.png',       name: 'Dubai Frame',          zh: '迪拜相框',     pos: [-21, -43], h: 14, base: 1.25, r: 8, rot: 0,    dur: 3 },
-      museum_future:   { key: 'Dubai_Museum__Dubai_Museum',       tex: 'Dubai_Museum.png',      name: 'Museum of the Future', zh: '未来博物馆',   pos: [21, -27], h: 8,  base: 1.25, r: 7, rot: 0,    dur: 3 },
-      emirates_towers: { key: 'Dubai_Hotel2__Dubai_Hotel_2',      tex: 'Dubai_Hotel_2.png',     name: 'Emirates Towers',      zh: '阿联酋双塔',   pos: [41, -33], h: 18, base: 1.25, r: 6, rot: 0,    dur: 3 },
-      atlantis:        { key: 'Dubai_Yatelansi__Dubai_Yatelansi', tex: 'Dubai_Yatelansi_D.png', name: 'Atlantis The Palm',    zh: '亚特兰蒂斯',   pos: [0, 55.5], h: 8,  base: 1.0,  r: 6, rot: 0,    dur: 3 },
-      burj_al_arab:    { key: 'Dubai_Fanchuan__Dubai_Fanchuan',   tex: 'Dubai_Fanchuan.png',    name: 'Burj Al Arab',         zh: '帆船酒店',     pos: [-50, 15], h: 20, base: 1.0,  r: 5, rot: 0,    dur: 3.5 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'沙洲升起',4)
-island('mainland','rect',[-64,-84,64,-5],9)      // 主城半岛
-cam([34,128,150],[0,0,-28])
-wait(0.8)
-grass([-48,-57,48,-12],5)
-dunes(16,[-60,-82,60,-62])                       // 远景沙丘
-umbrellas([-44,-8],[44,-8],12)                   // 海滩遮阳伞
-
-stage(3,'路网铺设',9)
-cam([-58,66,42],[0,0,-30])
-road([-48,-16],[48,-16])                         // 谢赫扎耶德路
-road([0,-5],[0,-21])                             // 林荫大道
-road([-48,-50],[48,-50])
-road([-34,-50],[-34,-16])
-road([34,-50],[34,-16])
-cam([46,60,34],[0,0,-32])
-palmsLine([-46,-13.6],[46,-13.6],22)
-palmsLine([-31.6,-47],[-31.6,-19],6)
-palmsLine([31.6,-47],[31.6,-19],6)
-
-stage(4,'哈利法塔',15)
-cam([30,30,2],[0,6,-33])
-lake([0,-33],10)                                 // 中央人工湖
-landmark('burj_khalifa')
-cam([26,58,14],[0,30,-33])
-wait(1.6)
-fountain([0,-33],7.2,14)
-
-stage(5,'城市长高',22)
-cam([78,64,32],[0,4,-32])
-block([-47,-49,-37,-19],6,'glass')
-landmark('dubai_frame')
-block([-31,-49,-13,-38],3,'glass')
-landmark('museum_future')
-cam([-70,66,30],[0,6,-34])
-block([12,-49,31,-41],4,'mixed')
-landmark('emirates_towers')
-block([37,-49,47,-19],3,'glass')
-block([-47,-57,47,-52],14,'mixed')               // 后排天际线
-block([-31,-31,-13,-19],4,'shops')
-block([10,-21,31,-19],2,'shops')
-
-stage(6,'棕榈岛',31)
-cam([64,74,98],[0,0,24])
-road([0,-5],[0,8],'bridge')                      // 跨海栈桥
-island('trunk','capsule',[0,6,0,40],3.4)
-fronds([0,9],[0,37],8)                           // 16 片叶形沙洲
-island('crescent','crescent',[0,22],33,2.6,112)  // 月牙防波堤
-island('pad','circle',[0,55],6.5)
-road([0,8],[0,39])
-frondVillas(2)
-frondPalms(2)
-crescentPalms(28)
-cam([26,40,88],[0,6,44])
-landmark('atlantis')
-
-stage(7,'帆船酒店',39)
-cam([-92,34,52],[-50,10,13])
-island('islet','circle',[-50,14],7)
-road([-50,-5],[-50,7.6],'bridge')
-landmark('burj_al_arab')
-cam([-78,30,24],[-50,16,14])
-heli([-50,15],15,27)
-
-stage(8,'城市苏醒',44)
-cam([-30,96,128],[0,4,-8])
-cars(18,[[[-34,-16],[34,-16],[34,-50],[-34,-50]],[[-48,-16],[48,-16]],[[0,-16],[0,39]],[[-48,-50],[48,-50]]])
-yachts(5,[[52,12,9],[50,44,11],[-24,66,9],[-66,42,9],[76,-22,7]])
-gulls(14)
-balloon([26,-3])
-sign('DUBAI',[54,22],-0.45,0,4.6)
-wait(0.6)
-orbit([0,0,2],142,104,7)
-wait(0.8)
-title()
-end(50)`
-  },
-
-  abudhabi: {
-    id: 'abudhabi', name: 'ABU DHABI', nameLocal: 'أبوظبي', nameZh: '阿布扎比', index: 1, total: 11,
-    bgm: ASSET + 'media/abu-dhabi/bgm.mp3',
-    // parts 多部件地标（阿提哈德塔三栋）按宽度横向排开；normalizeHeight 先把各部件高度拉齐
-    landmarks: {
-      grand_mosque:  { key: 'AUH_Mosque__AUH_Mosque',             tex: 'AUH_Mosque_BaseColor.png',      name: 'Sheikh Zayed Grand Mosque', zh: '谢赫扎耶德大清真寺', pos: [-15, 27],  h: 18, base: 1.0, r: 11, rot: 0, dur: 5.5 },
-      capital_gate:  { key: 'AUH_CapitalGate__AUH_CapitalGate',   tex: 'AUH_CapitalGate_BaseColor.png', name: 'Capital Gate',              zh: '首都之门',         pos: [12, -63],  h: 18, base: 1.25, r: 7,  rot: 0, dur: 3 },
-      ferrari_world: { key: 'AUH_Ferrari__AUH_Ferrari',           tex: 'AUH_Ferrari_BaseColor.png',     name: 'Ferrari World',             zh: '法拉利世界',       pos: [40, -62],  h: 5,  base: 1.0, r: 15, rot: 0, dur: 3 },
-      etihad_towers: { parts: [['AUH_Tower__AUH_Tower01', 'AUH_Tower01_BaseColor.png'], ['AUH_Tower__AUH_Tower02', 'AUH_Tower02_BaseColor.png'], ['AUH_Tower__AUH_Tower03', 'AUH_Tower03_BaseColor.png']],
-                       normalizeHeight: true,                                                          name: 'Etihad Towers',             zh: '阿提哈德塔',       pos: [56, -20],  h: 17, base: 1.25, r: 16, rot: Math.PI / 2, dur: 3.5 },
-      emirates_palace: { key: 'AUH_Hotel__AUH_Hotel',             tex: 'AUH_Hotel_BaseColor.png',       name: 'Emirates Palace',           zh: '酋长皇宫酒店',     pos: [-54, 0],   h: 9,  base: 1.0, r: 9,  rot: 0, dur: 3 },
-      abrahamic:     { key: 'AUH_Abrahamic__AUH_Abrahamic',       tex: 'AUH_Abrahamic_BaseColor.png',   name: 'Abrahamic Family House',    zh: '亚伯拉罕家族之家', pos: [44, 28],   h: 6,  base: 1.0, r: 13, rot: 0, dur: 3 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'沙洲升起',4)
-island('mainland','rect',[-72,-80,72,46],12)     // 阿布扎比主岛
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-plaza([-38,-50,38,12],6)                          // 中心广场地块
-plaza([-68,-78,24,-52],5)                         // 北区地块
-plaza([44,-46,70,10],5)                           // 东区地块
-rocks(16,[-70,30,70,45])
-rocks(10,[26,-80,70,-74])
-
-stage(3,'运河与潟湖',9)
-cam([-46,84,58],[0,0,-18])
-water('lagoon','rect',[-22,-36,22,-4],8)          // 中央潟湖
-canal([10,-4],[10,48.5],6)                        // 南运河（画到岛外，入海口顺坡入海）
-canal([-22,-26],[-74.5,-26],6)                    // 西运河
-isle('capsule',[-14,-22,6,-22],6)                 // 潟湖绿洲
-isle('circle',[14,-13],4)
-isle('circle',[-16,-9],3)
-cam([34,64,40],[0,2,-20])
-sign('ABU DHABI',[-4,-22],0,1.9,2.3)
-palmsLine([12,-15],[16,-11],2)
-palmsLine([-17,-10],[-15,-8],1)
-
-stage(4,'环路铺设',13.5)
-cam([62,84,74],[0,0,-20])
-road([-31,6],[6,6])                               // 环湖路
-road([6,6],[14,6],'bridge')
-road([14,6],[31,6])
-road([31,6],[31,-44])
-road([31,-44],[-31,-44])
-road([-31,-44],[-31,-23])
-road([-31,-23],[-31,-29],'bridge')
-road([-31,-29],[-31,6])
-road([0,-44],[0,-76])                             // 北大道
-road([31,-20],[44,-20])
-palmsLine([-28,9.5],[28,9.5],12)
-bushes(26,[-30,-41,30,3])
-
-stage(5,'大清真寺',20.5)
-cam([6,18,58],[-15,6,27])
-landmark('grand_mosque')
-cam([22,36,72],[-15,8,26])
-palmsLine([4.4,14],[4.4,42],6)                    // 运河两岸
-palmsLine([15.6,14],[15.6,42],6)
-palmsLine([-34,41],[3,41],9)                      // 清真寺前庭棕榈
-umbrellas([-66,42],[66,42],16)
-
-stage(6,'城市长高',26.5)
-cam([66,84,24],[16,6,-52])
-landmark('capital_gate')
-block([-66,-77,-6,-53],12,'mixed')               // 北区
-landmark('ferrari_world')
-landmark('etihad_towers')
-cam([-34,84,4],[18,8,-48])
-block([44,-46,68,-38],2,'glass')
-block([44,0,68,9],3,'mixed')
-block([16,14,29,38],3,'shops')
-block([-70,-50,-40,-34],5,'mixed')
-block([-44,14,-29,40],3,'shops')
-
-stage(7,'海岸地标',35)
-cam([-104,44,40],[-54,4,0])
-landmark('emirates_palace')
-bushes(30,[-70,-20,-38,18])                       // 皇宫花园
-palmsLine([-38,-31.6],[-68,-31.6],7)              // 西运河两岸
-palmsLine([-38,-20.4],[-68,-20.4],7)
-cam([92,40,78],[42,4,26])
-landmark('abrahamic')
-road([54,46],[54,64],'pier')                      // 木栈桥
-heli([56,-22],18,32)
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(16,[[[-31,6],[31,6],[31,-44],[-31,-44]],[[0,-44],[0,-76]],[[31,-20],[44,-20]]])
-yachts(4,[[-88,-30,9],[84,0,10],[30,66,10],[-40,64,9]])
-gulls(14)
-balloon([-30,-62])
-wait(0.6)
-orbit([0,0,-14],150,110,7)
-wait(3.6)
-title()
-end(50)`
-  },
-
-  tokyo: {
-    id: 'tokyo', name: 'TOKYO', nameLocal: '東京', nameZh: '东京', index: 3, total: 11,
-    bgm: ASSET + 'media/tokyo/bgm.mp3',
-    landmarks: {
-      tokyo_tower:     { key: 'Tokyo_Tower__Tokyo_Tower',           tex: 'Tokyo_Tower.png',            name: 'Tokyo Tower',     zh: '东京塔',     pos: [-24, -22], h: 26, base: 1.25, r: 7,  rot: 0, dur: 5.5 },
-      imperial_palace: { key: 'Tokyo_Kokyo__Tokyo_Kokyo',           tex: 'Tokyo_Kokyo.png',            name: 'Imperial Palace', zh: '皇居',       pos: [12, -30],  h: 17, base: 1.75, r: 9, rot: 0, dur: 3 },
-      sensoji:         { key: 'Tokyo_Asakusa_2__Tokyo_Asakusa_2',   tex: 'Tokyo_Asakusa_2.png',        name: 'Sensoji Temple',  zh: '浅草寺',     pos: [-24, -44], h: 17, base: 1.25, r: 6,  rot: 0, dur: 3 },
-      skytree:         { key: 'Tokyo_Tower2__Tokyo_Tower2',         tex: 'Tokyo_Tower2.png',           name: 'Tokyo Skytree',   zh: '东京晴空塔', pos: [58, -62],  h: 42, base: 1.25, r: 6,  rot: 0, dur: 5 },
-      akihabara:       { key: 'Tokoyo_Akiba__Tokoyo_Akiba',         tex: 'Tokoyo_Akiba_BaseColor.png', name: 'Akihabara',       zh: '秋叶原',     pos: [56, 22],   h: 11, base: 1.25, r: 8,  rot: 0, dur: 3 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'绿岛升起',4)
-island('mainland','rect',[-76,-82,76,48],14)     // 东京主岛
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-grass([-72,-78,72,44],12)
-dunes(9,[-70,-82,70,-77],'grass')                // 远景青山
-
-stage(3,'护城河与河道',8.5)
-cam([-46,84,58],[10,0,-24])
-water('moat','rect',[-6,-46,30,-14],5)           // 皇居护城河
-isle('rect',[-1,-41,25,-19],3)
-canal([30,-30],[78.5,-30],6)                     // 东侧河道
-canal([-6,-22],[-41.5,50.5],7)                   // 西南河道
-cam([34,64,40],[10,2,-26])
-
-stage(4,'道路与铁轨',13.5)
-cam([66,104,96],[0,0,-18])
-road([-40,8],[-26.5,8])                          // 环城路
-road([-26.5,8],[-15,8],'bridge')
-road([-15,8],[44,8])
-road([44,8],[44,-25])
-road([44,-25],[44,-35],'bridge')
-road([44,-35],[44,-56])
-road([44,-56],[-40,-56])
-road([-40,-56],[-40,8])
-road([0,8],[0,40])                               // 参道
-cam([24,96,92],[-8,0,-16])
-redBridge([-33,33],-0.45,12)                     // 朱红拱桥
-rail([[-68,40],[68,40],[68,-74],[-68,-74]])      // 新干线环线
-
-stage(5,'东京塔与皇居',20)
-cam([6,26,18],[-24,6,-22])
-landmark('tokyo_tower')
-cam([12,50,30],[-24,20,-24])
-landmark('imperial_palace')
-cam([42,38,12],[12,4,-30])
-
-stage(6,'樱花与寺町',26.5)
-cam([-72,62,34],[-30,4,-28])
-landmark('sensoji')
-torii([12,-4],0,1)                               // 皇居前鸟居
-block([-70,-52,-48,2],8,'wa')                    // 西侧寺町
-block([-70,12,-46,38],5,'wa')
-cam([-36,84,70],[-14,4,-12])
-trees(46,[-38,-54,42,6],'sakura')                // 环内樱花
-trees(20,[2,10,40,38],'sakura')
-
-stage(7,'晴空塔与秋叶原',33.5)
-cam([92,62,-4],[58,14,-50])
-landmark('skytree')
-landmark('akihabara')
-cam([84,58,74],[40,6,6])
-block([-66,-72,40,-62],12,'mixed')
-block([50,-50,66,-38],3,'glass')
-block([48,-16,68,0],3,'mixed')
-block([12,12,40,38],4,'shops')
-trees(36,[-72,-80,72,44],'green')
-sign('TOKYO',[57,34.5],-0.35,1.25,2.8)
-
-stage(8,'城市苏醒',42)
-cam([-36,112,156],[0,4,-16])
-train([[-68,40],[68,40],[68,-74],[-68,-74]],6)
-cars(16,[[[-40,8],[44,8],[44,-56],[-40,-56]],[[0,8],[0,40]]])
-yachts(4,[[-92,-20,9],[92,10,10],[30,70,10],[-50,68,9]])
-petals(160,[-40,-56,44,8])
-gulls(10)
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  paris: {
-    id: 'paris', name: 'PARIS', nameLocal: 'La Ville Lumière', nameZh: '巴黎', index: 4, total: 11,
-    bgm: ASSET + 'media/paris/bgm.mp3',
-    landmarks: {
-      eiffel: { key: 'eiffel_tower__eiffel_tower_001', tex: 'eiffel_tower.png', name: 'Eiffel Tower',    zh: '埃菲尔铁塔', pos: [-40, -24], h: 34, base: 1.25, r: 9, rot: 0, dur: 5.5 },
-      louvre: { key: 'Paris_LFG__Paris_LFG',           tex: 'Paris_LFG.png',    name: 'Louvre',          zh: '卢浮宫',     pos: [28, -36],  h: 8,  base: 1.25, r: 9, rot: 0, dur: 3 },
-      arc:    { parts: [['Paris_KXM__Paris_KXM', 'Paris_KXM.png'], ['Paris_KXM__KXM_EVA', 'KXM_EVA.png']],
-                                                                          name: 'Arc de Triomphe', zh: '凯旋门',     pos: [30, 8],    h: 10, base: 1.25, r: 8, rot: 0, dur: 3 },
-      sacre:  { key: 'Paris_SMY__Paris_SMY',           tex: 'Paris_SMY.png',    name: 'Sacré-Cœur',      zh: '圣心大教堂', pos: [-30, -67], h: 9.5, base: 6.25, r: 14, rot: 0, dur: 3 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'绿岛升起',4)
-island('mainland','rect',[-76,-82,76,44],14)
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-grass([-72,-78,72,40],12)
-dunes(8,[-70,-82,70,-79],'grass')
-
-stage(3,'塞纳河',8.5)
-cam([-60,92,72],[0,0,-14])
-canal([[-78.5,-3.6],[-10,-12],[78.5,-28.6]],7,false)  // 塞纳河：一条连续河道横穿全岛
-mount([-30,-67],14,5,'grass')                    // 蒙马特高地
-cam([40,84,64],[0,0,-20])
-
-stage(4,'街道与桥',12.5)
-cam([66,104,96],[0,0,-18])
-road([-60,-50],[60,-50])
-road([60,-50],[60,-30])
-road([60,-30],[60,-20],'bridge')
-road([60,-20],[60,24])
-road([60,24],[-60,24])
-road([-60,24],[-60,-1])
-road([-60,-1],[-60,-11],'bridge')
-road([-60,-11],[-60,-50])
-road([0,-50],[0,-19])
-road([0,-19],[0,-9],'bridge')
-road([0,-9],[0,24])
-
-stage(5,'埃菲尔铁塔',19.5)
-cam([-14,30,16],[-40,8,-24])
-landmark('eiffel')
-cam([-8,58,32],[-40,24,-24])
-water('pond','circle',[-40,8],4)                 // 战神广场水池
-fountain([-40,8],2.4,10)
-trees(26,[-58,-48,-4,20],'green')
-
-stage(6,'卢浮宫与凯旋门',25.5)
-cam([62,50,6],[28,4,-36])
-landmark('louvre')
-bushes(28,[2,-48,58,-24])                        // 杜乐丽花园
-landmark('arc')
-cam([56,40,46],[30,4,8])
-sign('PARIS',[34,33],-0.3,1.25,3)
-trees(20,[4,-6,58,22],'green')
-
-stage(7,'圣心堂与街区',32)
-cam([-62,58,-26],[-30,10,-67])
-landmark('sacre')
-block([-72,-48,-62,20],5,'paris')
-block([-56,-48,-6,-34],6,'paris')
-block([62,-48,72,22],4,'paris')
-block([-60,28,60,40],9,'paris')
-cam([20,92,90],[0,0,-30])
-block([-70,-78,70,-55],12,'paris')
-block([-56,-6,-4,20],6,'paris')
-block([4,-6,58,20],6,'paris')
-block([4,-48,58,-26],4,'paris')
-trees(24,[-72,-78,72,40],'green')
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(16,[[[-60,-50],[60,-50],[60,24],[-60,24]],[[0,-50],[0,24]]])
-yachts(4,[[-92,-20,9],[92,10,10],[30,66,10],[-50,64,9]])
-balloon([20,-60])
-gulls(10)
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  newyork: {
-    id: 'newyork', name: 'NEW YORK', nameLocal: 'The Big Apple', nameZh: '纽约', index: 5, total: 11,
-    bgm: ASSET + 'media/new-york/bgm.mp3',
-    landmarks: {
-      empire:   { key: 'NewYork_Empire__NewYork_Empire', tex: 'NewYork_Empire_D.png', name: 'Empire State Building', zh: '帝国大厦', pos: [0, -36], h: 34, base: 1.25, r: 7, rot: 0, dur: 5.5 },
-      skyline:  { parts: [1, 2, 3].map(i => ['Manhattan__Manhattan_0' + i, 'NewYork_Manhattan_0' + i + '_D.png']),
-                                                                                    name: 'Manhattan Skyline',     zh: '曼哈顿天际线', pos: [0, -60], h: 30, base: 1.25, r: 14, rot: Math.PI / 2, dur: 3.5 },
-      times:    { parts: [1, 2, 3, 4, 5].map(i => ['TimeSquare__TimeSquare_0' + i, 'NewYork_TimesSquare_0' + i + '_D.png']),
-                                                                                    name: 'Times Square',          zh: '时代广场', pos: [0, 6],   h: 12, base: 1.25, r: 17, rot: Math.PI / 2, dur: 3 },
-      bbridge:  { key: 'NewYork_BrooklynBridge__NewYork_BrooklynBridge', tex: 'NewYork_BrooklynBridge_D.png', name: 'Brooklyn Bridge', zh: '布鲁克林大桥', pos: [29, 8], h: 12, base: 1.0, r: 8, rot: 0, dur: 3 },
-      liberty:  { key: 'L007_NYSOL_1__L007_NYSOL_1', tex: 'L007_NYSOL_AlbedoTransparency.png', name: 'Statue of Liberty', zh: '自由女神像', pos: [-6, 58], h: 18, base: 1.0, r: 5, rot: 0, dur: 4 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'三岛升起',4)
-island('jersey','rect',[-80,-80,-36,44],10)       // 新泽西
-island('manhattan','rect',[-22,-78,22,32],6)      // 曼哈顿
-island('brooklyn','rect',[36,-80,80,44],10)       // 布鲁克林
-cam([30,128,160],[0,0,-18])
-island('liberty','circle',[-6,58],8)              // 自由岛
-grass([-76,-76,-40,40],8)
-grass([40,-76,76,40],8)
-plaza([-19,-75,19,29],4)
-
-stage(3,'曼哈顿街道',9.5)
-cam([-50,92,80],[0,0,-20])
-road([-12,27],[-12,-73])                          // 大道
-road([12,27],[12,-73])
-road([-60,-20],[-36.5,-20])
-road([-36.5,-20],[-21.5,-20],'bridge')
-road([-21.5,-20],[21.5,-20])
-road([21.5,-20],[36.5,-20],'bridge')
-road([36.5,-20],[60,-20])
-road([-60,-70],[-60,30])
-road([60,-70],[60,30])
-cam([46,80,70],[0,0,-24])
-
-stage(4,'帝国大厦',15.5)
-cam([22,26,-6],[0,10,-36])
-landmark('empire')
-cam([26,58,6],[0,26,-36])
-
-stage(5,'天际线与时代广场',21.5)
-cam([-46,72,-30],[0,12,-60])
-landmark('skyline')
-block([-19,-75,19,29],8,'glass')
-landmark('times')
-cam([34,40,40],[0,6,6])
-trees(20,[-76,-76,-40,40],'green')
-trees(20,[40,-76,76,40],'green')
-
-stage(6,'布鲁克林大桥',29)
-cam([50,22,34],[29,4,8])
-landmark('bbridge')
-block([-76,-76,-62,40],6,'mixed')
-block([-58,-76,-40,40],6,'glass')
-block([62,-76,76,40],6,'mixed')
-block([40,-12,58,40],5,'shops')
-
-stage(7,'自由女神',35.5)
-cam([20,22,84],[-6,10,58])
-landmark('liberty')
-cam([30,40,100],[-6,14,52])
-sign('NEW YORK',[56,34],-0.3,1.25,2.4)
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(16,[[[-12,27],[-12,-73]],[[12,27],[12,-73]],[[-60,-20],[60,-20]]])
-yachts(5,[[-6,58,15],[60,64,10],[-62,64,10],[29,-40,4],[-29,-50,4]])
-gulls(12)
-balloon([66,-60])
-wait(0.6)
-orbit([0,0,-14],160,116,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  lasvegas: {
-    id: 'lasvegas', name: 'LAS VEGAS', nameLocal: 'Entertainment Capital', nameZh: '拉斯维加斯', index: 6, total: 11,
-    bgm: ASSET + 'media/las-vegas/bgm.mp3',
-    landmarks: {
-      sphere:  { key: 'sphere__sphere',                 tex: 'sphere.png',                                 name: 'Sphere',             zh: '拉斯维加斯球', pos: [0, -18],  h: 14, base: 1.25, r: 8,  rot: 0, dur: 5.5 },
-      luxor:   { key: 'L010_LVLUXOR_1__L010_LVLUXOR_1', tex: 'Luxor_Base_color.png',                       name: 'Luxor',              zh: '卢克索酒店',   pos: [-20, -34], h: 12, base: 1.25, r: 10, rot: 0, dur: 3 },
-      resorts: { key: 'Lo14_Hotel_1__Lo14_Hotel_1',     tex: 'L014_ResortWorld_1_AlbedoTransparency.png', name: 'Resorts World',      zh: '云顶世界',     pos: [20, -34],  h: 16, base: 1.25, r: 10, rot: 0, dur: 3 },
-      strat:   { key: 'Vegas_Tower__Vegas_Tower',       tex: 'Vegas_Tower.png',                            name: 'Stratosphere Tower', zh: '云霄塔',       pos: [54, -46],  h: 40, base: 1.0,  r: 6,  rot: 0, dur: 4.5 },
-      lvsign:  { key: 'L011_LVSIGN__L011_LVSIGN_1',     tex: 'L011_LVSIGN_AlbedoTransparency.png',         name: 'Welcome Sign',       zh: '欢迎牌',       pos: [7, 32],    h: 8,  base: 1.0,  r: 4,  rot: 0, dur: 2.5 },
-      rqq:     { key: 'Vegas_Rqq__Vegas_Rqq',           tex: 'reqiqiu.png',                                name: 'Hot Air Balloon',    zh: '热气球',       pos: [-24, 0],   h: 12, base: 1.25, r: 4,  rot: 0, dur: 2.5 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'沙漠升起',4)
-island('mainland','rect',[-76,-82,76,46],14)
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-mount([-62,-68],11,9,'rock')                      // 红岩台地
-mount([-66,-36],7,6,'rock')
-mount([62,-72],10,10,'rock')
-mount([64,28],8,7,'rock')
-rocks(6,[-72,-80,72,-58],2.2)                     // 大道四周的荒漠岩块（避开中央广场）
-rocks(6,[-72,20,72,44],2.2)
-rocks(3,[-72,-54,-46,16],2.2)
-rocks(3,[46,-54,72,16],2.2)
-
-stage(3,'大道铺设',9.5)
-cam([-50,92,80],[0,0,-18])
-plaza([-42,-54,42,16],5)                          // 拉斯维加斯大道
-road([-38,12],[38,12])
-road([38,12],[38,-50])
-road([38,-50],[-38,-50])
-road([-38,-50],[-38,12])
-road([0,12],[0,44])
-road([38,-20],[62,-20])
-palmsLine([-34,-46],[34,-46],12)
-palmsLine([-34,8],[34,8],12)
-
-stage(4,'Sphere 球幕',16)
-cam([20,22,16],[0,7,-18])
-landmark('sphere')
-cam([26,44,30],[0,8,-20])
-
-stage(5,'金字塔与酒店',22)
-cam([-56,46,10],[-20,6,-34])
-landmark('luxor')
-landmark('resorts')
-cam([50,52,8],[20,8,-34])
-block([-36,-46,36,6],4,'shops')
-block([-36,-80,40,-58],10,'mixed')
-
-stage(6,'云霄塔',28.5)
-cam([84,34,-10],[54,14,-46])
-landmark('strat')
-cam([88,62,6],[54,24,-46])
-block([44,-40,72,20],6,'shops')
-
-stage(7,'欢迎牌与热气球',34.5)
-cam([26,14,52],[7,4,32])
-landmark('lvsign')
-landmark('rqq')
-cam([-48,40,30],[-24,6,0])
-block([-72,-26,-46,40],7,'mixed')
-block([10,22,40,42],4,'shops')
-palmsLine([-4,16],[-4,42],5)
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(18,[[[-38,12],[38,12],[38,-50],[-38,-50]],[[0,12],[0,44]],[[38,-20],[62,-20]]])
-yachts(4,[[-92,-20,9],[92,10,10],[30,68,10],[-50,66,9]])
-heli([54,-46],14,30)
-gulls(8)
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  rio: {
-    id: 'rio', name: 'RIO DE JANEIRO', nameLocal: 'Cidade Maravilhosa', nameZh: '里约热内卢', index: 7, total: 11,
-    bgm: ASSET + 'media/rio/bgm.mp3',
-    landmarks: {
-      jesus:    { key: 'Rio_Jesus__Rio_Jesus',       tex: 'Rio_Jesus.png',              name: 'Christ the Redeemer',    zh: '基督像',       pos: [-52, -60], h: 14, base: 17.25, r: 6,  rot: 0, dur: 5.5 },
-      maracana: { key: 'Rio_Maracana__Rio_Maracana', tex: 'Rio_Maracana_BaseColor.png', name: 'Maracanã Stadium',       zh: '马拉卡纳球场', pos: [34, -56],  h: 6,   base: 1.25, r: 13, rot: 0, dur: 3 },
-      church:   { key: 'Rio_Church__Rio_Church',     tex: 'Rio_Church.png',             name: 'Metropolitan Cathedral', zh: '大都会主教座堂', pos: [-10, -50], h: 14, base: 1.25, r: 8,  rot: 0, dur: 3 },
-      museum:   { key: 'Rio_Museum__Rio_Museum',     tex: 'Rio_Museum.png',             name: 'Museum of Tomorrow',     zh: '明日博物馆',   pos: [38, -12],  h: 6,   base: 1.25, r: 9,  rot: Math.PI / 2, dur: 3 },
-      steps:    { key: 'Rio_Step__Rio_Step',         tex: 'Rio_Step.png',               name: 'Selarón Steps',          zh: '塞勒隆阶梯',   pos: [-22, -14], h: 5,   base: 1.25, r: 7,  rot: 0, dur: 2.5 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'海湾升起',4)
-island('mainland','rect',[-78,-84,64,18],12)
-cam([30,128,160],[0,0,-14])
-island('beach','crescent',[-8,4],38,8,72)         // 科帕卡巴纳海滩
-island('sugarloaf','circle',[52,40],8)
-grass([-74,-80,60,14],10)
-
-stage(3,'山峦',8.5)
-cam([-70,80,40],[-30,8,-40])
-mount([-52,-60],15,16,'grass')                    // 科尔科瓦多山
-mount([52,40],6.5,15,'dome')                      // 面包山
-dunes(8,[-74,-82,60,-78],'grass')
-cam([60,60,90],[20,6,10])
-
-stage(4,'海滨大道',12.5)
-cam([20,96,110],[0,0,-14])
-road([-70,8],[56,8])
-road([-30,-30],[56,-30])
-road([10,-76],[10,8])
-crescentPalms(28)
-palmsLine([-68,11.5],[54,11.5],16)
-
-stage(5,'基督像',17.5)
-cam([-28,32,-34],[-52,22,-60])
-landmark('jesus')
-cam([-22,52,-20],[-52,28,-60])
-
-stage(6,'马拉卡纳与大教堂',23.5)
-cam([66,40,-30],[34,4,-56])
-landmark('maracana')
-landmark('church')
-cam([14,40,-20],[-10,8,-50])
-block([-74,-40,-30,0],10,'shops')                 // 山坡上的彩色小屋
-block([-28,-26,6,4],5,'mixed')
-
-stage(7,'明日博物馆与阶梯',31)
-cam([68,42,22],[38,3,-12])
-landmark('museum')
-landmark('steps')
-cam([4,46,28],[-22,3,-14])
-block([16,-78,58,-36],4,'mixed')
-trees(40,[-74,-80,60,14],'green')
-sign('RIO',[-60,34],0.3,0,3.5)
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(14,[[[-70,8],[56,8]],[[-30,-30],[56,-30]],[[10,-76],[10,8]]])
-yachts(5,[[-8,30,6],[-72,42,10],[74,4,8],[22,64,10],[-40,64,8]])
-gulls(14)
-heli([-52,-60],16,40)
-wait(0.6)
-orbit([-6,0,-18],160,116,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  cairo: {
-    id: 'cairo', name: 'CAIRO', nameLocal: 'القاهرة', nameZh: '开罗', index: 8, total: 11,
-    bgm: ASSET + 'media/cairo/bgm.mp3',
-    landmarks: {
-      pyramids: { parts: [['Cairo_Pyramid__Cairo_Pyramid_2', 'Cairo_Pyramid_2.png'], ['Cairo_Pyramid__Cairo_Pyramid_3', 'Cairo_Pyramid.png']],
-                                                                                       name: 'Pyramids of Giza',       zh: '吉萨金字塔',   pos: [-44, -34], h: 16, base: 1.0,  r: 19, rot: 0, dur: 5.5 },
-      ctower:   { key: 'Cairo_Tower__Cairo_Tower',       tex: 'Cairo_Tower_BaseColor.png',    name: 'Cairo Tower',            zh: '开罗塔',       pos: [0, -6],    h: 22, base: 1.75, r: 4,  rot: 0, dur: 3.5 },
-      mosque:   { key: 'Cairo_Qingzhen__Cairo_Qingzhen', tex: 'Cairo_Qingzhen_BaseColor.png', name: 'Mosque of Muhammad Ali', zh: '穆罕默德·阿里清真寺', pos: [48, -56], h: 14, base: 1.0, r: 8, rot: 0, dur: 3 },
-      iconic:   { key: 'Cairo_Tower2__Cairo_Tower2',     tex: 'Cairo_Tower2_BaseColor.png',   name: 'Iconic Tower',           zh: '标志塔',       pos: [50, 12],   h: 24, base: 1.0,  r: 10, rot: 0, dur: 3.5 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'沙漠升起',4)
-island('mainland','rect',[-76,-82,76,46],14)
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-dunes(10,[-70,-82,70,-77])
-rocks(12,[-72,-80,72,44])
-
-stage(3,'尼罗河',8.5)
-cam([-50,90,70],[0,0,-14])
-grass([-24,-78,30,42],6)                          // 尼罗河两岸绿洲
-water('nile','circle',[0,-6],13)
-canal([[10,-84.5],[1,-14],[0,-6],[-8.4,48.5]],9,false)  // 尼罗河穿岛而过
-isle('circle',[0,-6],7)                           // 杰济拉岛
-cam([40,76,60],[0,0,-14])
-
-stage(4,'沿河大道',13)
-cam([62,96,90],[0,0,-18])
-road([-20,-74],[-20,40])
-road([26,-74],[26,40])
-road([-20,24],[26,24],'bridge')
-road([26,-28],[70,-28])
-road([-20,-60],[-66,-60])
-palmsLine([-16.4,-70],[-16.4,20],8)
-palmsLine([22.4,-70],[22.4,20],8)
-
-stage(5,'金字塔',18.5)
-cam([-18,26,4],[-44,8,-34])
-landmark('pyramids')
-cam([-10,46,20],[-44,10,-34])
-pyramid([-64,-51],10)                             // 另两座金字塔
-pyramid([-49,-53],7)
-sign('CAIRO',[-44,-4],0,1,3)
-
-stage(6,'开罗塔与清真寺',24.5)
-cam([22,28,14],[0,12,-6])
-landmark('ctower')
-landmark('mosque')
-cam([74,40,-30],[48,6,-56])
-trees(28,[-24,-78,30,42],'green')
-
-stage(7,'新首都',31)
-cam([78,36,40],[50,12,12])
-landmark('iconic')
-block([32,-76,72,-36],6,'adobe')
-block([32,-22,72,42],8,'adobe')
-block([-70,-16,-26,42],8,'adobe')
-block([-70,-78,-26,-64],4,'adobe')
-cam([10,90,90],[0,0,-14])
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(14,[[[-20,-74],[-20,40]],[[26,-74],[26,40]],[[-20,24],[26,24]],[[26,-28],[70,-28]]])
-yachts(4,[[-92,0,10],[92,-20,10],[0,68,10],[-50,64,8]])
-balloon([-60,-16])
-gulls(10)
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  singapore: {
-    id: 'singapore', name: 'SINGAPORE', nameLocal: '新加坡', nameZh: '新加坡', index: 9, total: 11,
-    bgm: ASSET + 'media/singapore/bgm.mp3',
-    landmarks: {
-      mbs:     { key: 'Singapore_Shoppes__Singapore_Shoppes',   tex: 'Singapore_Shoppes_D.png',   name: 'Marina Bay Sands',   zh: '滨海湾金沙', pos: [32, -27], h: 18, base: 1.25, r: 13,  rot: Math.PI / 2, dur: 5.5 },
-      merlion: { key: 'Singapore_Merlion__Singapore_Merlion',   tex: 'Singapore_Merlion_D.png',   name: 'Merlion',            zh: '鱼尾狮',     pos: [-20, -2], h: 8,  base: 1.25, r: 4,  rot: 0, dur: 2.5 },
-      artsci:  { key: 'Singapore_ArtScience__Singapore_ArtScience', tex: 'Singapore_ArtScience_D.png', name: 'ArtScience Museum', zh: '艺术科学博物馆', pos: [14, -1], h: 7, base: 1.25, r: 5, rot: 0, dur: 2.5 },
-      garden:  { key: 'Singapore_Garden__Singapore_Garden',     tex: 'Singapore_Garden_D.png',    name: 'Gardens by the Bay', zh: '滨海湾花园', pos: [-58, -30], h: 12, base: 1.25, r: 12, rot: 0, dur: 3 },
-      flyer:   { key: 'Singapore_Flyer__Singapore_Flyer_Ani',   tex: 'Singapore_Flyer_D.png',     name: 'Singapore Flyer',    zh: '新加坡摩天观景轮', pos: [52, -66], h: 18, base: 1.25, r: 17, rot: 0, dur: 3.5 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'绿岛升起',4)
-island('mainland','rect',[-76,-82,76,46],14)
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-grass([-72,-78,-46,42],10)
-grass([46,-78,72,42],10)
-grass([-44,-78,44,-60],6)
-grass([-44,18,44,42],6)
-
-stage(3,'滨海湾',8.5)
-cam([-50,90,70],[0,0,-18])
-plaza([-44,-58,44,14],6)                          // 滨海湾广场
-water('bay','rect',[-28,-46,24,-8],10)
-canal([-6,-8],[-6,48.5],7)                        // 新加坡河
-cam([40,76,60],[0,0,-22])
-
-stage(4,'环湾道路',12.5)
-cam([66,104,96],[0,0,-18])
-road([-40,10],[-12,10])
-road([-12,10],[0,10],'bridge')
-road([0,10],[40,10])
-road([40,10],[40,-54])
-road([40,-54],[-40,-54])
-road([-40,-54],[-40,10])
-palmsLine([-36,-50],[36,-50],12)
-palmsLine([-36,6],[-14,6],4)
-palmsLine([2,6],[36,6],6)
-
-stage(5,'滨海湾金沙',18)
-cam([62,26,4],[32,8,-27])
-landmark('mbs')
-cam([66,52,18],[30,14,-28])
-
-stage(6,'鱼尾狮与艺术科学馆',24)
-cam([-30,16,22],[-20,4,-2])
-landmark('merlion')
-landmark('artsci')
-cam([26,22,28],[14,3,-1])
-block([-36,-78,30,-61],10,'glass')                // 中央商务区
-trees(24,[-72,-78,72,42],'green')
-
-stage(7,'花园与摩天轮',30.5)
-cam([-90,40,0],[-58,6,-30])
-landmark('garden')
-landmark('flyer')
-cam([84,40,-30],[52,10,-66])
-block([48,-48,72,40],6,'mixed')
-block([-72,18,72,40],8,'shops')
-block([-72,-14,-46,14],4,'mixed')
-sign('SINGAPORE',[-34,32],0.2,1.25,2.2)
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(16,[[[-40,10],[40,10],[40,-54],[-40,-54]]])
-yachts(5,[[-92,-20,9],[92,10,10],[30,68,10],[-50,66,9],[-6,62,6]])
-gulls(12)
-balloon([-60,10])
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  jakarta: {
-    id: 'jakarta', name: 'JAKARTA', nameLocal: 'Kota Jakarta', nameZh: '雅加达', index: 10, total: 11,
-    bgm: ASSET + 'media/jakarta/bgm.mp3',
-    landmarks: {
-      monas:     { key: 'M_jzdb_Monument__M_jzdb_Monument', tex: 'M_jzdb_Monument_BaseColor.png', name: 'National Monument', zh: '民族独立纪念碑', pos: [0, -22],  h: 30, base: 1.25, r: 14, rot: 0, dur: 5.5 },
-      istiqlal:  { key: 'M_jzdb_Mosque__M_jzdb_Mosque',     tex: 'M_jzdb_Mosque_BaseColor.png',   name: 'Istiqlal Mosque',   zh: '伊斯蒂克拉尔清真寺', pos: [-52, -26], h: 14, base: 1.25, r: 13, rot: 0, dur: 3.5 },
-      cathedral: { key: 'M_JKT_Cathedral__M_JKT_Cathedral', tex: 'M_JKT_Cathedral_BaseColor.png', name: 'Jakarta Cathedral', zh: '雅加达主教座堂', pos: [52, -30],  h: 16, base: 1.25, r: 11, rot: 0, dur: 3.5 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'绿岛与青山',4)
-island('mainland','rect',[-76,-82,76,46],14)
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-grass([-72,-78,72,42],12)
-mount([-56,-66],12,10,'grass')
-mount([-24,-70],9,7,'grass')
-mount([50,-66],12,12,'grass')
-
-stage(3,'默迪卡广场',9)
-cam([-50,90,70],[0,0,-18])
-road([-32,8],[32,8])
-road([32,8],[32,-52])
-road([32,-52],[-32,-52])
-road([-32,-52],[-32,8])
-road([0,8],[0,40])
-road([-70,0],[-32,0])
-road([32,0],[70,0])
-water('poolW','circle',[-20,-2],4)
-water('poolE','circle',[20,-2],4)
-fountain([-20,-2],2.2,8)
-fountain([20,-2],2.2,8)
-bushes(36,[-30,-50,30,6])                         // 广场树篱
-
-stage(4,'民族独立纪念碑',17.5)
-cam([20,22,24],[0,12,-22])
-landmark('monas')
-cam([26,58,36],[0,28,-22])
-
-stage(5,'伊斯蒂克拉尔清真寺',23.5)
-cam([-88,36,10],[-52,6,-26])
-landmark('istiqlal')
-cam([-80,52,26],[-52,8,-26])
-block([-72,6,-36,40],6,'mixed')
-
-stage(6,'雅加达主教座堂',29)
-cam([84,30,0],[52,8,-30])
-landmark('cathedral')
-cam([84,50,20],[52,10,-30])
-block([36,6,72,40],6,'mixed')
-block([36,-56,72,-46],3,'glass')
-
-stage(7,'城市长高',34.5)
-cam([10,90,96],[0,0,-14])
-sign('JAKARTA',[-14,30],0,1.25,2.8)
-block([-28,14,28,40],6,'shops')
-block([-72,-52,-38,-42],3,'glass')
-trees(30,[-72,-78,72,42],'green')
-palmsLine([-3.6,12],[-3.6,38],5)
-palmsLine([3.6,12],[3.6,38],5)
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(16,[[[-32,8],[32,8],[32,-52],[-32,-52]],[[0,8],[0,40]],[[-70,0],[-32,0]],[[32,0],[70,0]]])
-yachts(4,[[-92,-20,9],[92,10,10],[30,68,10],[-50,66,9]])
-gulls(12)
-balloon([40,-40])
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
-
-  sydney: {
-    id: 'sydney', name: 'SYDNEY', nameLocal: 'Harbour City', nameZh: '悉尼', index: 11, total: 11,
-    bgm: ASSET + 'media/sydney/bgm.mp3',
-    landmarks: {
-      opera:  { key: 'Sydney_Opera__Sydney_Opera',       tex: 'Sydney_Opera_D.png',    name: 'Sydney Opera House',      zh: '悉尼歌剧院',   pos: [-22, -20], h: 8,  base: 1.0,  r: 11, rot: 0, dur: 5.5 },
-      bridge: { key: 'Sydney_Bridge__Sydney_Bridge',     tex: 'Sydney_Bridge_d.png',   name: 'Sydney Harbour Bridge',   zh: '悉尼海港大桥', pos: [34, -24],  h: 12, base: 1.0,  r: 5,  rot: Math.PI / 2, dur: 3.5 },
-      ship:   { key: 'Sydney_Ship__Sydney_Ship',         tex: 'Sydney_Ship_D.png',     name: 'Harbour Cruise',          zh: '港湾邮轮',     pos: [-56, -24], h: 6,  base: 0.1,  r: 4,  rot: 0, dur: 2.5 },
-      stower: { key: 'Sydney_Tower__Sydney_Tower',       tex: 'Sydney_Tower_D.png',    name: 'Sydney Tower',            zh: '悉尼塔',       pos: [14, 12],   h: 30, base: 1.25, r: 9,  rot: 0, dur: 4 },
-      qvb:    { key: 'Sydney_Victoria__Sydney_Victoria', tex: 'Sydney_Victoria_D.png', name: 'Queen Victoria Building', zh: '维多利亚女王大厦', pos: [50, 12], h: 8, base: 1.25, r: 8, rot: 0, dur: 3 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'两岸升起',4)
-island('north','rect',[-78,-82,78,-36],10)        // 北岸
-island('city','rect',[-78,-12,78,46],10)          // 市中心
-cam([30,128,160],[0,0,-18])
-island('point','capsule',[-30,-19,-14,-19],9)     // 便利朗角
-grass([-74,-78,74,-40],8)
-grass([-74,-8,-10,32],6)
-plaza([-6,-8,74,32],5)
-
-stage(3,'港湾街道',9.5)
-cam([-50,92,80],[0,0,-18])
-road([-70,-2],[70,-2])                            // 环形码头
-road([-70,26],[70,26])
-road([0,-2],[0,26])
-road([34,-2],[34,26])
-road([-70,-50],[70,-50])
-road([34,-50],[34,-38])
-umbrellas([-66,39],[66,39],16)                    // 海滩
-palmsLine([-66,30],[66,30],18)
-
-stage(4,'悉尼歌剧院',15)
-cam([-2,20,4],[-22,4,-21])
-landmark('opera')
-cam([4,40,14],[-22,6,-21])
-
-stage(5,'海港大桥',21)
-cam([66,26,-10],[34,8,-24])
-landmark('bridge')
-cam([70,44,4],[34,10,-24])
-landmark('ship')
-
-stage(6,'悉尼塔与女王大厦',27.5)
-cam([40,34,48],[14,14,12])
-landmark('stower')
-landmark('qvb')
-cam([74,40,44],[50,6,12])
-block([2,0,30,24],5,'glass')
-block([38,0,72,24],5,'glass')
-
-stage(7,'北岸与城区',34.5)
-cam([10,92,96],[0,0,-14])
-sign('SYDNEY',[-40,-60],0.15,1.25,2.8)
-block([-72,0,-12,24],8,'shops')
-block([-72,-76,72,-54],12,'shops')
-trees(36,[-74,-78,74,-40],'green')
-trees(14,[-74,-8,-10,32],'green')
-
-stage(8,'城市苏醒',41.5)
-cam([-36,112,156],[0,4,-16])
-cars(16,[[[-70,-2],[70,-2]],[[-70,26],[70,26]],[[0,-2],[0,26]],[[-70,-50],[70,-50]]])
-yachts(6,[[4,-24,5],[60,-24,5],[-92,-24,8],[92,-24,8],[0,64,10],[-60,62,8]])
-gulls(14)
-heli([-22,-21],16,22)
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  }
-};
 
 const QS = new URLSearchParams(location.search);
 const EXPLORE = true;
 const CITY_ID = QS.get('city') || 'dubai';
 const CITY = CITIES[CITY_ID] || CITIES.dubai;
-document.title = 'Tourist Agent · 十一城自由探索';
+document.title = 'Tourist Agent · 四城自由探索';
 
 /* =====================================================================
    2. 工具：缓动、PRNG、矩阵
@@ -1317,7 +390,7 @@ function labelTexture(title, sub) {
   return t;
 }
 
-// 为一座城市创建地标状态并开始加载模型；parent 可以是带偏移的城市组（宣传片里十一城各占一块）
+// 为一座城市创建地标状态并开始加载模型；parent 可以是带偏移的城市组（宣传片里四城各占一块）
 function createLandmarks(city, parent) {
  const LMc = {};
  for (const id of Object.keys(city.landmarks)) {
@@ -2341,8 +1414,6 @@ function compile(src, seed, city = CITY, LMc = LM, skip = null) {
 }
 
 // Completed city recipes share one world. Only ambient actors continue advancing.
-const CITY_ORDER = ['dubai', 'abudhabi', 'tokyo', 'paris', 'newyork', 'lasvegas', 'rio', 'cairo', 'singapore', 'jakarta', 'sydney'];
-const CITY_GRID = { dubai: [-345, -230], abudhabi: [-115, -230], tokyo: [115, -230], paris: [345, -230], newyork: [345, 0], lasvegas: [115, 0], rio: [-115, 0], cairo: [-345, 0], singapore: [-230, 230], jakarta: [0, 230], sydney: [230, 230] };
 const SCENE_SKIP = new Set(['cam', 'orbit', 'clouds', 'title', 'end']);
 function buildExploreWorld(seed) {
   const root = new THREE.Group(); root.name = 'explore-world';
@@ -2529,7 +1600,7 @@ function pickCity(e) {
 let cardL = null;
 function showCard(L) {
   cardL = L;
-  $('cardCity').textContent = `${String(L.city.index).padStart(2, '0')} / 11 · ${L.city.name} ${L.city.nameZh}`;
+  $('cardCity').textContent = `${String(L.city.index).padStart(2, '0')} / ${CITY_COUNT} · ${L.city.name} ${L.city.nameZh}`;
   $('cardName').textContent = L.cfg.name; $('cardZh').textContent = L.cfg.zh;
   $('cardDesc').textContent = LM_DESC[L.cfg.name] || '';
   const tk = ticketOf(L); $('cardTicket').innerHTML = `🎫 购买门票 <small>· ${tk.name} · ${fmtPWV(tk.price)} 起</small>`;
@@ -2582,7 +1653,7 @@ function renderTickets() {
   if (EXPLORE) hudRefresh();
   if (tix.step === 'mine') return renderMine(box);
   const L = tix.L, t = ticketOf(L), total = tixTotal();
-  const head = `<div class="tix-city">${String(L.city.index).padStart(2, '0')} / 11 · ${L.city.name} ${L.city.nameZh}</div><h3>${L.cfg.zh} <small>${L.cfg.name}</small></h3><div class="tix-kind">🎫 ${t.name}</div>`;
+  const head = `<div class="tix-city">${String(L.city.index).padStart(2, '0')} / ${CITY_COUNT} · ${L.city.name} ${L.city.nameZh}</div><h3>${L.cfg.zh} <small>${L.cfg.name}</small></h3><div class="tix-kind">🎫 ${t.name}</div>`;
   if (tix.step === 'pick') {
     const min = new Date().toISOString().slice(0, 10), max = new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10);
     box.innerHTML = head + `
@@ -2692,7 +1763,7 @@ function renderCityOptions() {
 renderCityOptions();
 
 /* =====================================================================
-   8. 自由探索：Eva 图片角色在十一城之间旅行
+   8. 自由探索：Eva 图片角色在四城之间旅行
    角色依据设定图：黑色中长波浪发（中分）、绿瞳、红唇、奶黄色方领泡泡袖高腰中长裙、米白玛丽珍鞋
    ===================================================================== */
 const evaAtlasTexture = new THREE.TextureLoader().load(evaSpriteUrl, () => {
@@ -2767,16 +1838,15 @@ function arrive(P, h, r, L, id) {
   $('city').value = id;
   document.querySelectorAll('#cityChips button').forEach(b => b.classList.toggle('on', b.dataset.id === id));
 }
-// 世界地图：升到高空俯瞰十一座城，点击任意一座直达；再按一次 / Esc 回到小女孩身边
+// 世界地图：升到高空俯瞰四座城，点击任意一座直达；再按一次 / Esc 回到小女孩身边
 function toggleOverview(on = !EX.overview) {
   review.fixed = false; review.camera = on ? '世界地图' : '自由探索';
   EX.overview = on; document.body.classList.toggle('overview', on); hideCard(); $('worldHint').style.display = on ? 'block' : 'none';
   configureExploreCamera(controls, on);
   if (on) {
     EX.back = { p: camera.position.clone(), q: controls.target.clone() };
-    // Fit the wide eleven-city layout on portrait screens as well as desktop.
-    const fit = Math.max(1.12, Math.min(4.5, 1.6 / camera.aspect));
-    flyCam(V3(0, 720 * fit, 540 * fit), V3(0, 0, -10), 1100);
+    const frame=overviewFrame(camera.aspect,camera.fov);
+    flyCam(V3(...frame.position), V3(...frame.target), 1100);
   }
   else if (EX.back) flyCam(EX.back.p, EX.back.q, 1000);
 }
@@ -2880,7 +1950,7 @@ function exploreStep(dt, now) {
   controls.update(); constrainExploreCamera();
   // 进城横幅、靠近地标自动弹出介绍卡
   const c = w && w.c ? w.c : null;
-  if (c && c !== EX.city) { EX.city = c; $('cityBanner').innerHTML = `<b>${c.city.name}</b> ${c.city.nameZh}<span>${String(c.city.index).padStart(2, '0')} / 11</span>`; $('cityBanner').classList.remove('show'); void $('cityBanner').offsetWidth; $('cityBanner').classList.add('show'); markWatched(c.id);  cityMusic(c.id); onCityEnter(c); }
+  if (c && c !== EX.city) { EX.city = c; $('cityBanner').innerHTML = `<b>${c.city.name}</b> ${c.city.nameZh}<span>${String(c.city.index).padStart(2, '0')} / ${CITY_COUNT}</span>`; $('cityBanner').classList.remove('show'); void $('cityBanner').offsetWidth; $('cityBanner').classList.add('show'); markWatched(c.id);  cityMusic(c.id); onCityEnter(c); }
   gameFrame(dt, now, w);
   if (uiBusy() || review.fixed) return;
   let near = null, nd = 1e9;
@@ -2900,16 +1970,9 @@ const CITY_DESC = {
   dubai: '沙漠里长出的未来之城：世界最高的哈利法塔、帆船酒店和伸进大海的棕榈岛都在这里。',
   abudhabi: '阿联酋首都：白色大理石的谢赫扎耶德大清真寺、红顶的法拉利乐园和海边的酋长宫殿。',
   tokyo: '传统与未来交织的都市：浅草寺的雷门灯笼、红白东京塔和 634 米的晴空塔。',
-  paris: '塞纳河畔的光之城：埃菲尔铁塔、卢浮宫的玻璃金字塔和十二条大街汇聚的凯旋门。',
-  newyork: '不夜城：帝国大厦、时代广场的巨屏、布鲁克林大桥和港口的自由女神。',
   lasvegas: '沙漠中的娱乐之都：Sphere 球形巨屏、射出光柱的金字塔酒店和那块著名的欢迎牌。',
-  rio: '山与海之城：科尔科瓦多山顶的基督像俯瞰海湾，还有马拉卡纳球场和彩色瓷砖的塞勒隆阶梯。',
-  cairo: '尼罗河畔的千年古都：吉萨金字塔、莲花造型的开罗塔和城堡里的穆罕默德·阿里清真寺。',
-  singapore: '花园城市：滨海湾金沙托起空中泳池，鱼尾狮守着海湾，擎天大树在花园里发光。',
-  jakarta: '印尼首都：顶着金色火焰的民族纪念碑，伊斯蒂克拉尔清真寺与大教堂隔街相望。',
-  sydney: '海港之城：帆形屋顶的歌剧院、昵称「衣架」的海港大桥和穿梭港湾的游船。',
 };
-const TIPS = ['走近地标即可点亮城市印记，集齐一城成为「文化大使」', '门票与 PWV 余额仅为本机演示，不会发生真实付款', '探索十一座城市，发现各地地标',
+const TIPS = ['走近地标即可点亮城市印记，集齐一城成为「文化大使」', '门票与 PWV 余额仅为本机演示，不会发生真实付款', '探索四座城市，发现各地地标',
   '方向键 / WASD 走动，按住 Shift 奔跑', '按 M 打开世界地图，点任意一座城直达', '右下角 GO：前往下一座城市'];
 const NPC_LOOKS = [
   { name: '模拟_Omar294', hair: '#30251e', dress: '#92a9ab', dress2: '#748f91', skin: '#c99978' },
@@ -2984,7 +2047,7 @@ function makeAvatar() {
 
 function hudRefresh() {
   if (!EXPLORE) return;
-  const n = checkins.size;
+  const n = activeCheckinKeys(checkins).length;
   $('hudPwv').textContent = (Math.round(pwvBalance * 100) / 100).toLocaleString('en-US');
   $('hudStamps').textContent = `${n}/${ALL_LM.length}`;
   $('hudLv').textContent = 1 + Math.floor(n / 4);
@@ -2994,10 +2057,10 @@ function hudRefresh() {
   renderQuests();
 }
 function renderQuests() {
-  const c = EX.city, cities = new Set([...checkins].map(k => k.split(':')[0])), q = [];
+  const c = EX.city, cities = new Set(activeCheckinKeys(checkins).map(k => k.split(':')[0])), q = [];
   if (c) { const ls = cityLMs(c.id), n = ls.filter(lit).length; q.push({ ic: '📍', t: `点亮${c.city.nameZh}全部地标`, p: `${n}/${ls.length}`, done: n === ls.length, act: 'lm' }); }
-  q.push({ ic: '🌍', t: '游历十一城', p: `${cities.size}/11`, done: cities.size >= 11, act: 'city' });
-  q.push({ ic: '🎫', t: '用 PWV 买一张景点门票', p: `${Math.min(1, tixOrders.length)}/1`, done: tixOrders.length > 0, act: 'shop' });
+  q.push({ ic: '🌍', t: '游历四城', p: `${cities.size}/${CITY_COUNT}`, done: cities.size >= CITY_COUNT, act: 'city' });
+  q.push({ ic: '🎫', t: '用 PWV 买一张景点门票', p: `${Math.min(1, tixOrders.filter(o=>CITIES[o.city]).length)}/1`, done: tixOrders.some(o=>CITIES[o.city]), act: 'shop' });
   $('hudQuests').innerHTML = q.map(x => `<button data-act="${x.act}" class="${x.done ? 'done' : ''}"><i>${x.done ? '✓' : x.ic}</i><span>${x.t}<b>${x.p}</b></span></button>`).join('');
 }
 function questGo(act) {
@@ -3008,7 +2071,7 @@ function questGo(act) {
     const dist = L => L.holder.getWorldPosition(V3()).distanceTo(EX.pos);
     return goLandmark(todo.sort((a, b) => dist(a) - dist(b))[0]);
   }
-  const done = new Set([...checkins].map(k => k.split(':')[0])), o = cityOrder(), i = o.findIndex(c => c.id === (EX.city ? EX.city.id : 'dubai'));
+  const done = new Set(activeCheckinKeys(checkins).map(k => k.split(':')[0])), o = cityOrder(), i = o.findIndex(c => c.id === (EX.city ? EX.city.id : 'dubai'));
   for (let k = 1; k <= o.length; k++) { const c = o[(i + k) % o.length]; if (!done.has(c.id)) return travelTo(c.id); }
 }
 
@@ -3027,7 +2090,7 @@ function giveCoupon(n = 1) { store.set(COUPON_KEY, store.get(COUPON_KEY, 0) + n)
 function cityIntro(c, onClose) {
   const ls = cityLMs(c.id), n = ls.filter(lit).length;
   showPop(`<div class="gp-card gp-city-intro"><aside class="eva-guide" aria-label="导游 Eva"><div class="gp-eva-frame">${evaGuideMarkup("gp-eva")}</div><div class="eva-guide-copy"><strong>Eva</strong><span>你的城市导游</span><p>跟我一起逛${c.city.nameZh}吧。</p></div></aside><button class="gp-x" aria-label="关闭">×</button><div class="gp-city-content">
-    <h2>欢迎来到${c.city.nameZh}<small>${c.city.name} · ${String(c.city.index).padStart(2, '0')}/11</small></h2>
+    <h2>欢迎来到${c.city.nameZh}<small>${c.city.name} · ${String(c.city.index).padStart(2, '0')}/${CITY_COUNT}</small></h2>
     <img class="gp-photo" src="${cityShot(c)}" alt="${c.city.nameZh}">
     <p>${CITY_DESC[c.id] || ''}</p>
     <div class="gp-sub">城市印记 <b>${n}/${ls.length}</b> · 走近地标即可点亮，点图标直达</div>
@@ -3065,7 +2128,7 @@ function openPanel(kind, city = EX.city ? EX.city.id : 'dubai') {
   GUI.panel = { kind, city, sel: null }; $('gpanel').style.display = 'flex'; renderPanel();
 }
 function closePanel() { GUI.panel = null; $('gpanel').style.display = 'none'; $('gpanel').innerHTML = ''; }
-const curHTML = () => `<div class="gcur"><i class="ic stamp">印</i><span>${checkins.size}/${ALL_LM.length}</span></div><div class="gcur"><i class="ic pwv">PWV</i><span>${(Math.round(pwvBalance * 100) / 100).toLocaleString('en-US')}</span></div>`;
+const curHTML = () => `<div class="gcur"><i class="ic stamp">印</i><span>${activeCheckinKeys(checkins).length}/${ALL_LM.length}</span></div><div class="gcur"><i class="ic pwv">PWV</i><span>${(Math.round(pwvBalance * 100) / 100).toLocaleString('en-US')}</span></div>`;
 function renderPanel() {
   const P = GUI.panel, shop = P.kind === 'shop', topup = P.city === 'topup';
   const tabs = cityOrder().map(c => { const ls = cityLMs(c.id), n = ls.filter(lit).length;
@@ -3359,7 +2422,7 @@ function updateReview() {
   if (!REVIEW) return;
   const ok = ALL_LM.filter(l => l.loaded).length, failed = ALL_LM.filter(l => l.failed).length;
   const xyz = v => v.toArray().map(n => n.toFixed(1)).join(', ');
-  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.promenadeBeds != null ? s.promenadeBeds + ' 处步道花境' : s.bridges != null ? s.bridges + ' 座精修桥梁' : s.resortBeds != null ? s.crescentBeds + ' 处月牙花境 / ' + s.hotelBeds + ' 处酒店花庭' : s.islandBeds != null ? s.islandBeds + ' 处岛上花庭' : s.shoreSections != null ? s.shoreIslands + ' 岛块岸线 / ' + s.shoreSections + ' 岸段' : s.gardens != null ? s.gardens + ' 处花园（' + s.borders + ' 处长花境 / ' + (s.pockets || 0) + ' 处侧缘花庭）/ ' + s.trees + ' 棵乔木' : s.vehicles != null ? s.vehicles + ' 辆车' : s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n${realism.lightingStatus}\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
+  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.promenadeBeds != null ? s.promenadeBeds + ' 处步道花境' : s.bridges != null ? s.bridges + ' 座精修桥梁' : s.resortBeds != null ? s.crescentBeds + ' 处月牙花境 / ' + s.hotelBeds + ' 处酒店花庭' : s.islandBeds != null ? s.islandBeds + ' 处岛上花庭' : s.shoreSections != null ? s.shoreIslands + ' 岛块岸线 / ' + s.shoreSections + ' 岸段' : s.gardens != null ? s.gardens + ' 处花园（' + s.borders + ' 处长花境 / ' + (s.pockets || 0) + ' 处侧缘花庭）/ ' + s.trees + ' 棵乔木' : s.vehicles != null ? s.vehicles + ' 辆车' : s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/${CITY_COUNT}\n${realism.lightingStatus}\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
 }
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);

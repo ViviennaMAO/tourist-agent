@@ -1,6 +1,8 @@
 # Tourist Agent
 
-An independent, Explore-only edition of Parallel World. Walk through eleven miniature cities, visit landmarks, and collect local demonstration stamps and tickets.
+An independent, Explore-only edition of Parallel World. Walk through four miniature cities — Dubai, Abu Dhabi, Tokyo, and Las Vegas —, visit landmarks, and collect local demonstration stamps and tickets.
+
+The active edition loads 23 landmarks across these four cities. City navigation, collections, quests and the world map share the same roster; archived local checkins remain stored but are excluded from active progress. See [four-city validation](docs/four-city-edition.md).
 
 This repository has its own history and Vercel project. It does not merge changes into `parallel-world-cities-opening`.
 
