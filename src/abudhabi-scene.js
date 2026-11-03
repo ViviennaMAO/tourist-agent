@@ -77,6 +77,15 @@ export function createAbuDhabiScene({city,leafTexture}){
   if(tall){
    const {family,tiers}=towerMassing(w,d,h,index,1.9);
    part(stone,0,.25,0,w,.5,d);part(glass,0,1.2,0,w*.86,1.4,d*.86);
+   // Human-scale entrance glazing and slender canopy beneath each tower.
+   for(const side of [0,1,2,3]){
+    const angle=side*Math.PI/2,span=(side%2?d:w)*.86,depth=(side%2?w:d)*.86;
+    const entry=(m,u,y,off,ww,hh,dd)=>add(new THREE.BoxGeometry(ww,hh,dd).translate(u,y,depth/2+off).rotateY(angle+ry).translate(b.x,b.base,b.z),m);
+    entry(bronze,0,1.15,.035,span*.64,1.22,.045);
+    for(const sign of [-1,1]){entry(glass,sign*span*.155,1.16,.066,span*.29,1.12,.025);entry(trim,sign*span*.32,1.16,.08,.045,1.26,.08);entry(bronze,sign*.07,1.15,.09,.025,.23,.025);}
+    entry(trim,0,1.86,.13,span*.82,.07,.4);
+    entry(trim,0,.53,.11,span*.72,.06,.24);
+   }
    for(const t of tiers){
     part(glass,t.x,(t.bottom+t.top)/2,0,t.w,t.top-t.bottom,t.d);
     part(trim,t.x,t.bottom,0,t.w+.045,.065,t.d+.045);
@@ -102,11 +111,28 @@ export function createAbuDhabiScene({city,leafTexture}){
     face(trim,0,(f+1)*fh,.035,span,.045,.08);
     for(let j=0;j<cols;j++){
      const u=-span/2+(j+.5)*bay;
-     if(!tall)face(glass,u,f*fh+fh*.52,.015,bay*.65,fh*.64,.035);
+     if(!tall){
+      const wy=f*fh+fh*.52,ww=bay*.65,wh=fh*.64;
+      face(glass,u,wy,.025,ww,wh,.035);
+      for(const sign of [-1,1])face(trim,u+sign*(ww/2+.035),wy,.09,.07,wh+.12,.17);
+      face(trim,u,wy-wh/2-.035,.16,ww+.2,.075,.32);
+      face(trim,u,wy+wh/2+.045,.08,ww+.16,.08,.17);
+      face(bronze,u,wy,.055,.022,wh,.045);
+      if(f===0&&j%2===0){face(wood,u,wy+.15,.07,ww*.8,.04,.045);face(wood,u,wy-.18,.07,ww*.8,.04,.045);}
+     }
      face(tall?trim:bronze,u-bay*.37,f*fh+fh*.52,.045,.025,fh*.75,.045);
     }
    }
-   if(!tall){face(wood,0,h-.35,.38,span,.1,.8);face(bronze,0,1.05,.06,.035,1.9,.045);}
+   if(!tall){
+    face(wood,0,h-.35,.38,span,.1,.8);face(bronze,0,1.05,.06,.035,1.9,.045);
+    face(trim,0,h+.23,-.07,span,.32,.16);
+    for(let u=-span/2+.2;u<span/2;u+=.48)face(wood,u,h-.47,.38,.05,.16,.8);
+   }
+  }
+  if(index%2===0){
+   for(const x of [-w*.32,w*.32])for(const z of [-d*.3,d*.3])part(wood,x,h+.77,z,.055,1.4,.055);
+   for(let x=-w*.4;x<=w*.4;x+=.28)part(wood,x,h+1.5,0,.065,.1,d*.8);
+   for(const z of [-d*.32,d*.32])part(wood,0,h+1.43,z,w*.86,.1,.065);
   }
  }
  for(const [m,gs] of batches){if(!gs.length)continue;const g=mergeGeometries(gs);gs.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==water&&m!==marble&&!m.userData.floorFinish;mesh.receiveShadow=true;if(m===marble||m.userData.floorFinish)mesh.userData.skipContact=true;root.add(mesh);}

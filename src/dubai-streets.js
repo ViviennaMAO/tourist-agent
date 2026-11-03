@@ -2,9 +2,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Low street finishes only. Road clearances, heights and navigation remain
  * owned by the source world. Junction openings interrupt the kerbs/pavers. */
-export function createDubaiStreets({THREE,city}) {
+export function createDubaiStreets({THREE,city,roadFilter=r=>r.kind==='road'&&!r.bridge&&Math.max(r.A[1],r.B[1])<=-5}) {
   const root=new THREE.Group();root.name='Dubai — jointed kerbs and pedestrian crossings';
-  const ctx=city.w.ctx,roads=(ctx.roads||[]).filter(r=>r.kind==='road'&&!r.bridge&&Math.max(r.A[1],r.B[1])<=-5);
+  const ctx=city.w.ctx,roads=(ctx.roads||[]).filter(roadFilter);
   const materials=[],batches=new Map(),originals=new Map();let enabled=true,disposed=false,grates=0,crossings=0;
   const finish=(color,roughness=0.9,metalness=0)=>{
     const m=new THREE.MeshStandardMaterial({color,roughness,metalness});materials.push(m);batches.set(m,[]);return m;
