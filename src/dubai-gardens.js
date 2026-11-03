@@ -73,8 +73,12 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
       const bend=new THREE.Vector3(x-.055,y+height*.33,z+.065);
       branch(a,bend,.085);branch(bend,fork,.063);
       for(let k=0;k<5;k++) {
-        const angle=k*2.39996,tip=new THREE.Vector3(x+Math.cos(angle)*.48,y+height+Math.sin(k*1.9)*.22,z+Math.sin(angle)*.25);
-        branch(fork,tip,.033);leaves(tip.x,tip.y,tip.z,.57,.48,.38,55,.14);
+        const angle=k*2.39996,tip=new THREE.Vector3(x+Math.cos(angle)*.67,y+height+Math.sin(k*1.9)*.32,z+Math.sin(angle)*.52);
+        branch(fork,tip,.033);
+        for(let twig=0;twig<3;twig++) {
+          const end=tip.clone().add(new THREE.Vector3(Math.cos(angle+twig*2.1)*.30,.12+twig*.08,Math.sin(angle+twig*2.1)*.26));
+          branch(tip,end,.010);leaves(end.x,end.y,end.z,.42,.32,.39,36,.10);
+        }
       }
     }
   }

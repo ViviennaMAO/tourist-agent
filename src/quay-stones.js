@@ -43,7 +43,7 @@ export function createQuayStone(cell){
   const tint=new THREE.Color(['#b6a38a','#baa88e','#c3b397','#a99880','#c7b69c'][cell.index%5]);
   for(let i=0;i<p.count;i++){
     const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
-    p.setZ(i,z+shoreBulge(x)+(z>-4.9?.025*Math.sin(x*29.1+y*17.3):0));
+    p.setZ(i,z+shoreBulge(x)+(z>-4.9?.010*Math.sin(x*29.1+y*17.3):0));
     const shade=.94+.06*Math.sin(x*11.8+y*13.7),c=tint.clone().multiplyScalar(shade);
     colors.push(c.r,c.g,c.b);
   }

@@ -1,3 +1,4 @@
+import { refineLandmarkProportions } from './landmark-proportions.js';
 import { refineLegacyBase } from './landmark-base.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { refineHotel, hotelSurface } from './hotel-refinement.js';
@@ -18,7 +19,7 @@ export function createDubaiLandmarks({ THREE, city }) {
   for(let wing=0;wing<3;wing++) {
     const a=wing*Math.PI*2/3+.3;
     for(let tier=0;tier<9-wing;tier++) {
-      const h=3.9, y=.3+tier*h, r=.76-tier*.055, offset=1.3-tier*.105;
+      const h=3.9, y=.3+tier*h, r=(.76-tier*.055)*1.12, offset=(1.3-tier*.105)*1.18;
       const x=Math.cos(a)*offset,z=Math.sin(a)*offset;
       add(new THREE.CylinderGeometry(r*.98,r,h,24),glass,x,y+h/2,z);
       for(let floor=0;floor<11;floor++) add(new THREE.CylinderGeometry(r+.018,r+.018,.025,24),silver,x,y+floor*h/11,z);
@@ -38,6 +39,7 @@ export function createDubaiLandmarks({ THREE, city }) {
   function styleAsset(l) {
     if(!l?.asset||styled.has(l))return;
     const base=refineHotel(l)||refineLegacyBase(l);if(base){bases.push(base);base.setEnabled(enabled);}
+    const proportion=refineLandmarkProportions(l);if(proportion){bases.push(proportion);proportion.setEnabled(enabled);}
     l.asset.traverse(o=>{
       if(!o.isMesh)return;
       const before=o.material;
@@ -51,7 +53,7 @@ export function createDubaiLandmarks({ THREE, city }) {
     root.visible=enabled&&L.loaded;
     if(L.asset)L.asset.visible=!enabled;
     for(const [id,landmark] of Object.entries(city.LM))if(id!=='burj_khalifa')styleAsset(landmark);
-  },setEnabled(v){enabled=!!v;bases.forEach(b=>b.setEnabled(enabled));root.visible=enabled&&L.loaded;if(L.asset)L.asset.visible=!enabled;swaps.forEach(s=>s.mesh.material=enabled?s.after:s.before);},dispose(){
+  },setEnabled(v){enabled=!!v;[...bases].reverse().forEach(b=>b.setEnabled(enabled));root.visible=enabled&&L.loaded;if(L.asset)L.asset.visible=!enabled;swaps.forEach(s=>s.mesh.material=enabled?s.after:s.before);},dispose(){
     if(disposed)return;this.setEnabled(false);disposed=true;bases.forEach(b=>b.dispose());root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());[glass,silver,plinth].forEach(m=>m.dispose());swaps.forEach(s=>(Array.isArray(s.after)?s.after:[s.after]).forEach(m=>m.dispose()));
   }};
 }

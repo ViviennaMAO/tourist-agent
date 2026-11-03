@@ -9,7 +9,7 @@ const distanceToRoad=(x,z,r)=>{
 
 /** Exposed shore of the UNION of source islands. No wall at frond/trunk
  * intersections, hotel-pad overlaps, the pilot promenade or bridge landings. */
-export function coastSamples(islands,roads=[],step=.72) {
+export function coastSamples(islands,roads=[],step=.48) {
   const outlines=islands.filter(i=>i.outline?.length>2),samples=[];
   for(const [sourceIndex,island] of outlines.entries()) {
     const p=island.outline;
@@ -53,11 +53,11 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.56,coastWet);');
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
-      float relief=coastGrain*.013+coastNoise(coastPoint*9.)*.022;
+      float relief=coastGrain*.005+coastNoise(coastPoint*9.)*.009;
       vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition),rx=cross(dy,normal),ry=cross(normal,dx);
       float det=dot(dx,rx);normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
     `);
-  };rock.customProgramCacheKey=()=> 'coast-wet-fieldstone-v1';
+  };rock.customProgramCacheKey=()=> 'coast-wet-fieldstone-v2';
   const backing=new THREE.MeshStandardMaterial({color:'#82735d',roughness:1});
   const batches=new Map([[cap,[]],[rock,[]],[backing,[]]]);
   const add=(g,m)=>{if(g.index){const n=g.toNonIndexed();g.dispose();g=n;}batches.get(m).push(g);};
@@ -67,14 +67,14 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
   // Each rough stone is a chipped polygon with a bulging, faceted outer face.
   function fieldstone(w,h,depth,index) {
     const outline=[[-.5,-.34],[-.34,-.5],[.32,-.48],[.5,-.24],[.46,.30],[.23,.5],[-.33,.45],[-.5,.18]];
-    const vertices=[0,0,depth+.025];
-    for(const [x,y] of outline)vertices.push(x*w*(.94+rand()*.12),y*h*(.94+rand()*.12),depth*(.8+rand()*.2));
+    const vertices=[0,0,depth+.008];
+    for(const [x,y] of outline)vertices.push(x*w*(.86+rand()*.26),y*h*(.86+rand()*.26),depth*(.94+rand()*.06));
     for(const [x,y] of outline)vertices.push(x*w,y*h,-.08);
     const indices=[];
     for(let k=0;k<8;k++){const a=k+1,b=(k+1)%8+1;indices.push(0,a,b,a,a+8,b,b,a+8,b+8);}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);
     const tint=palette[index%palette.length],colors=[];
-    for(let i=0;i<17;i++){const c=tint.clone().multiplyScalar(.91+rand()*.16);colors.push(c.r,c.g,c.b);}
+    for(let i=0;i<17;i++){const c=tint.clone().multiplyScalar(.95+rand()*.08);colors.push(c.r,c.g,c.b);}
     g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
     const flat=g.toNonIndexed();g.dispose();flat.computeVertexNormals();return flat;
   }
@@ -83,11 +83,12 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
     add(place(chamferedBox(s.length+.006,.11,.63,.014),s,0,.20,1.015),cap);
     add(place(new THREE.BoxGeometry(s.length+.015,.9,.28),s,0,.36,.51),backing);
     for(let row=0;row<3;row++) {
-      const height=.28+rand()*.055,shift=(row===1?.17:-.08)*s.length;
+      const height=.24+rand()*.12,shift=((row===1?.17:-.08)+(rand()-.5)*.22)*s.length;
       const g=fieldstone(s.length*(.88+rand()*.16),height,.16+rand()*.09,i*3+row);
       // Local +Z must face the water for either polygon winding.
+      g.rotateZ((rand()-.5)*.20);
       if(s.nx*(-s.tz)+s.nz*s.tx<0)g.rotateX(Math.PI);
-      add(place(g,s,shift,.43,.20+row*.29+(rand()-.5)*.045),rock);
+      add(place(g,s,shift,.43,.20+row*.29+(rand()-.5)*.075),rock);
     }
   }
   for(const [mat,parts] of batches)if(parts.length){const geo=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(geo,mat);mesh.receiveShadow=true;mesh.castShadow=false;root.add(mesh);}

@@ -3189,6 +3189,8 @@ function setReviewCamera(kind) {
   controls.maxDistance = 3000;
   const [x, z] = CITY_GRID.dubai;
   const shots = {
+    panorama: { p: [-20, 49, 108], q: [0, 19, -35], name: '城市全景比例' },
+    landmarkContact: { p: [30, 5, -9], q: [21, 2.8, -27], name: '博物馆接地' },
     island: { p: [105, 105, 130], q: [0, 3, -10], name: '迪拜全岛' },
     plaza: { p: [27, 22, -5], q: [0, 1.3, -32], name: '迪拜广场' },
     close: { p: [-7, 6, -18], q: [0, 2, -33], name: '广场近景' },
@@ -3260,14 +3262,16 @@ function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第二十六轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第二十六轮 · 光线与高楼层次</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第二十七轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第二十七轮 · 楼群与细节校正</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   const coverageShots = document.createElement('div'); coverageShots.className = 'reviewBtns reviewCoverage';
-  for (const [shot, label] of [['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
+  for (const [shot, label] of [['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
     const button = document.createElement('button'); button.dataset.shot = shot; button.textContent = label;
     coverageShots.append(button);
   }
   panel.querySelector('strong').after(coverageShots);
+  const collapse=document.createElement('button');collapse.id='reviewCollapse';collapse.textContent='收起验收界面';collapse.setAttribute('aria-expanded','true');panel.prepend(collapse);
+  collapse.onclick=()=>{const clean=document.body.classList.toggle('reviewClean');collapse.textContent=clean?'展开验收界面':'收起验收界面';collapse.setAttribute('aria-expanded',String(!clean));panel.scrollTop=0;};
   $('reviewVehicle').onclick = setReviewVehicle;
   for(const [id,label,key,setter] of [
     ['reviewAO','接触阴影','contactEnabled','setContactEnabled'],
@@ -3294,7 +3298,7 @@ function setupReview() {
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   };
   const updateDistrictButton = () => {
-    $('reviewDistrict').textContent = realism.districtEnabled ? '第二十六轮 · 光线与高楼层次' : '第二轮 · 局部样本';
+    $('reviewDistrict').textContent = realism.districtEnabled ? '第二十七轮 · 楼群与细节校正' : '第二轮 · 局部样本';
     $('reviewDistrict').setAttribute('aria-pressed', String(realism.districtEnabled));
   };
   updateDistrictButton();

@@ -76,10 +76,10 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       const tileValue = masonry ? tile[row * 4 + Math.floor(xx / 128)]*(kind==='limestone'?.38:.65) : 0;
       const cloud = kind === 'grass' ? 0 : Math.sin(x * Math.PI * 8 / n) * Math.cos(y * Math.PI * 6 / n);
       const delta = noise * (kind === 'grass' ? 28 : 13) + tileValue + cloud * 2.5;
-      const pore=kind==='limestone'&&random()>.986;
-      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.91) : base[k] + delta*(kind==='limestone'?.55:1)-(pore?13:0);
+      const pore=kind==='limestone'&&random()>.994;
+      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.91) : base[k] + delta*(kind==='limestone'?.55:1)-(pore?5:0);
       data.data[i + 3] = 255;
-      const v = seam ? (kind==='limestone'?105:100) : pore?95:155 + noise * (kind === 'asphalt' ? 75 : 22);
+      const v = seam ? (kind==='limestone'?138:100) : pore?145:155 + noise * (kind === 'asphalt' ? 75 : kind==='limestone'?10:22);
       hd.data.set([v, v, v, 255], i);
     }
     ctx.putImageData(data, 0, 0); hc.putImageData(hd, 0, 0);
@@ -138,8 +138,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
   const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
-  const facadeStone = surface('limestone', { scale: .24, roughness: .84, bump: .018, detail: .8 });
-  const waterfrontStone = surface('limestone', { scale: .24, roughness: .85, bump: .018, detail: .8 });
+  const facadeStone = surface('limestone', { scale: .24, roughness: .84, bump: .006, detail: .8 });
+  const waterfrontStone = surface('limestone', { scale: .24, roughness: .85, bump: .006, detail: .8 });
   const neutral = (source, color, roughness) => {
     const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
     materials.push(m); return m;

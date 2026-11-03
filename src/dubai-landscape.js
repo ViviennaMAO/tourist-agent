@@ -76,13 +76,13 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         diffuseColor.rgb*=(.92+.15*quarryGrain)*mix(1.,.56,wet);
       `);
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
-        float relief=quarryGrain*.018+quarryNoise(quarryPosition*9.)*.035;
+        float relief=quarryGrain*.005+quarryNoise(quarryPosition*9.)*.010;
         vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition);
         vec3 rx=cross(dy,normal),ry=cross(normal,dx);float det=dot(dx,rx);
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
       `);
     };
-    quarry.customProgramCacheKey=()=> 'pilot-quarry-v2';
+    quarry.customProgramCacheKey=()=> 'pilot-quarry-v3';
     const mortar=material('#968873',.98);
     const backing=new THREE.BoxGeometry(26,.94,.14,96,1,1).translate(-20,.5,-4.55);
     const bp=backing.attributes.position;

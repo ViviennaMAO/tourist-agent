@@ -110,7 +110,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     // backdrop leave the landmark legible. Horizontal collision footprints stay.
     const h = !district ? b.h : traditional
       ? Math.min(Math.max(b.h, 5.8), 6.2 + (buildingIndex % 5) * .4)
-      : Math.min(b.h, 10.8 + (buildingIndex % 5) * 1.1);
+      : Math.min(b.h, 9.4 + Math.max(0,-b.z-42)*.24 + 2.4*Math.exp(-Math.pow((Math.abs(b.x)-34)/16,2)) + (buildingIndex % 3)*.8);
     design.set(b, { treatment: traditional ? 'limestone' : 'glass', facadeHeight: h, originalHeight: b.h });
     if (!traditional) {
       Object.assign(design.get(b), appendDubaiHighrise({ THREE, b, h, index: buildingIndex,

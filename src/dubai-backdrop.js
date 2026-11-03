@@ -17,10 +17,14 @@ export function createDubaiBackdrop({THREE,city}) {
   // A narrower cluster spacing alternates with breathing room between groups.
   for(let row=0;row<3;row++)for(let i=0;i<10;i++) {
     const seed=i*17+row*29;
-    const x=-54+i*11.9+Math.sin(seed*1.7)*2.1;
-    const z=-60.5-row*9.5+Math.sin(seed*.73)*1.45;
+    const lanes=[[-54,-46,-34,-25,-12,9,20,35,43,55],[-57,-39,-31,-19,-8,5,15,29,45,58],[-51,-43,-27,-15,-4,11,24,37,49,57]];
+    const x=lanes[row][i]+Math.sin(seed*1.7)*.65;
+    const z=-60.5-row*9.2+Math.sin(seed*.73)*2.0;
     const w=2.6+(seed%5)*.29,d=3.05+(seed%4)*.23;
-    const h=8+row*2.1+((seed*7)%9)*.8;
+    // Taller shoulders frame the central landmark; staggered middling masses
+    // keep a clear visual valley around its lower silhouette.
+    const shoulder=Math.exp(-Math.pow((Math.abs(x)-35)/16,2));
+    const h=8+row*1.35+shoulder*4.8+((seed*7)%9)*.48;
     if(!ctx.free(x,z,w,d)||footprints.some(q=>Math.abs(q.x-x)<(q.w+w)/2+.9&&Math.abs(q.z-z)<(q.d+d)/2+.9))continue;
     const base=ctx.groundY(x,z),profile=towerMassing(w,d,h,(i+row*2)%5,1.7);
     const record={x,z,w,d,h,base,family:profile.name};footprints.push(record);

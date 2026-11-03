@@ -114,3 +114,10 @@ body.overview #hudQuests { display:none; }
   .gp-city-intro .gp-items { gap:6px; }
 }
 #gpanel > .gp-guide { height:auto; max-height:34vh; object-fit:contain; object-position:bottom; }
+
+/* Review-only clean view: keeps an explicit way back to camera controls. */
+#reviewCollapse { width:100%; margin-bottom:8px; }
+body.reviewClean #reviewPanel { width:auto; max-height:none; }
+body.reviewClean #reviewPanel > :not(#reviewCollapse) { display:none; }
+body.reviewClean #reviewCollapse { margin:0; }
+body.reviewClean #hud, body.reviewClean #cityChips, body.reviewClean #cityBanner { display:none; }
