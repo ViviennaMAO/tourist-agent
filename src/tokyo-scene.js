@@ -6,7 +6,7 @@ import {chamferedBox} from './chamfered-box.js';
 
 /** Tokyo's first material/architecture pass. All massing stays in the source
  * building footprints; no shared source geometry or materials are mutated. */
-export function createTokyoScene({city}) {
+export function createTokyoScene({city,extraBuildings=[]}) {
  const ctx=city.w.ctx,root=new THREE.Group();root.name='Tokyo — timber shops and urban facades';city.w.root.add(root);
  const batches=new Map(),owned=[],saved=new Map(),swaps=[],styled=new Set();let enabled=false,disposed=false;
  const mat=(color,roughness=.8,metalness=0,kind)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.75});owned.push(m);batches.set(m,[]);if(kind)installSurfaceFinish(m,kind);return m;};
@@ -19,21 +19,25 @@ export function createTokyoScene({city}) {
  const indigo=mat('#384955',.9,0,'fabric'),paper=mat('#e6d6b6',.86),red=mat('#913d32',.72);
  const add=(g,m)=>{if(g.index){const old=g;g=g.toNonIndexed();old.dispose();}batches.get(m).push(g);};
  const box=(m,x,y,z,w,h,d,ry=0)=>add(chamferedBox(w,h,d,Math.min(.014,h*.1)).rotateY(ry).translate(x,y,z),m);
- const buildings=(ctx.buildings||[]).filter(b=>b.indices);
+ const buildings=[...(ctx.buildings||[]).filter(b=>b.indices),...extraBuildings];
  for(const [index,b] of buildings.entries()){
   const {w,d,h,x,z,base}=b,ry=b.ry||0,traditional=b.style==='wa',tall=h>8;
   const part=(m,u,y,v,ww,hh,dd)=>add(chamferedBox(ww,hh,dd,.012).translate(u,y,v).rotateY(ry).translate(x,base,z),m);
   part(stone,0,.025,0,w+.6,.05,d+.6);
-  part(traditional?plaster:skins[index%3],0,h/2,0,w,h,d);
+  const floors=traditional?2:Math.max(1,Math.floor(h/(tall?1.65:2.25))),fh=h/floors;
+  const setback=tall&&index%3===1,split=Math.ceil(floors*.65),cap=setback?.76:1;
+  if(setback){part(skins[index%3],0,split*fh/2,0,w,split*fh,d);part(skins[index%3],0,(h+split*fh)/2,0,w*cap,h-split*fh,d*cap);part(concrete,0,split*fh,0,w+.05,.08,d+.05);}
+  else part(traditional?plaster:skins[index%3],0,h/2,0,w,h,d);
   part(concrete,0,.12,0,w+.04,.24,d+.04);
   for(const side of [0,1,2,3]){
    const a=side*Math.PI/2,span=side%2?d:w,depth=side%2?w:d;
-   const face=(m,u,y,off,ww,hh,dd)=>add(new THREE.BoxGeometry(ww,hh,dd).translate(u,y,depth/2+off).rotateY(a+ry).translate(x,base,z),m);
-   const floors=traditional?2:Math.max(1,Math.floor(h/(tall?1.65:2.25))),fh=h/floors,cols=Math.max(2,Math.floor(span/1.2)),bay=span/cols;
+   const face=(m,u,y,off,ww,hh,dd)=>add(new THREE.BoxGeometry(ww,hh,dd).translate(u,y,depth/2*(setback&&y>=split*fh+.01?cap:1)+off).rotateY(a+ry).translate(x,base,z),m);
+   const cols=Math.max(2,Math.floor(span/1.2)),bay=span/cols;
    for(let f=0;f<floors;f++){
-    face(traditional?wood:concrete,0,f*fh+.15,.018,span,.07,.075);
+    const levelSpan=span*(setback&&f>=split?cap:1),cols=Math.max(2,Math.floor(levelSpan/1.2)),bay=levelSpan/cols;
+    face(traditional?wood:concrete,0,f*fh+.15,.018,levelSpan,.07,.075);
     for(let j=0;j<cols;j++){
-     const u=-span/2+(j+.5)*bay,wy=f*fh+fh*.54,ww=bay*.72,wh=fh*.65;
+     const u=-levelSpan/2+(j+.5)*bay,wy=f*fh+fh*.54,ww=bay*.72,wh=fh*.65;
      face(f===0&&!tall?shopGlass:glass,u,wy,.026,ww,wh,.04);
      for(const sign of [-1,1])face(traditional?wood:metal,u+sign*ww/2,wy,.06,.035,wh+.08,.06);
      face(traditional?wood:concrete,u,wy-wh/2,.09,ww+.1,.055,.18);
@@ -62,7 +66,7 @@ export function createTokyoScene({city}) {
      face(wood,span*.34,1.2,.22,.21,.04,.21);
     }
    }else{
-    face(concrete,0,h+.17,-.035,span,.3,.14);
+    face(concrete,0,h+.17,-.035,span*cap,.3,.14);
     if(!tall){
      face(index%2?red:indigo,0,2.02,.22,span-.2,.12,.47);
      face(warm,0,2.23,.065,span*.7,.22,.055);
@@ -86,8 +90,8 @@ export function createTokyoScene({city}) {
     const g=new THREE.ShapeGeometry(shape);g.rotateY(sign*Math.PI/2).translate(sign*w/2,h,0).rotateY(ry).translate(x,base,z);add(g,plaster);
    }
   }else{
-   part(tile,0,h+.025,0,w-.12,.05,d-.12);
-   part(concrete,w*.18,h+.42,-d*.17,w*.3,.72,d*.3);
+   part(tile,0,h+.025,0,w*cap-.12,.05,d*cap-.12);
+   part(concrete,w*cap*.18,h+.42,-d*cap*.17,w*cap*.3,.72,d*cap*.3);
    part(metal,-w*.25,h+.25,d*.18,.55,.45,.65);
    for(let k=0;k<5;k++)part(tile,-w*.25,h+.49,d*.18-.24+k*.12,.48,.025,.035);
   }
@@ -102,7 +106,8 @@ export function createTokyoScene({city}) {
     a.onBeforeCompile=function(sh,r){prev.call(this,sh,r);sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
      float tkLum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
      diffuseColor.rgb=mix(vec3(tkLum),diffuseColor.rgb,${id==='akihabara'?'.94':'.84'});
-    `);};a.customProgramCacheKey=()=>key+'-tokyo-atlas-v1';owned.push(a);return a;};
+     ${id==='tokyo_tower'?`float redArea=smoothstep(.06,.2,diffuseColor.r-max(diffuseColor.g,diffuseColor.b));diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.70,.07,.025)*(.60+.7*tkLum),redArea);`:''}
+    `);};a.customProgramCacheKey=()=>key+'-tokyo-atlas-v2-'+id;owned.push(a);return a;};
    const after=Array.isArray(before)?before.map(convert):convert(before);swaps.push({mesh:o,before,after});o.material=enabled?after:before;
   });styled.add(l);
  }}

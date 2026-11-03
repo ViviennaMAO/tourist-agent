@@ -1,3 +1,5 @@
+import {planTokyoInfill,createTokyoInfillReservations,planTokyoRiverTrees} from './tokyo-layout.js';
+import {createTokyoSkytree} from './tokyo-skytree.js';
 import {createTokyoGround} from './tokyo-ground.js';
 import {createTokyoScene} from './tokyo-scene.js';
 import {createTokyoTrees} from './tokyo-trees.js';
@@ -212,11 +214,12 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     if(c.id==='tokyo'){
       tokyo=c;
       const lawn=surface('grass',{color:'#a5b88e',scale:.43,roughness:.98,bump:.004,detail:.35});
-      const local=new Map(replacement);local.set(M.grass,lawn);local.set(M.grassSide,neutral(M.grassSide,'#657255',.96));
+      const local=new Map(replacement);local.set(M.rimWall,surface('limestone',{color:'#929e9a',roughness:.88,bump:.008,scale:.3}));local.set(M.grass,lawn);local.set(M.grassSide,neutral(M.grassSide,'#657255',.96));
       c.w.root.traverse(o=>{if(!o.isMesh)return;const before=o.material,after=Array.isArray(before)?before.map(m=>local.get(m)||m):local.get(before)||before;
         if(Array.isArray(before)?after.some((m,i)=>m!==before[i]):after!==before){swaps.push({mesh:o,before,after});o.material=enabled?after:before;}
       });
-      tokyoStudies.push(createTokyoGround({city:c}),createTokyoScene({city:c}),createTokyoTrees({city:c,leafTexture}),createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge,palette:{kerb:'#a7aaa6',paving:'#b5b5ac',light:'#c2c2b9'}}));
+      const infill=planTokyoInfill(c.w.ctx),riverTrees=planTokyoRiverTrees(c.w.ctx,infill);
+      tokyoStudies.push(createTokyoInfillReservations(c.w.ctx,infill),createTokyoGround({city:c}),createTokyoScene({city:c,extraBuildings:infill}),createTokyoTrees({city:c,leafTexture,extraTrees:riverTrees}),createTokyoSkytree({city:c}),createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge,palette:{kerb:'#a7aaa6',paving:'#b5b5ac',light:'#c2c2b9'}}));
       tokyoProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{street:{position:[22,4,20],min:[-76,0,-58],max:[76,14,48]},skyline:{position:[15,13,-58],min:[-76,0,-82],max:[76,50,16]}}});
       syncStudies();return;
     }

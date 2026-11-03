@@ -7,13 +7,13 @@ import {installSurfaceFinish} from './surface-finish.js';
 export function tokyoRandom(seed){return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
 /** Branching cherry trees and broadleaf trees replace the old solid crown pool.
  * Every flower is geometry: no alpha-sorted cloud or opaque pink sphere. */
-export function createTokyoTrees({city,leafTexture}){
+export function createTokyoTrees({city,leafTexture,extraTrees=[]}){
  const root=new THREE.Group();root.name='Tokyo — branching sakura and broadleaf trees';city.w.root.add(root);
  const ctx=city.w.ctx,batches=new Map(),materials=[],saved=new Map();let enabled=false,disposed=false;
  const material=(color)=>{const m=new THREE.MeshStandardMaterial({color,roughness:.9,side:THREE.DoubleSide});materials.push(m);batches.set(m,[]);return m;};
- const bark=material('#746455');installSurfaceFinish(bark,'wood');
+ const bark=material('#655c52');installSurfaceFinish(bark,'wood');
  const greens=['#b1bf8b','#91ab78','#c2c99a'].map(c=>{const m=material(c);m.map=leafTexture||null;m.alphaTest=.22;installLeafDaylight(m);return m;});
- const pinks=['#edd3cf','#e5b9be','#f2e3d9'].map(c=>{const m=material(c);installLeafDaylight(m);return m;});
+ const pinks=['#ebc4d0','#dca2b5','#f1dce0'].map(c=>{const m=material(c);installLeafDaylight(m);return m;});
  const leaf=createCurvedLeaf(THREE,.23,.53,true);
  // A single five-petal flower; shallow folded petals catch alternating light.
  const flower=new THREE.BufferGeometry(),positions=[];
@@ -24,18 +24,22 @@ export function createTokyoTrees({city,leafTexture}){
  }
  flower.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));flower.setAttribute('uv',new THREE.Float32BufferAttribute(Array(positions.length/3*2).fill(0),2));flower.computeVertexNormals();
  const add=(g,m)=>{if(g.index){const old=g;g=g.toNonIndexed();old.dispose();}batches.get(m).push(g);};
- const trees=ctx.trees||[];
+ const trees=[...(ctx.trees||[]),...extraTrees];
+ const obstacles=extraTrees.map(t=>({x:t.x,z:t.z,w:.4,d:.4}));let registered=false;
  for(const [index,t] of trees.entries()){
   const rand=tokyoRandom(31457+index*7919),s=t.sc,origin=new THREE.Vector3(t.x,t.y,t.z);
-  const transform=g=>g.scale(s,s,s).rotateY(t.ry).translate(...origin.toArray());
+  const lean=t.lean||[0,0],spread=t.kind==='sakura'?(t.river?1.45:1.13):1;
+  const shear=new THREE.Matrix4().set(1,lean[0]*.38,0,0, 0,1,0,0, 0,lean[1]*.38,1,0, 0,0,0,1);
+  const transform=g=>g.scale(s*spread,s,s*spread).applyMatrix4(shear).rotateY(t.ry).translate(...origin.toArray());
   const rod=(a,b,r1,r2)=>{const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),dir=to.clone().sub(from);const g=new THREE.CylinderGeometry(r2,r1,dir.length(),7);g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize()));g.translate(...from.add(to).multiplyScalar(.5).toArray());add(transform(g),bark);};
   const fork=[.12*(rand()-.5),1.35,.16*(rand()-.5)];rod([0,0,0],fork,.14,.085);
   const sakura=t.kind==='sakura';
   for(let b=0;b<6;b++){
-   const a=b*2.399+rand()*.4,r=.62+rand()*.45,tip=[Math.cos(a)*r,2.25+rand()*.9,Math.sin(a)*r];rod(fork,tip,.07,.025);
+   const a=b*2.399+rand()*.4,r=.62+rand()*.45,tip=[Math.cos(a)*r,2.25+rand()*.9,Math.sin(a)*r];
+   const mid=tip.map((v,i)=>(v+fork[i])*.5);mid[1]+=.22;rod(fork,mid,.07,.045);rod(mid,tip,.045,.025);
    for(let branch=0;branch<3;branch++){
-    const angle=a+(branch-1)*.75,end=[tip[0]+Math.cos(angle)*(.35+rand()*.4),tip[1]+.2+rand()*.4,tip[2]+Math.sin(angle)*(.35+rand()*.4)];rod(tip,end,.023,.008);
-    for(let n=0;n<(sakura?34:44);n++){
+    const angle=a+(branch-1)*.75,end=[tip[0]+Math.cos(angle)*(.35+rand()*.4),tip[1]+(t.river?-.4:.1)+rand()*.4,tip[2]+Math.sin(angle)*(.35+rand()*.4)];rod(tip,end,.023,.008);
+    for(let n=0;n<(sakura?(t.river?70:44):44);n++){
      const u=rand()*Math.PI*2,v=rand()*2-1,rr=Math.cbrt(rand()),rad=Math.sqrt(1-v*v)*rr;
      const x=end[0]+Math.cos(u)*rad*.72,y=end[1]+v*rr*.5,z=end[2]+Math.sin(u)*rad*.66;
      const g=(sakura?flower:leaf).clone().scale(...(sakura?[1.15,1.15,1.15]:[.8,.8,.8])).rotateX((rand()-.5)*2.6).rotateY(rand()*6.28).rotateZ((rand()-.5)*1.1).translate(x,y,z);
@@ -43,14 +47,19 @@ export function createTokyoTrees({city,leafTexture}){
     }
    }
   }
+  if(t.river)for(let n=0;n<220;n++){
+   const along=(rand()-.5)*3.2,out=(rand()-.5)*.8;
+   const x=t.x+lean[1]*along-lean[0]*out,z=t.z-lean[0]*along-lean[1]*out;
+   add(leaf.clone().scale(.9,.9,.9).rotateX(-.7+rand()*1.4).rotateY(rand()*6.28).translate(x,t.y+.12+rand()*.25,z),greens[n%3]);
+  }
  }
  leaf.dispose();flower.dispose();
  for(const [m,parts] of batches){if(!parts.length)continue;const g=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);}
- return {root,stats:{tokyoTrees:trees.length,sakura:trees.filter(t=>t.kind==='sakura').length,triangles:root.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0),drawCalls:root.children.length},
-  apply(){if(disposed||!enabled)return;for(const t of trees)for(const name of ['treeTrunk','treeCrown']){
+ return {root,stats:{tokyoTrees:trees.length,riverTrees:extraTrees.length,sakura:trees.filter(t=>t.kind==='sakura').length,triangles:root.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0),drawCalls:root.children.length},
+  apply(){if(disposed||!enabled)return;for(const t of trees.filter(t=>Number.isInteger(t.i)))for(const name of ['treeTrunk','treeCrown']){
    const pool=ctx.pools[name];if(!pool)continue;const key=name+t.i;if(!saved.has(key)){const matrix=new THREE.Matrix4();pool.m.getMatrixAt(t.i,matrix);saved.set(key,{pool,i:t.i,matrix});}pool.hide(t.i);pool.flush();
   }},
-  setEnabled(v){enabled=!!v&&!disposed;root.visible=enabled;if(!enabled){for(const {pool,i,matrix} of saved.values()){pool.set(i,matrix);pool.flush();}saved.clear();}},
+  setEnabled(v){enabled=!!v&&!disposed;root.visible=enabled;if(registered!==enabled){registered=enabled;if(enabled)ctx.rects.push(...obstacles);else ctx.rects=ctx.rects.filter(q=>!obstacles.includes(q));}if(!enabled){for(const {pool,i,matrix} of saved.values()){pool.set(i,matrix);pool.flush();}saved.clear();}},
   dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());materials.forEach(m=>m.dispose());}
  };
 }
