@@ -1,5 +1,6 @@
 import { refineLegacyBase } from './landmark-base.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { refineHotel, hotelSurface } from './hotel-refinement.js';
 import { landmarkFinish } from './landmark-finish.js';
 
 /** A procedural stepped tower study, with the existing landmark holder retaining
@@ -36,11 +37,12 @@ export function createDubaiLandmarks({ THREE, city }) {
   const swaps=[]; const styled=new Set(),bases=[];
   function styleAsset(l) {
     if(!l?.asset||styled.has(l))return;
-    const base=refineLegacyBase(l);if(base){bases.push(base);base.setEnabled(enabled);}
+    const base=refineHotel(l)||refineLegacyBase(l);if(base){bases.push(base);base.setEnabled(enabled);}
     l.asset.traverse(o=>{
       if(!o.isMesh)return;
       const before=o.material;
-      const after=Array.isArray(before)?before.map(m=>landmarkFinish(m,l.id)):landmarkFinish(before,l.id);
+      const finish=m=>{const next=landmarkFinish(m,l.id);return ['atlantis','burj_al_arab'].includes(l.id)?hotelSurface(next,l.id,o.name==='Dubai_FC_Floor'):next;};
+      const after=Array.isArray(before)?before.map(finish):finish(before);
       swaps.push({mesh:o,before,after});o.material=enabled?after:before;
     });styled.add(l);
   }
