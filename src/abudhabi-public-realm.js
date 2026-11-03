@@ -1,3 +1,4 @@
+import {chamferedBox} from './chamfered-box.js';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createCurvedLeaf} from './curved-leaf.js';
@@ -34,11 +35,18 @@ export function createAbuPublicRealm({city,leafTexture,plots:customPlots}){
  const mat=(color,roughness=.8,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness});owned.push(m);batches.set(m,[]);return m;};
  const stone=mat('#d0c3aa'),paving=mat('#cec6b7'),wood=mat('#7e6245'),metal=mat('#626359',.45,.65),soil=mat('#665d45'),leafMat=mat('#b9c69e',.9),white=mat('#eee7ca'),pink=mat('#ab527a'),lamp=mat('#e9cd92',.5);
  installSurfaceFinish(stone,'limestone');installSurfaceFinish(paving,'paving');installSurfaceFinish(wood,'wood');leafMat.map=leafTexture||null;leafMat.side=THREE.DoubleSide;leafMat.alphaTest=.18;installLeafDaylight(leafMat);lamp.emissive.set('#e4b872');lamp.emissiveIntensity=.3;
- const add=(g,m)=>{if(g.index){const a=g;g=g.toNonIndexed();a.dispose();}batches.get(m).push(g);};
+ let leafId=0;leafMat.vertexColors=true;white.side=pink.side=THREE.DoubleSide;
+ const add=(g,m)=>{if(m===leafMat){const c=new THREE.Color().setRGB(.84+(leafId%5)*.044,.9+(leafId%3)*.035,.78+(leafId%7)*.032);const colors=new Float32Array(g.attributes.position.count*3);for(let j=0;j<colors.length;j+=3)c.toArray(colors,j);g.setAttribute('color',new THREE.BufferAttribute(colors,3));leafId++;}if(g.index){const a=g;g=g.toNonIndexed();a.dispose();}batches.get(m).push(g);};
  const box=(m,x,y,z,w,h,d)=>add(new THREE.BoxGeometry(w,h,d).translate(x,y,z),m);
- const leaf=createCurvedLeaf(THREE,.13,.8,true);let trees=0;
+ const leaf=createCurvedLeaf(THREE,.085,.78,false),petal=createCurvedLeaf(THREE,.026,1.15,false);let trees=0;
  let seed=7351;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  function branch(a,b,r){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b),v=bv.clone().sub(av),g=new THREE.CylinderGeometry(r*.55,r,v.length(),7);g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize()));g.translate(...av.add(bv).multiplyScalar(.5).toArray());add(g,wood);}
+ function blossom(x,y,z,phase,m){
+  add(new THREE.CylinderGeometry(.003,.006,.22,3,1,true).translate(x,y-.11,z),wood);
+  for(let k=0;k<5;k++){const a=k*Math.PI*2/5+phase;
+   add(petal.clone().rotateX(-Math.PI/2+.18).translate(0,.005,.027).rotateY(a).translate(x,y,z),m);}
+  add(new THREE.SphereGeometry(.012,4,2).translate(x,y+.009,z),soil);
+ }
  for(const [i,p] of plots.entries()){
   const {x,z,y}=p;
   if(p.kind==='pergola'){
@@ -53,22 +61,28 @@ export function createAbuPublicRealm({city,leafTexture,plots:customPlots}){
     for(let n=0;n<100;n++)add(leaf.clone().rotateX(rand()*2-1).rotateY(rand()*6.28).translate(x+dx+(rand()-.5)*.38,y+.53+rand()*.35,z+(rand()-.5)*.43),leafMat);
    }
   }else{
-   box(stone,x,y+.16,z,p.w,.32,p.d);box(soil,x,y+.33,z,p.w-.2,.035,p.d-.2);
-   for(let n=0;n<(customPlots?Math.min(1400,Math.ceil(p.w*p.d*75)):520);n++){
-    const px=x+(rand()-.5)*(p.w-.35),pz=z+(rand()-.5)*(p.d-.35),py=y+.44+rand()*.4;
-    add(leaf.clone().rotateX(rand()*2.4-1.2).rotateY(rand()*6.28).rotateZ(rand()*1.8-.9).translate(px,py,pz),leafMat);
-    if(n%12===0)add(new THREE.SphereGeometry(.05,5,3).translate(px,py+.14,pz),i%4===0?pink:white);
+   add(chamferedBox(p.w,.3,p.d,.025).translate(x,y+.15,z),stone);
+   box(soil,x,y+.307,z,p.w-.18,.02,p.d-.18);
+   for(const sign of [-1,1]){
+    add(chamferedBox(p.w,.06,.11,.012).translate(x,y+.325,z+sign*(p.d/2-.055)),stone);
+    add(chamferedBox(.11,.06,p.d-.2,.012).translate(x+sign*(p.w/2-.055),y+.325,z),stone);
+   }
+   for(let n=0;n<(customPlots?Math.min(1600,Math.ceil(p.w*p.d*98)):650);n++){
+    const px=x+(rand()-.5)*(p.w-.35),pz=z+(rand()-.5)*(p.d-.35),py=n%3===0?y+.37+rand()*.06:y+.46+rand()*.12+.1*Math.sin(px*1.8+pz*1.4)**2;
+    const size=n%3===0?1.2+rand()*.25:.75+rand()*.55;
+    add(leaf.clone().scale(size,size,size).rotateX(rand()*2.4-1.2).rotateY(rand()*6.28).rotateZ(rand()*1.8-.9).translate(px,py,pz),leafMat);
+    if(n%16===0)blossom(px,py+.09+rand()*.12,pz,n*2.399,i%4===0?pink:white);
    }
    if(p.tree??(i%3===0)){
     trees++;branch([x,y+.3,z],[x+.16,y+2.35,z],.11);
-    for(let b=0;b<5;b++){const a=b*2.399,r=.55+(b%2)*.3,tx=x+Math.cos(a)*r,tz=z+Math.sin(a)*r,ty=y+2.7+(b%3)*.26;branch([x+.12,y+1.65,z],[tx,ty,tz],.035);
-     for(let n=0;n<250;n++){const angle=rand()*Math.PI*2,t=rand(),rad=Math.cbrt(rand()),rr=Math.sqrt(1-Math.pow(t*2-1,2))*.85*rad;add(leaf.clone().rotateX(rand()*Math.PI).rotateY(angle).rotateZ(rand()*Math.PI).translate(tx+Math.cos(angle)*rr,ty+(t-.5)*1.15*rad,tz+Math.sin(angle)*rr),leafMat);}
+    for(let b=0;b<5;b++){const a=b*2.399+i*.7,r=.4+(b%3)*.24,tx=x+Math.cos(a)*r,tz=z+Math.sin(a)*r,ty=y+2.7+(b%3)*.26;branch([x+.12,y+1.65,z],[tx,ty,tz],.035);
+     for(let n=0;n<260;n++){const angle=rand()*Math.PI*2,t=rand(),rad=Math.cbrt(rand()),rr=Math.sqrt(1-Math.pow(t*2-1,2))*(.61+(b%3)*.12)*rad;add(leaf.clone().rotateX(rand()*Math.PI).rotateY(angle).rotateZ(rand()*Math.PI).translate(tx+Math.cos(angle)*rr,ty+(t-.5)*1.15*rad,tz+Math.sin(angle)*rr),leafMat);}
     }
    }
    box(metal,x+p.w*.38,y+.65,z,.07,1.3,.07);box(lamp,x+p.w*.38,y+1.32,z,.14,.22,.14);
   }
  }
- leaf.dispose();for(const [m,parts] of batches){if(!parts.length)continue;const g=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==paving;mesh.receiveShadow=true;if(m===paving)mesh.userData.skipContact=true;root.add(mesh);}
+ leaf.dispose();petal.dispose();for(const [m,parts] of batches){if(!parts.length)continue;const g=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==paving;mesh.receiveShadow=true;if(m===paving)mesh.userData.skipContact=true;root.add(mesh);}
  const obstacles=plots.map(({x,z,w,d})=>({x,z,w,d}));
  function register(v){if(registered===v)return;registered=v;if(v)ctx.rects.push(...obstacles);else ctx.rects=ctx.rects.filter(p=>!obstacles.includes(p));}
  return {root,plots,stats:{gardens:plots.filter(p=>p.kind==='garden').length,borders:0,pockets:0,trees,pergolas:plots.filter(p=>p.kind==='pergola').length,triangles:root.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0),drawCalls:root.children.length},apply(){},setEnabled(v){enabled=!!v&&!disposed;root.visible=enabled;register(enabled);},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());owned.forEach(m=>m.dispose());}};

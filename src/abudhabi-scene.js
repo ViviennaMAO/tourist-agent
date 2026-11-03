@@ -89,6 +89,13 @@ export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
   if(tall){
    const {family,tiers}=towerMassing(w,d,h,index,1.9),facade=index%4,towerPane=towerGlass[index%3];
    part(stone,0,.25,0,w,.5,d);part(glass,0,1.2,0,w*.86,1.4,d*.86);
+   // A flush base course and inset shadow joint ground each lobby on its plot.
+   for(const sign of [-1,1]){
+    part(trim,0,.06,sign*(d/2-.015),w+.04,.12,.07);
+    part(trim,sign*(w/2-.015),.06,0,.07,.12,d+.04);
+    part(spandrel,0,.44,sign*(d/2+.004),w,.025,.012);
+    part(spandrel,sign*(w/2+.004),.44,0,.012,.025,d);
+   }
    // Human-scale entrance glazing and slender canopy beneath each tower.
    for(const side of [0,1,2,3]){
     const angle=side*Math.PI/2,span=(side%2?d:w)*.86,depth=(side%2?w:d)*.86;
@@ -97,6 +104,8 @@ export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
     for(const sign of [-1,1]){entry(glass,sign*span*.155,1.16,.066,span*.29,1.12,.025);entry(trim,sign*span*.32,1.16,.08,.045,1.26,.08);entry(bronze,sign*.07,1.15,.09,.025,.23,.025);}
     entry(trim,0,1.86,.13,span*.82,.07,.4);
     entry(trim,0,.53,.11,span*.72,.06,.24);
+    for(const sign of [-1,1]){entry(silver,sign*span*.28,1.77,.19,.025,.16,.19);entry(bronze,sign*span*.31,.35,.09,.05,.2,.015);}
+    for(let u=-span*.3;u<span*.3;u+=.11)entry(bronze,u,.565,.17,.023,.008,.12);
    }
    for(const t of tiers){
     part(facade===1?towerStone:towerPane,t.x,(t.bottom+t.top)/2,0,t.w,t.top-t.bottom,t.d);

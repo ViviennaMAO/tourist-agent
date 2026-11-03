@@ -29,7 +29,7 @@ test('Coast gardens remove only their own collisions and keep borrowed leaf text
 });
 
 test('Mosque arcade surgery cuts the measured wall and preserves neighboring portal and rear wall',()=>{
- const g=new THREE.BufferGeometry(),vertices=[3.4,.4,7.4, 4,.4,7.4, 3.4,1,7.4, 0,.4,8.5, .2,.4,8.5, 0,.6,8.5, 3.4,.4,6.8, 4,.4,6.8, 3.4,1,6.8];
+ const g=new THREE.BufferGeometry(),vertices=[3.4,.4,7.4, 4,.4,7.4, 3.4,1,7.4, 1,.4,8.5, 1.2,.4,8.5, 1,.6,8.5, 3.4,.4,6.8, 4,.4,6.8, 3.4,1,6.8];
  g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();
  const next=refineLandmarkGeometry(g,new THREE.Matrix4(),'grand_mosque');assert.equal(next.attributes.position.count,6);assert.deepEqual(Array.from(next.attributes.position.array),Array.from(new Float32Array(vertices.slice(9))));assert.equal(g.attributes.position.count,9);g.dispose();next.dispose();
 });
