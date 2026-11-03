@@ -6,6 +6,8 @@ export const CITIES = {
     bgm: ASSET + 'media/dubai/bgm.mp3',
     // pos 落点 [x,z]；h 目标高度；base 地面高度；r 占地半径（排楼时避让）；rot 朝向
     landmarks: {
+      waterfront_wheel: { procedural:'wheel',walkSurface:{bounds:[42,10,76,45],height:1.08},arrival:[58,35],name:'Dubai Waterfront Wheel',zh:'滨海摩天轮',pos:[58,29],h:32,base:1,r:15,rot:0,dur:3,walkObstacles:[{x:-4.5,z:-2.5,w:2,d:2},{x:4.5,z:-2.5,w:2,d:2},{x:-4.5,z:2.5,w:2,d:2},{x:4.5,z:2.5,w:2,d:2},{x:0,z:-2.7,w:5.5,d:1.3}]},
+      cruise_terminal: { procedural:'cruise',walkSurface:{bounds:[76,-11,84,37],height:1.16},arrival:[83,18],name:'Dubai Cruise Pier',zh:'邮轮码头',pos:[80,13],h:11,base:0,r:7,rot:0,dur:3,walkObstacles:[{x:-.8,z:-6,w:4.4,d:13}]},
       burj_khalifa:    { key: 'Dubai_Halifa__Dubai_Halifa',       tex: 'Dubai_Halifa_D.png',    name: 'Burj Khalifa',         zh: '哈利法塔',     pos: [0, -33],  h: 46, base: 1.34, r: 5, rot: 0,    dur: 5.5 },
       dubai_frame:     { key: 'Dubai_Kuang__Dubai_Kuang',         tex: 'Dubai_Kuang.png',       name: 'Dubai Frame',          zh: '迪拜相框',     pos: [-21, -43], h: 14, base: 1.25, r: 8, rot: 0,    dur: 3 },
       museum_future:   { key: 'Dubai_Museum__Dubai_Museum',       tex: 'Dubai_Museum.png',      name: 'Museum of the Future', zh: '未来博物馆',   pos: [21, -27], h: 8,  base: 1.25, r: 7, rot: 0,    dur: 3 },
@@ -83,13 +85,23 @@ landmark('burj_al_arab')
 cam([-78,30,24],[-50,16,14])
 heli([-50,15],15,27)
 
-stage(8,'城市苏醒',44)
+stage(8,'滨海摩天轮与邮轮码头',43)
+island('wheel-plaza','rect',[42,10,76,45],0)
+island('cruise-quay','rect',[76,-11,84,37],0)
+road([48,-5],[48,15],'bridge')
+road([60,-8],[80,-8],'bridge')
+landmark('waterfront_wheel')
+landmark('cruise_terminal')
+palmsLine([44,15],[44,40],5)
+palmsLine([72,15],[72,40],5)
+
+stage(9,'城市苏醒',47)
 cam([-30,96,128],[0,4,-8])
 cars(18,[[[-34,-16],[34,-16],[34,-50],[-34,-50]],[[-48,-16],[48,-16]],[[0,-16],[0,39]],[[-48,-50],[48,-50]]])
-yachts(5,[[52,12,9],[50,44,11],[-24,66,9],[-66,42,9],[76,-22,7]])
+yachts(5,[[38,8,4],[50,60,5],[-24,66,9],[-66,42,9],[90,-25,5]])
 gulls(14)
 balloon([26,-3])
-sign('DUBAI',[54,22],-0.45,0,4.6)
+sign('DUBAI',[58,41],0,1,1.2)
 wait(0.6)
 orbit([0,0,2],142,104,7)
 wait(0.8)

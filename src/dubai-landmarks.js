@@ -37,7 +37,7 @@ export function createDubaiLandmarks({ THREE, city }) {
   let enabled=false,disposed=false;
   const swaps=[]; const styled=new Set(),bases=[];
   function styleAsset(l) {
-    if(!l?.asset||styled.has(l))return;
+    if(!l?.asset||l.cfg?.procedural||styled.has(l))return;
     const base=refineHotel(l)||refineLegacyBase(l);if(base){bases.push(base);base.setEnabled(enabled);}
     const proportion=refineLandmarkProportions(l);if(proportion){bases.push(proportion);proportion.setEnabled(enabled);}
     l.asset.traverse(o=>{
