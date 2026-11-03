@@ -4,6 +4,8 @@ An independent, Explore-only edition of Parallel World. Walk through four miniat
 
 The active edition loads 25 landmarks across these four cities. Dubai now includes an animated waterfront observation wheel and a circular observation-wheel island and a curved eight-vessel harbor with ten waterfront cafés/restaurants and five walkable finger piers, both connected to shore navigation and checkins. City navigation, collections, quests and the world map share the same roster; archived local checkins remain stored but are excluded from active progress. See [four-city validation](docs/four-city-edition.md).
 
+Las Vegas phase 1 replaces the early colour-block architecture with 32 refined buildings including a new lakefront hotel, an animated LED Sphere, 36 fountain jets, 29 detailed palms and nine lakefront trees. See [scope, verification and remaining work](docs/lasvegas-phase-1.md).
+
 Tokyo phase 2 follows the supplied skyline/cherry-river references: 15 infill buildings, stepped rooflines, 13 riverside cherry trees, a slender lattice Skytree and revised Tokyo Tower colours. See [implementation, verification and remaining gaps](docs/tokyo-phase-2.md).
 
 Tokyo phase 1 refines 35 ordinary buildings, 102 trees (66 cherry trees), street finishes and the imperial moat edge, with local reflections and contact shadows. See [scope, verification and remaining work](docs/tokyo-phase-1.md).

@@ -1,3 +1,6 @@
+import {createVegasScene} from './vegas-scene.js';
+import {createVegasLake} from './vegas-lake.js';
+import {createVegasSphere} from './vegas-sphere.js';
 import {createAbuTowers} from './abudhabi-towers.js';
 import {createMosqueInlay} from './abudhabi-inlay.js';
 import {planAbuInfill} from './abudhabi-infill.js';
@@ -39,8 +42,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const qs = new URLSearchParams(location.search);
   let enabled = qs.get('look') !== 'original';
   let refinementEnabled = qs.get('detail') !== 'off';
-  const refinements = [], districtStudies = [], lakeSwaps = [], abuStudies=[],tokyoStudies=[];
-  let abu=null,abuProbe=null,nearAbu=false,tokyo=null,tokyoProbe=null,nearTokyo=false;
+  const refinements = [], districtStudies = [], lakeSwaps = [], abuStudies=[],tokyoStudies=[],vegasStudies=[];
+  let vegas=null,vegasProbe=null,nearVegas=false,abu=null,abuProbe=null,nearAbu=false,tokyo=null,tokyoProbe=null,nearTokyo=false;
   let districtEnabled = qs.get('district') !== 'off';
   let contactEnabled=qs.get('ao')!=='off',reflectionsEnabled=qs.get('reflections')!=='off',skylineEnabled=qs.get('skyline')!=='off';
   let bounceEnabled=qs.get('bounce')!=='off';
@@ -211,9 +214,21 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     scene.fog.color.copy(enabled ? sky.material.uniforms.hor.value : original.fog);
     // Static reflection captures must be refreshed after exposure/environment
     // or detail changes, otherwise panes keep the previous lighting setup.
-    probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();
+    probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();vegasProbe?.invalidate();
   }
   function enhanceCity(c) {
+    if(c.id==='lasvegas'){
+      vegas=c;const vegasMaterials=new Map(replacement);vegasMaterials.set(M.rock,surface('sand',{color:'#aa8f75',scale:.16,roughness:.96,bump:.012}));
+      c.w.root.traverse(o=>{if(!o.isMesh)return;const before=o.material,after=Array.isArray(before)?before.map(m=>vegasMaterials.get(m)||m):vegasMaterials.get(before)||before;
+        if(Array.isArray(before)?after.some((m,i)=>m!==before[i]):after!==before){swaps.push({mesh:o,before,after});o.material=enabled?after:before;}
+      });
+      const trees=Array.from({length:9},(_,i)=>{const a=(i+.35)/9*Math.PI;return {x:-23+Math.cos(a)*17.5,z:31+Math.sin(a)*9.1,y:1,sc:.85+(i%3)*.1,ry:i*1.7,kind:'green'};});
+      const grove=createTokyoTrees({city:c,leafTexture,extraTrees:trees});grove.root.name='Las Vegas — lakefront shade trees';grove.stats={vegasTrees:trees.length};
+      vegasStudies.push(createVegasScene({city:c}),createVegasLake({city:c}),createVegasSphere({city:c}),grove,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      vegasProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{strip:{position:[0,9,1],min:[-76,0,-82],max:[76,48,46]},lake:{position:[-23,4,31],min:[-43,0,14],max:[-3,22,44]}}});
+      syncStudies();return;
+    }
+
     if(c.id==='tokyo'){
       tokyo=c;
       const lawn=surface('grass',{color:'#a5b88e',scale:.43,roughness:.98,bump:.004,detail:.35});
@@ -292,7 +307,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     // Must follow the source actors: they restore the original instances each frame.
     refinements.forEach(r => r.apply(time));
     districtStudies.forEach(r => r.apply(time));
-    abuStudies.forEach(r=>r.apply?.(time));tokyoStudies.forEach(r=>r.apply?.(time));
+    abuStudies.forEach(r=>r.apply?.(time));tokyoStudies.forEach(r=>r.apply?.(time));vegasStudies.forEach(r=>r.apply?.(time));
+    nearVegas=!!vegas&&!overview&&Math.hypot(target.x-vegas.w.root.position.x,target.z-vegas.w.root.position.z)<115&&camera.position.distanceTo(target)<220;
     nearTokyo=!!tokyo&&!overview&&Math.hypot(target.x-tokyo.w.root.position.x,target.z-tokyo.w.root.position.z)<115&&camera.position.distanceTo(target)<155;
     nearAbu=!!abu&&!overview&&Math.hypot(target.x-abu.w.root.position.x,target.z-abu.w.root.position.z)<115&&camera.position.distanceTo(target)<140;
     nearDubai=!!dubai&&!overview&&Math.hypot(target.x-dubai.w.root.position.x,target.z-dubai.w.root.position.z)<110&&camera.position.distanceTo(target)<120;
@@ -320,6 +336,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     refinements.forEach(r => r.setEnabled(false));
     districtStudies.forEach(r => r.setEnabled(false));
     const active = enabled && refinementEnabled;
+    vegasStudies.forEach(r=>r.setEnabled(active));vegasProbe?.setEnabled(active&&reflectionsEnabled);
     tokyoStudies.forEach(r=>r.setEnabled(active));tokyoProbe?.setEnabled(active&&reflectionsEnabled);
     abuStudies.forEach(r=>r.setEnabled(active));abuProbe?.setEnabled(active&&reflectionsEnabled);
     (districtEnabled ? districtStudies : refinements).forEach(r => r.setEnabled(active));
@@ -346,22 +363,24 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         if(nearDubai)probe?.captureIfNeeded();
         if(nearAbu)abuProbe?.captureIfNeeded();
         if(nearTokyo)tokyoProbe?.captureIfNeeded();
-        waterStudy.capture(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu||nearTokyo)&&reflectionsEnabled);
-        if(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu||nearTokyo)&&contactEnabled){
+        if(nearVegas)vegasProbe?.captureIfNeeded();
+        waterStudy.capture(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu||nearTokyo||nearVegas)&&reflectionsEnabled);
+        if(enabled&&refinementEnabled&&districtEnabled&&(nearDubai||nearAbu||nearTokyo||nearVegas)&&contactEnabled){
           contact??=createContactShadows({renderer,scene,camera});contact.render();
         }
       } finally {renderer.info.autoReset=reset;}
     },
     get contactEnabled(){return contactEnabled;},setContactEnabled(v){contactEnabled=!!v;},
-    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();},
+    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();vegasProbe?.invalidate();},
     get reflectionsEnabled(){return reflectionsEnabled;},setReflectionsEnabled(v){reflectionsEnabled=!!v;syncStudies();},
-    get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();},
-    get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&(nearDubai||nearAbu||nearTokyo)?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?(nearTokyo?tokyoProbe:nearAbu?abuProbe:probe)?.status||'准备中':'关'}`;},
+    get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();abuProbe?.invalidate();tokyoProbe?.invalidate();vegasProbe?.invalidate();},
+    get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&(nearDubai||nearAbu||nearTokyo||nearVegas)?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?(nearVegas?vegasProbe:nearTokyo?tokyoProbe:nearAbu?abuProbe:probe)?.status||'准备中':'关'}`;},
     get districtEnabled() { return districtEnabled; },
     get refinementEnabled() { return refinementEnabled; },
-    get refinementStats() { return (nearTokyo?tokyoStudies:nearAbu?abuStudies:(districtEnabled ? districtStudies : refinements)).map(r => r.stats); },
+    get refinementStats() { return (nearVegas?vegasStudies:nearTokyo?tokyoStudies:nearAbu?abuStudies:(districtEnabled ? districtStudies : refinements)).map(r => r.stats); },
     get enabled() { return enabled; }, dispose() {
     setEnabled(false); extras.forEach(o => { o.removeFromParent(); o.geometry.dispose(); });
+    vegasProbe?.dispose();vegasStudies.forEach(r=>r.dispose());
     tokyoProbe?.dispose();tokyoStudies.forEach(r=>r.dispose());contact?.dispose();probe?.dispose();abuProbe?.dispose();abuStudies.forEach(r=>r.dispose());
     refinements.forEach(r => r.dispose()); districtStudies.forEach(r => r.dispose()); waterStudy.dispose();
     sky.material.fragmentShader = skyFragment; delete sky.material.uniforms.taAtmosphere; sky.material.needsUpdate = true;

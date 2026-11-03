@@ -1,3 +1,4 @@
+import {VEGAS_RESERVATIONS} from './vegas-layout.js';
 import {MARINA_OBSTACLES,MARINA_PIERS,MARINA_OUTLINE} from './dubai-marina-layout.js';
 // Active Explore edition. Removed recipes remain available in Git history.
 export const ASSET = 'https://resources.parallelworld.com/assets/';
@@ -301,6 +302,7 @@ title()
 end(50)`
   },
   lasvegas: {
+    reservedPlots: VEGAS_RESERVATIONS,
     id: 'lasvegas', name: 'LAS VEGAS', nameLocal: 'Entertainment Capital', nameZh: '拉斯维加斯',
     bgm: ASSET + 'media/las-vegas/bgm.mp3',
     landmarks: {
