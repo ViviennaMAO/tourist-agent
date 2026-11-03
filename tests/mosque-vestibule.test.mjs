@@ -24,7 +24,7 @@ test('Side/rear cuts preserve source buffers and the upper stone wall',()=>{
 test('Vestibule light and surfaces hide with the refinement and are detached on disposal',()=>{
  const holder=new THREE.Group(),asset=new THREE.Group(),geometry=new THREE.BoxGeometry(),material=new THREE.MeshStandardMaterial();asset.add(new THREE.Mesh(geometry,material));holder.add(asset);
  const s=createAbuDhabiLandmarks({city:{LM:{grand_mosque:{holder,asset,loaded:true}}}});s.setEnabled(true);s.apply();
- const root=holder.children.find(c=>c!==asset),lights=root.children.filter(c=>c.isPointLight);assert.equal(lights.length,1);assert.equal(lights[0].castShadow,false);assert.ok(lights[0].distance<4);assert.ok(s.stats.triangles<160000);
+ const root=holder.children.find(c=>c!==asset),lights=root.children.filter(c=>c.isPointLight&&c.name==='Mosque vestibule fill');assert.equal(lights.length,1);assert.equal(lights[0].castShadow,false);assert.ok(lights[0].distance<4);assert.ok(s.stats.triangles<160000);
  const floor=root.children.find(m=>m.isMesh&&m.material.color.getHexString()==='dedbd1');assert.ok(floor);assert.equal(floor.castShadow,false);
  s.setEnabled(false);assert.equal(root.visible,false);s.setEnabled(true);assert.equal(root.visible,true);s.dispose();s.dispose();assert.deepEqual(holder.children,[asset]);assert.equal(asset.children[0].geometry,geometry);geometry.dispose();material.dispose();
 });

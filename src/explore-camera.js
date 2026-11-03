@@ -5,6 +5,8 @@ import { Vector3 } from 'three';
 export const EXPLORE_POLAR_LIMIT = Math.PI - .14;
 export const EXPLORE_DISTANCE_LIMIT = 240;
 export function configureExploreCamera(controls, overview = false) {
+  // Interior review lenses must not leak into ordinary exploration or map framing.
+  if(controls.object?.isPerspectiveCamera && controls.object.fov!==35){controls.object.fov=35;controls.object.updateProjectionMatrix();}
   controls.minPolarAngle = .04;
   controls.maxPolarAngle = overview ? Math.PI * .48 : EXPLORE_POLAR_LIMIT;
   controls.maxDistance = overview ? 5000 : EXPLORE_DISTANCE_LIMIT;

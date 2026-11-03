@@ -10,6 +10,8 @@ Tokyo phase 2 follows the supplied skyline/cherry-river references: 15 infill bu
 
 Tokyo phase 1 refines 35 ordinary buildings, 102 trees (66 cherry trees), street finishes and the imperial moat edge, with local reflections and contact shadows. See [scope, verification and remaining work](docs/tokyo-phase-1.md).
 
+Abu Dhabi phase 13 opens the main prayer-hall entrance and adds column aisles, arches, a recessed mihrab, patterned carpet and tiered chandeliers. See [scope, validation and access limits](docs/abudhabi-phase-13.md).
+
 Abu Dhabi phase 12 rebuilds the two small side passages with aligned front/rear arches and adds entry-vestibule paving, wall trim, a divided ceiling and warm pendant lamps. See [scope, validation and access limits](docs/abudhabi-phase-12.md).
 
 Abu Dhabi phase 11 smooths the central mosque portal, refines flower/leaf and planter detail, and adds tower-lobby base joints and threshold hardware. See [scope, validation and remaining work](docs/abudhabi-phase-11.md).

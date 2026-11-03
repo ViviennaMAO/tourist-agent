@@ -18,7 +18,7 @@ export function buildMosquePortal({add,box,white,trim=white,stone,gold}){
  add(mosquePortalGeometry(),white);
  for(const [scale,z,r,m] of [[1.03,8.553,.025,trim],[1.13,8.55,.014,stone]]){
   const points=mosquePortalPath().getPoints(32).map(p=>new THREE.Vector3(p.x*scale,p.y+(scale-1)*.16,z));
-  add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),128,r,8,false),m);
+  add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),64,r,6,false),m);
  }
  box(trim,0,2.185,8.56,1.51,.045,.09);
  for(const sign of [-1,1]){

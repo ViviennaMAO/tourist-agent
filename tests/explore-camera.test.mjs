@@ -50,3 +50,8 @@ test('overview remains above ground and returning restores upward drag range',()
  keepCameraAboveGround(camera,controls,4,1);assert.equal(camera.position.y,5);assert.ok(controls.target.clone().sub(camera.position).distanceTo(before)<1e-8);
  controls.dispose();
 });
+test('Interior review field of view resets before exploration and map framing',()=>{
+ const {camera,controls}=fixture();
+ for(const overview of [false,true]){camera.fov=55;camera.updateProjectionMatrix();const wide=camera.projectionMatrix.clone();configureExploreCamera(controls,overview);assert.equal(camera.fov,35);assert.notDeepEqual(camera.projectionMatrix.elements,wide.elements);}
+ controls.dispose();
+});

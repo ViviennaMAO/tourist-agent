@@ -1,3 +1,4 @@
+import {buildPrayerHall,PRAYER_HALL_CUTS,installPrayerCarpet} from './mosque-prayer-hall.js';
 import {buildMosqueVestibule,MOSQUE_VESTIBULE_CUTS} from './mosque-vestibule.js';
 import {buildMosquePortal,MOSQUE_PORTAL_CUT} from './mosque-portal.js';
 import {buildMosqueArcade,MOSQUE_ARCADE_CUTS} from './mosque-arcade.js';
@@ -24,11 +25,11 @@ export function refineLandmarkGeometry(source,toHolder,id){
  for(let i=0;i<indices.length;i+=3){const tri=[indices[i],indices[i+1],indices[i+2]];if(!tri.every(v=>replacedRegion(id,points[v])))keep.push(...tri);}
  geometry.setIndex(keep);geometry.clearGroups();geometry.setAttribute('surfacePosition',new THREE.BufferAttribute(metric,3));
  if(id==='emirates_palace'){const cut=carveGeometryBox(geometry,PALACE_ENTRANCE_CUT.min,PALACE_ENTRANCE_CUT.max);geometry.dispose();return cut;}
- if(id==='grand_mosque'){let result=geometry;for(const c of [...MOSQUE_ARCADE_CUTS,MOSQUE_PORTAL_CUT,...MOSQUE_VESTIBULE_CUTS]){const cut=carveGeometryBox(result,c.min,c.max);result.dispose();result=cut;}return result;}return geometry;
+ if(id==='grand_mosque'){let result=geometry;for(const c of [...MOSQUE_ARCADE_CUTS,MOSQUE_PORTAL_CUT,...MOSQUE_VESTIBULE_CUTS,...PRAYER_HALL_CUTS]){const cut=carveGeometryBox(result,c.min,c.max);result.dispose();result=cut;}return result;}return geometry;
 }
 export function domeGeometry(r,h,onion=true){
  const curve=new THREE.CatmullRomCurve3((onion?[[.92,0],[.99,.16],[1,.36],[.94,.56],[.78,.76],[.5,.92],[.12,1]]:[[1,0],[.96,.22],[.82,.49],[.62,.74],[.35,.94],[.12,1]]).map(([x,y])=>new THREE.Vector3(x*r,y*h,0)));
- return new THREE.LatheGeometry([...curve.getPoints(32).map(p=>new THREE.Vector2(p.x,p.y)),new THREE.Vector2(0,h)],72);
+ return new THREE.LatheGeometry([...curve.getPoints(28).map(p=>new THREE.Vector2(p.x,p.y)),new THREE.Vector2(0,h)],64);
 }
 export function createAbuDhabiLandmarks({city}){
  const records=[],done=new Set();let enabled=false,disposed=false;
@@ -93,7 +94,13 @@ export function createAbuDhabiLandmarks({city}){
    floor.userData.detailNoShadow=true;inlay.userData.detailNoShadow=true;lamp.userData.detailNoShadow=true;
    installSurfaceFinish(floor,'paint');lamp.emissive.set('#f3cd87');lamp.emissiveIntensity=.45;
    buildMosqueVestibule({add,box,cylinder,white:arcadeMarble,trim:portalTrim,stone,gold,floor,inlay,lamp});
-   const fill=new THREE.PointLight('#ffe5b8',.65,3.8,2);fill.position.set(0,2.62,7.055);root.add(fill);
+   const fill=new THREE.PointLight('#ffe5b8',.65,3.8,2);fill.position.set(0,2.62,7.055);root.add(fill);fill.name='Mosque vestibule fill';
+   const hallWall=mat('#eee9dc',.55),carpet=mat('#526c58',.96),hallGlass=mat('#f7e3bb',.32);
+   hallWall.userData.detailNoShadow=true;carpet.userData.detailNoShadow=true;hallGlass.userData.detailNoShadow=true;
+   hallWall.emissive.set('#c5ba9c');hallWall.emissiveIntensity=.09;hallGlass.emissive.set('#ffe1a3');hallGlass.emissiveIntensity=.65;
+   installSurfaceFinish(hallWall,'paint');installPrayerCarpet(carpet);
+   buildPrayerHall({add,box,cylinder,wall:hallWall,trim:portalTrim,gold,floor,carpet,glass:hallGlass});
+   for(const z of [-5.14,-7.14]){const light=new THREE.PointLight('#ffe9c7',3.2,7,2);light.position.set(0,3.1,z);light.name='Mosque prayer hall fill';root.add(light);}
 
   }
   if(id==='emirates_palace'){
