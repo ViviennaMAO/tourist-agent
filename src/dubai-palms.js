@@ -1,3 +1,4 @@
+import { installLeafDaylight } from './leaf-daylight.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** A small grove beside the west plaza. Geometry shares the original palm's
@@ -102,16 +103,7 @@ export function createDubaiPalms({ THREE, city, district = false }) {
     trunk=mergeGeometries(bark);bark.forEach(g=>g.dispose());
   }
   const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .87, side: THREE.DoubleSide, envMapIntensity: .32 });
-  if(district){
-    leafMat.onBeforeCompile=shader=>{
-      shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-        vec3 leafSun=normalize((viewMatrix*vec4(-1.1,.72,.85,0.)).xyz);
-        float through=pow(max(dot(normalize(vViewPosition),-leafSun),0.),3.);
-        reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.24,.28,.11)*through;
-      `);
-    };
-    leafMat.customProgramCacheKey=()=> 'palm-thin-leaf-v2';
-  }
+  if(district)installLeafDaylight(leafMat);
   const ribMat = new THREE.MeshStandardMaterial({ color: district ? '#686c38' : '#8a8e59', roughness: .91 });
   const trunkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95 });
   if(district){

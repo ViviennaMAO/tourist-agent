@@ -1,18 +1,26 @@
-/** Bounded thin-leaf approximation; keeps alpha cutouts and real shadows. */
+/** Thin-leaf diffuse fill; keeps cutouts, scene shadows and vein contrast. */
 export function installLeafDaylight(material) {
   const before=material.onBeforeCompile,key=material.customProgramCacheKey();
+  const bakedTexture=!!material.map;
   material.onBeforeCompile=function(shader,renderer){
     before.call(this,shader,renderer);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-      // The source leaf carries dark photographic shading. Lift that baked
-      // shadow before applying the scene lighting, retaining vein contrast.
-      diffuseColor.rgb=mix(diffuseColor.rgb,sqrt(max(diffuseColor.rgb,vec3(0.)))*.72,.45);
+    if(bakedTexture)shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      // Unbake only the darkest photographed leaf areas. Vertex-coloured palms
+      // have no photographic shadow and must keep their authored palette.
+      float leafLuma=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+      float bakedShadow=1.-smoothstep(.035,.24,leafLuma);
+      diffuseColor.rgb=mix(diffuseColor.rgb,sqrt(max(diffuseColor.rgb,vec3(0.)))*.78,.62*bakedShadow);
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-      vec3 leafSun=normalize((viewMatrix*vec4(-1.1,.72,.85,0.)).xyz);
-      float leafBacklight=pow(max(dot(-normal,leafSun),0.),1.4);
-      reflectedLight.directDiffuse+=diffuseColor.rgb*vec3(.26,.23,.13)*leafBacklight;
+      // Absolute world orientation keeps the two-sided sky return stable when
+      // the camera crosses a leaf. This is bounded diffuse fill, not emission.
+      vec3 leafWorldN=inverseTransformDirection(normal,viewMatrix);
+      float leafSky=.45+.55*abs(leafWorldN.y);
+      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.15,.19,.14)*leafSky;
+      vec3 leafSun=normalize(vec3(-1.1,.72,.85));
+      float leafTransmission=pow(abs(dot(leafWorldN,leafSun)),1.4);
+      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.14,.12,.055)*leafTransmission;
     `);
   };
-  material.customProgramCacheKey=()=>key+'-leaf-daylight-v1';
+  material.customProgramCacheKey=()=>key+'-leaf-daylight-v2-'+(bakedTexture?'map':'vertex');
 }

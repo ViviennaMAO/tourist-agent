@@ -31,5 +31,5 @@ test('courtyard fill preserves existing shader hooks and can be switched without
   assert.equal(originalCalls,1);assert.equal(shader.uniforms.existing.value,3);
   assert.equal(shader.uniforms.courtyardBounce,strength);strength.value=0;assert.equal(shader.uniforms.courtyardBounce.value,0);
   assert.ok(shader.fragmentShader.indexOf('float porch=')<shader.fragmentShader.indexOf('#include <aomap_fragment>'));
-  assert.equal(material.customProgramCacheKey(),'stone-courtyard-bounce-v3');material.dispose();
+  assert.equal(material.customProgramCacheKey(),'stone-courtyard-bounce-v4');material.dispose();
 });
