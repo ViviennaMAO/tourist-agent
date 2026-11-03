@@ -51,7 +51,7 @@ export function createPromenadeGardens({city,stoneMaterial,leafTexture,exclusion
       for(let k=0;k<76;k++){
         const a=random()*6.283,r=Math.sqrt(random())*radius,yy=Math.pow(random(),1.6);
         const g=new THREE.PlaneGeometry(.14,.21).rotateX(-1.35+random()*.85).rotateY(a).rotateZ(random()*2);
-        g.translate(x+Math.cos(a)*r,b.base+.13+height*yy,z+Math.sin(a)*r);add(g,k%3?green:dark);
+        g.translate(x+Math.cos(a)*r*(b.zone==='side'?1.45:1),b.base+.18+height*yy,z+Math.sin(a)*r*(b.zone==='side'?1:1.45));add(g,k%3?green:dark);
       }
       for(let k=0;k<6;k++){
         const a=random()*6.283,px=x+Math.cos(a)*.22,pz=z+Math.sin(a)*.22,py=b.base+.18+height*(.35+random()*.65);

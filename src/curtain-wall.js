@@ -14,11 +14,11 @@ export function installCurtainWallFinish(material) {
       `+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       vec3 curtainFace=abs(normalize(cross(dFdx(curtainPosition),dFdy(curtainPosition))));
-      curtainUv=vec2(curtainFace.x>curtainFace.z?curtainPosition.z:curtainPosition.x,curtainPosition.y)/vec2(.6,1.05);
+      curtainUv=vec2(curtainFace.x>curtainFace.z?curtainPosition.z:curtainPosition.x,curtainPosition.y)/vec2(.44,.72);
       curtainVariation=curtainHash(floor(curtainUv));
       // Suppress per-pane variation once a pane falls below a few pixels.
       float curtainDetail=1.-smoothstep(.18,.8,max(fwidth(curtainUv.x),fwidth(curtainUv.y)));
-      diffuseColor.rgb*=1.+(curtainVariation-.5)*.12*curtainDetail;
+      diffuseColor.rgb*=1.+(curtainVariation-.5)*.18*curtainDetail;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
       roughnessFactor=clamp(roughnessFactor+(curtainVariation-.5)*.035*curtainDetail,.065,1.);
@@ -33,6 +33,6 @@ export function installCurtainWallFinish(material) {
       normal=normalize(abs(det)*normal-sign(det)*(dFdx(bow)*rx+dFdy(bow)*ry));
     `);
   };
-  material.customProgramCacheKey=()=>key+'-curtain-wall-v2';
+  material.customProgramCacheKey=()=>key+'-curtain-wall-v3';
   material.needsUpdate=true;
 }

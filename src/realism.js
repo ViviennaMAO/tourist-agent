@@ -52,8 +52,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     ` + skyFragment.replace('gl_FragColor = vec4(c,1.);', `
       if(taAtmosphere>.5){
         vec3 d=normalize(vD);
-        float elevation=smoothstep(0.,.12,max(d.y,0.));
-        c=mix(vec3(.48,.59,.72),vec3(.20,.35,.58),elevation);
+        float elevation=smoothstep(0.,.32,max(d.y,0.));
+        c=mix(hor,vec3(.18,.32,.55),elevation);
         vec2 uv=d.xz/max(d.y+.12,.08)*2.4;
         float wisps=smoothstep(.52,.75,taCloud(uv*vec2(.65,1.8)));
         float cloud=wisps*smoothstep(.02,.18,d.y)*.43;
@@ -172,17 +172,17 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   function applyEnvironment() {
     const district = enabled && refinementEnabled && districtEnabled;
     sky.material.uniforms.taAtmosphere.value = district ? 1 : 0;
-    renderer.toneMappingExposure = enabled ? (district ? .94 : .99) : original.exposure;
+    renderer.toneMappingExposure = enabled ? .99 : original.exposure;
     scene.environment = enabled ? envTarget.texture : original.env;
     hemi.color.copy(enabled ? new THREE.Color('#d5e3f5') : original.hemi);
     hemi.groundColor.copy(enabled ? new THREE.Color('#c4b9aa') : original.ground);
-    hemi.intensity = enabled ? (district ? 1.32 : 1.1) : original.hi;
+    hemi.intensity = enabled ? (district ? 1.12 : 1.1) : original.hi;
     sun.color.copy(enabled ? new THREE.Color('#ffe5c2') : original.sun);
-    sun.intensity = enabled ? (district ? 2.95 : 2.65) : original.si;
+    sun.intensity = enabled ? (district ? 3.35 : 2.65) : original.si;
     sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
     sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
-    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color('#e0e1d8') : original.horizon);
-    scene.fog.color.copy(enabled ? new THREE.Color(district ? '#c7d5d9' : '#e0e1d8') : original.fog);
+    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color(district ? '#bdcddd' : '#e0e1d8') : original.horizon);
+    scene.fog.color.copy(enabled ? sky.material.uniforms.hor.value : original.fog);
   }
   function enhanceCity(c) {
     if (c.id !== 'dubai') return;

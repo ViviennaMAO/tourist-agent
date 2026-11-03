@@ -74,8 +74,8 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   }
   if(skylineGlass){
     skylineGlass.userData.reflectionZone='skyline';
-    skylineGlass.color.set('#607e91');skylineGlass.metalness=.48;
-    skylineGlass.roughness=.18;skylineGlass.envMapIntensity=1.05;
+    skylineGlass.color.set('#82949e');skylineGlass.metalness=.68;
+    skylineGlass.roughness=.115;skylineGlass.envMapIntensity=1.55;
     installCurtainWallFinish(skylineGlass);
   }
   const skylineSpandrel=district?finish('#475f70',.38,.32,{envMapIntensity:.7}):null;

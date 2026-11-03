@@ -50,11 +50,11 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
     const { bottom, top, w: width, d: depth, x: ox } = tiers[tier];
     const height = top - bottom;
     box(skylineGlass, ox, (top + bottom) / 2, 0, width - .1, height, depth - .1);
-    const floors = Math.max(1, Math.round(height / 1.05)), fh = height / floors;
+    const floors = Math.max(1, Math.round(height / .72)), fh = height / floors;
     floorCount += floors;
     for (let side = 0; side < 4; side++) {
       const span = side % 2 ? depth : width;
-      const cols = Math.max(3, Math.round((span - .2) / .6)), bay = (span - .2) / cols;
+      const cols = Math.max(3, Math.round((span - .2) / .44)), bay = (span - .2) / cols;
       const face = (m, u, y, inset, bw, bh, bd) => facade(side, width, depth, ox, m, u, y, inset, bw, bh, bd);
       for (let f = 0; f < floors; f++) {
         const y = bottom + f * fh;
@@ -72,7 +72,7 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
       }
       for (let j = 0; j <= cols; j++) {
         const u = -(span - .2) / 2 + j * bay;
-        face(metalFinish, u, (top + bottom) / 2, .025, variant === 3 ? .032 : .016, height, variant === 3 ? .075 : .032);
+        face(metalFinish, u, (top + bottom) / 2, .025, variant === 3 ? .027 : .012, height, variant === 3 ? .075 : .032);
       }
       // Paired stone corner blades give the second family a framed silhouette.
       if (variant === 1 && side % 2 === 0) for (const sign of [-1, 1]) {

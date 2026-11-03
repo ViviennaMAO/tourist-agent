@@ -9,7 +9,7 @@ export function createDubaiBackdrop({THREE,city}) {
   const root=new THREE.Group();root.name='Dubai — inland skyline layers';
   const ctx=city.w.ctx,footprints=[],batches=new Map();let enabled=false,disposed=false;
   function finish(color,roughness,metalness=0){const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.9});batches.set(m,[]);return m;}
-  const glass=finish('#68869c',.26,.45),silver=finish('#8b9fae',.31,.48),sand=finish('#a7adae',.78),trim=finish('#7b8c98',.4,.48),roof=finish('#7d898e',.9);
+  const glass=finish('#8095a8',.19,.58),silver=finish('#a2afb6',.22,.62),sand=finish('#a7adae',.78),trim=finish('#7b8c98',.4,.48),roof=finish('#7d898e',.9);
   for(const m of [glass,silver]){m.userData.cityGlass=true;m.userData.reflectionZone='skyline';installCurtainWallFinish(m);}
   for(const m of batches.keys())installSkylineAtmosphere(m,.26);
   function box(m,x,y,z,w,h,d,ry=0){batches.get(m).push(new THREE.BoxGeometry(w,h,d).rotateY(ry).translate(x,y,z));}
@@ -41,13 +41,14 @@ export function createDubaiBackdrop({THREE,city}) {
       box(skin,xx,base+(t.bottom+t.top)/2,z,ww,t.top-t.bottom,dd);
       box(roof,xx,base+t.top-.035,z,ww,.07,dd);
       // Quiet horizontal joints; vertical lines carry the distant silhouette.
-      for(let yy=t.bottom+.65;yy<t.top-.1;yy+=1.35)for(const side of [-1,1]) {
-        box(roof,xx,base+yy-.045,z+side*(dd/2+.004),ww,.09,.012);
-        box(trim,xx,base+yy,z+side*(dd/2+.008),ww,.022,.016);
-        box(roof,xx+side*(ww/2+.004),base+yy-.045,z,.012,.09,dd);
-        box(trim,xx+side*(ww/2+.008),base+yy,z,.016,.022,dd);
+      for(let yy=t.bottom+.42;yy<t.top-.1;yy+=.85)for(const side of [-1,1]) {
+        // Flush spandrels need only their outward face; keep projecting mullions solid.
+        batches.get(roof).push(new THREE.PlaneGeometry(ww,.055).rotateY(side<0?Math.PI:0).translate(xx,base+yy-.045,z+side*(dd/2+.01)));
+        batches.get(trim).push(new THREE.PlaneGeometry(ww,.022).rotateY(side<0?Math.PI:0).translate(xx,base+yy,z+side*(dd/2+.016)));
+        batches.get(roof).push(new THREE.PlaneGeometry(dd,.055).rotateY(side*Math.PI/2).translate(xx+side*(ww/2+.01),base+yy-.045,z));
+        batches.get(trim).push(new THREE.PlaneGeometry(dd,.022).rotateY(side*Math.PI/2).translate(xx+side*(ww/2+.016),base+yy,z));
       }
-      for(const sign of [-1,1])for(const u of [-.32,0,.32]) {
+      for(const sign of [-1,1])for(const u of [-.36,-.18,0,.18,.36]) {
         box(trim,xx+ww*u,base+(t.bottom+t.top)/2,z+sign*(dd/2+.012),.023,t.top-t.bottom,.025);
         box(trim,xx+sign*(ww/2+.012),base+(t.bottom+t.top)/2,z+dd*u,.025,t.top-t.bottom,.023);
       }
