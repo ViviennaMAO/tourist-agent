@@ -56,9 +56,16 @@ export function createPromenadeGardens({city,stoneMaterial,leafTexture,exclusion
       for(let k=0;k<6;k++){
         const a=random()*6.283,px=x+Math.cos(a)*.22,pz=z+Math.sin(a)*.22,py=b.base+.18+height*(.35+random()*.65);
         add(new THREE.CylinderGeometry(.003,.005,py-b.base-.1,3).translate(px,(py+b.base+.1)/2,pz),stem);
+        const phase=random()*Math.PI*2,tilt=.12+random()*.28;
         for(let petal=0;petal<4;petal++){
-          const a=petal*Math.PI/2,g=new THREE.CircleGeometry(index%4===1?.036:.025,4);
-          add(g.rotateX(-Math.PI/2+.22).translate(px+Math.cos(a)*.026,py,pz+Math.sin(a)*.026),index%4===1?pink:white);
+          const a=phase+petal*Math.PI/2,r=index%4===1?.036:.025,g=new THREE.CircleGeometry(r,4);
+          // Lift the perimeter around the recessed center: four small curved
+          // petals catch different light rather than reading as a flat parasol.
+          const p=g.attributes.position;
+          for(let v=1;v<p.count;v++)p.setZ(v,.007+.003*(p.getY(v)/r));
+          g.scale(.78,1,1);g.computeVertexNormals();
+          g.rotateZ(a).rotateX(-Math.PI/2+tilt).rotateY(phase*.3);
+          add(g.translate(px+Math.cos(a)*.024,py,pz+Math.sin(a)*.024),index%4===1?pink:white);
         }
       }
     }
