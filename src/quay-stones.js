@@ -26,26 +26,37 @@ export function quayCells() {
     // Insets leave narrow, genuinely recessed mortar seams between stones.
     const center=poly.reduce((a,p)=>[a[0]+p[0]/poly.length,a[1]+p[1]/poly.length],[0,0]);
     return {index,center,polygon:poly.map(p=>{const d=Math.hypot(p[0]-center[0],p[1]-center[1]);
-      const f=Math.max(.7,1-.012/d);return [center[0]+(p[0]-center[0])*f,center[1]+(p[1]-center[1])*f];})};
+      const f=Math.max(.7,1-(.014+.008*(.5+.5*Math.sin(index*3.7)))/d);return [center[0]+(p[0]-center[0])*f,center[1]+(p[1]-center[1])*f];})};
   });
 }
 
 export function quayContour(x){return .095*Math.sin((x+33)*.43)+.035*Math.sin(x*1.31);}
 
 export function createQuayStone(cell){
-  const shape=new THREE.Shape(cell.polygon.map(p=>new THREE.Vector2(...p)));
-  // The source island's wall is at z=-4.5. Every face must remain seaward of
-  // it, including the chipped edge, or that old wall clips through the stone.
-  const front=-4.34+quayContour(cell.center[0])*.4+.015*Math.sin(cell.index*7.1);
-  const g=new THREE.ExtrudeGeometry(shape,{depth:front+5.04,steps:1,bevelEnabled:true,bevelThickness:.012,bevelSize:.007,bevelSegments:1,curveSegments:1});
-  g.translate(0,0,-5.04);
-  const p=g.attributes.position,colors=[];
-  const tint=new THREE.Color(['#b6a38a','#baa88e','#c3b397','#a99880','#c7b69c'][cell.index%5]);
-  for(let i=0;i<p.count;i++){
-    const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
-    p.setZ(i,z+shoreBulge(x)+(z>-4.9?.010*Math.sin(x*29.1+y*17.3):0));
-    const shade=.94+.06*Math.sin(x*11.8+y*13.7),c=tint.clone().multiplyScalar(shade);
-    colors.push(c.r,c.g,c.b);
+  // A chipped rim, inset shoulder and off-centre crown replace the extruded
+  // flat cap. All relief remains seaward of the old wall and below the coping.
+  const n=cell.polygon.length,[cx,cy]=cell.center,front=-4.405+quayContour(cx)*.18+.016*Math.sin(cell.index*7.1);
+  const crown=[cx+.025*Math.sin(cell.index),cy+.016*Math.cos(cell.index),front+.052+.009*Math.sin(cell.index*1.8)];
+  const vertices=[...crown],indices=[],colors=[];
+  for(const [i,p] of cell.polygon.entries())vertices.push(p[0],p[1],front-.012+.012*Math.sin(i*2.7+cell.index));
+  for(const [i,p] of cell.polygon.entries()){
+    const f=.72+.09*Math.sin(i*1.9+cell.index);
+    vertices.push(cx+(p[0]-cx)*f,cy+(p[1]-cy)*f,front+.040+.014*Math.sin(i*2.3+cell.index*3.1));
   }
-  g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.computeVertexNormals();return g;
+  for(const p of cell.polygon)vertices.push(p[0],p[1],-5.04);
+  for(let k=0;k<n;k++){
+    const a=1+k,b=1+(k+1)%n,ia=a+n,ib=b+n;
+    indices.push(0,ia,ib,ia,a,b,ia,b,ib,a,a+2*n,b,b,a+2*n,b+2*n);
+  }
+  const tint=new THREE.Color(['#b6a38a','#baa88e','#c3b397','#a99880','#c7b69c'][cell.index%5]);
+  for(let i=0;i<vertices.length;i+=3){
+    vertices[i+2]+=shoreBulge(vertices[i]);
+    const c=tint.clone().multiplyScalar(.96+.035*Math.sin(cell.index*2.6+vertices[i+1]*4));colors.push(c.r,c.g,c.b);
+  }
+  const indexed=new THREE.BufferGeometry();
+  indexed.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  indexed.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  indexed.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(vertices.length/3*2),2));
+  indexed.setIndex(indices);indexed.computeVertexNormals();
+  const g=indexed.toNonIndexed();indexed.dispose();return g;
 }

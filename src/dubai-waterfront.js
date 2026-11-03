@@ -14,10 +14,10 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
     const m = new THREE.MeshStandardMaterial({ color, roughness, ...extra });
     materials.push(m); batches.set(m, []); return m;
   }
-  const wall = stoneMaterial.clone(); wall.color.set('#f5edda');
+  const wall = stoneMaterial.clone(); wall.color.set('#e6ddcb');
   wall.onBeforeCompile = stoneMaterial.onBeforeCompile; wall.customProgramCacheKey = stoneMaterial.customProgramCacheKey;
   materials.push(wall); batches.set(wall, []);
-  const trim=stoneMaterial.clone();trim.color.set('#e4d8c0');
+  const trim=stoneMaterial.clone();trim.color.set('#d8ccb7');
   trim.onBeforeCompile=stoneMaterial.onBeforeCompile;trim.customProgramCacheKey=stoneMaterial.customProgramCacheKey;
   materials.push(trim);batches.set(trim,[]);
   for(const m of [wall,trim])installStoneWear(m,city.w.root.position.clone());

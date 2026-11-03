@@ -67,7 +67,7 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
   // Each rough stone is a chipped polygon with a bulging, faceted outer face.
   function fieldstone(w,h,depth,index) {
     const outline=[[-.5,-.34],[-.34,-.5],[.32,-.48],[.5,-.24],[.46,.30],[.23,.5],[-.33,.45],[-.5,.18]];
-    const vertices=[0,0,depth+.008];
+    const vertices=[w*(rand()-.5)*.16,h*(rand()-.5)*.16,depth+.035+rand()*.035];
     for(const [x,y] of outline)vertices.push(x*w*(.86+rand()*.26),y*h*(.86+rand()*.26),depth*(.94+rand()*.06));
     for(const [x,y] of outline)vertices.push(x*w,y*h,-.08);
     const indices=[];
@@ -83,12 +83,12 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
     add(place(chamferedBox(s.length+.006,.11,.63,.014),s,0,.20,1.015),cap);
     add(place(new THREE.BoxGeometry(s.length+.015,.9,.28),s,0,.36,.51),backing);
     for(let row=0;row<3;row++) {
-      const height=.24+rand()*.12,shift=((row===1?.17:-.08)+(rand()-.5)*.22)*s.length;
-      const g=fieldstone(s.length*(.88+rand()*.16),height,.16+rand()*.09,i*3+row);
+      const height=.23+rand()*.14,shift=((row===1?.17:-.08)+(rand()-.5)*.28)*s.length;
+      const g=fieldstone(s.length*(.80+rand()*.29),height,.14+rand()*.13,i*3+row);
       // Local +Z must face the water for either polygon winding.
       g.rotateZ((rand()-.5)*.20);
       if(s.nx*(-s.tz)+s.nz*s.tx<0)g.rotateX(Math.PI);
-      add(place(g,s,shift,.43,.20+row*.29+(rand()-.5)*.075),rock);
+      add(place(g,s,shift,.43,.20+row*.29+(rand()-.5)*.10),rock);
     }
   }
   for(const [mat,parts] of batches)if(parts.length){const geo=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(geo,mat);mesh.receiveShadow=true;mesh.castShadow=false;root.add(mesh);}

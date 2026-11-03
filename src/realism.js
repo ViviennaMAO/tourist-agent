@@ -74,11 +74,11 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       const i = (y * n + x) * 4, noise = (random() - .5), row = Math.floor(y / 64), xx = (x + (row % 2) * 64) % n;
       const masonry=kind==='stone'||kind==='limestone';
       const seam = masonry && (xx % 128 < (kind==='limestone'?1:2) || y % 64 < (kind==='limestone'?1:2));
-      const tileValue = masonry ? tile[row * 4 + Math.floor(xx / 128)]*(kind==='limestone'?.38:.65) : 0;
+      const tileValue = masonry ? tile[row * 4 + Math.floor(xx / 128)]*(kind==='limestone'?.9:.65) : 0;
       const cloud = kind === 'grass' ? 0 : Math.sin(x * Math.PI * 8 / n) * Math.cos(y * Math.PI * 6 / n);
-      const delta = noise * (kind === 'grass' ? 28 : 13) + tileValue + cloud * 2.5;
+      const delta = noise * (kind === 'grass' ? 28 : kind==='limestone'?4:13) + tileValue + cloud * (kind==='limestone'?4:2.5);
       const pore=kind==='limestone'&&random()>.994;
-      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.91) : base[k] + delta*(kind==='limestone'?.55:1)-(pore?5:0);
+      for (let k = 0; k < 3; k++) data.data[i + k] = seam ? base[k] * (kind==='limestone'?.94:.91) : base[k] + delta*(kind==='limestone'?.85:1)-(pore?6:0);
       data.data[i + 3] = 255;
       const v = seam ? (kind==='limestone'?138:100) : pore?145:155 + noise * (kind === 'asphalt' ? 75 : kind==='limestone'?10:22);
       hd.data.set([v, v, v, 255], i);
@@ -139,8 +139,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   const asphalt = surface('asphalt', { scale: .55, roughness: .94, bump: .018 });
   const grass = surface('grass', { scale: .43, roughness: .98, bump: .007 });
   const sideStone = surface('stone', { color: '#c2b4a0', scale: .4, bump: .035 });
-  const facadeStone = surface('limestone', { scale: .24, roughness: .84, bump: .006, detail: .8 });
-  const waterfrontStone = surface('limestone', { scale: .24, roughness: .85, bump: .006, detail: .8 });
+  const facadeStone = surface('limestone', { scale: .24, roughness: .86, bump: .014, detail: .92 });
+  const waterfrontStone = surface('limestone', { scale: .24, roughness: .86, bump: .014, detail: .92 });
   const neutral = (source, color, roughness) => {
     const m = source.clone(); m.color.set(color); m.roughness = roughness; m.envMapIntensity = .4;
     materials.push(m); return m;

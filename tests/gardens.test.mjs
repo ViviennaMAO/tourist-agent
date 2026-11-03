@@ -8,6 +8,27 @@ import { installDistrictBounce } from '../src/district-bounce.js';
 import { refinedWalkHeight } from '../src/walk-surfaces.js';
 
 const overlap=(a,b,gap=0)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+gap&&Math.abs(a.z-b.z)<(a.d+b.d)/2+gap;
+test('outer pocket gardens keep the shore lane open and reject plots crossing land or height boundaries',()=>{
+  const ctx={rects:[],palms:[],roads:[],groundY:()=>1,free:x=>Math.abs(x)>57,
+    islands:[{id:'mainland',outline:[[-64,-84],[64,-84],[64,-5],[-64,-5]]}]};
+  const stone=new THREE.MeshStandardMaterial(),city={w:{root:new THREE.Group(),ctx}};
+  const gardens=createDubaiGardens({THREE,city,stoneMaterial:stone});
+  assert.equal(gardens.stats.pockets,8);gardens.root.updateMatrixWorld(true);
+  for(const b of gardens.footprints){
+    assert.ok(b.pocket&&Math.abs(b.x)+b.w/2<64&&b.z-b.d/2>-84&&b.z+b.d/2<-5);
+    const hits=new THREE.Raycaster(new THREE.Vector3(b.x+.7,2,b.z+1.7),new THREE.Vector3(0,-1,0)).intersectObject(gardens.root,true);
+    assert.ok(hits.some(h=>Math.abs(h.point.y-1.17)<.001),'garden contains upward-facing earth');
+  }
+  for(const sign of [-1,1])for(let z=-80;z<-20;z+=.5){
+    assert.ok(!gardens.footprints.some(b=>overlap(b,{x:sign*56,z,w:1.2,d:1.2})), 'continuous coastal walking clearance');
+    const hits=new THREE.Raycaster(new THREE.Vector3(sign*56,8,z),new THREE.Vector3(0,-1,0)).intersectObject(gardens.root,true);
+    assert.ok(hits.every(h=>h.point.y<1.04),'no invisible raised surface or hanging vegetation over the lane');
+  }
+  gardens.dispose();ctx.groundY=x=>x>60?1.3:1;
+  const stepped=createDubaiGardens({THREE,city,stoneMaterial:stone});assert.equal(stepped.stats.pockets,4);assert.ok(stepped.footprints.every(b=>b.x<0));stepped.dispose();
+  ctx.islands[0].outline=[[-58,-84],[58,-84],[58,-5],[-58,-5]];ctx.groundY=()=>1;
+  const narrow=createDubaiGardens({THREE,city,stoneMaterial:stone});assert.equal(narrow.stats.pockets,0);narrow.dispose();stone.dispose();
+});
 test('gardens avoid roads, landmarks, existing and deferred refinement footprints',()=>{
   const existing={x:-28,z:-34,w:6,d:6},rects=[existing];
   const ctx={rects,palms:[{x:54,z:-43}],groundY:()=>1,free:(x,z,w,d)=>

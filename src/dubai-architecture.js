@@ -43,7 +43,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     material.color.set(color); material.roughness = .84;
     materials.push(material); batches.set(material, []); return material;
   }
-  const ivory = limestone('#f3ebdb'), warm = limestone(district ? '#e5dac6' : '#d4cabb');
+  const ivory = limestone('#e9dfce'), warm = limestone(district ? '#e5dac6' : '#d4cabb');
   const trim = limestone('#dfd3bf');
   const metal = finish('#5c5140', .36, .72);
   const glass = finish(district ? '#536461' : '#334b53', district ? .16 : .19, district ? .52 : .38, { envMapIntensity: district ? 1.7 : 1.25 });

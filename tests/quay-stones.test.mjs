@@ -1,7 +1,24 @@
 import {shoreBulge} from '../src/shore-profile.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {quayCells,createQuayStone,quayContour} from '../src/quay-stones.js';
+
+test('quay front is watertight across each broad crown and keeps relief outside the old seawall',()=>{
+  const material=new THREE.MeshBasicMaterial();
+  for(const cell of quayCells().filter((_,i)=>i%7===0)){
+    const geometry=createQuayStone(cell),mesh=new THREE.Mesh(geometry,material);mesh.updateMatrixWorld(true);
+    const depths=[];
+    for(const p of cell.polygon)for(const t of [0,.45,.85]){
+      const x=cell.center[0]+(p[0]-cell.center[0])*t,y=cell.center[1]+(p[1]-cell.center[1])*t;
+      const hit=new THREE.Raycaster(new THREE.Vector3(x,y,1+shoreBulge(x)),new THREE.Vector3(0,0,-1)).intersectObject(mesh)[0];
+      assert.ok(hit,'no holes between the crown and chipped rim');
+      const z=hit.point.z-shoreBulge(x);assert.ok(z>-4.5&&z<-4.2,'old seawall cannot clip through exposed rock');depths.push(z);
+    }
+    const relief=Math.max(...depths)-Math.min(...depths);assert.ok(relief>.015&&relief<.14,'broad relief rather than flat tiles or sharp spikes');geometry.dispose();
+  }
+  material.dispose();
+});
 
 test('irregular quay stones are deterministic, nondegenerate and remain below the shore walkway',()=>{
   const cells=quayCells();assert.deepEqual(cells,quayCells());assert.ok(cells.length>=200&&cells.length<=260);

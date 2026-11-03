@@ -19,6 +19,19 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
   box(trim, 0, .09, 0, w, .18, d);
   box(trim, 0, floor - .1, 0, w, .2, d);
   box(roof, 0, ceiling - .06, -porch / 2, w - .08, .12, d - porch);
+  // Bonded corner stones wrap the solid rear corners. Alternating returns
+  // and shallow recessed joints catch light without enlarging the footprint.
+  for(const sign of [-1,1])for(let course=0,y=.28;y<ceiling-.22;course++,y+=.48) {
+    const hh=Math.min(.462,ceiling-.18-y),long=course%2?.29:.46;
+    const piece=(m,x,z,angle)=>{
+      const g=new THREE.BoxGeometry(long,hh,.04),ix=Array.from(g.index.array);
+      // The rear and one end are buried in the existing wall/corner bond.
+      g.setIndex([...ix.slice(0,6),...ix.slice(12,30)]);
+      add(g.rotateY(angle).translate(x,y+hh/2,z),m);
+    };
+    piece(trim,sign*(w/2-.022),back+long/2,sign*Math.PI/2);
+    piece(wall,sign*(w/2-long/2),back+.022,Math.PI);
+  }
   // Three solid outside walls with individual deep reveals.
   for (let side = 1; side < 4; side++) {
     const angle = side * Math.PI / 2, cs = Math.cos(angle), sn = Math.sin(angle);
