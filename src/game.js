@@ -2715,7 +2715,7 @@ function walkable(x, z) {
   const c = exploreCityAt(x, z); if (!c) return null;
   const [ox, oz] = CITY_GRID[c.id], lx = x - ox, lz = z - oz, ctx = c.w.ctx;
   const onRoad = ctx.roads.some(r => r.kind !== 'canal' && segDist2(lx, lz, r.A, r.B) < r.hw);
-  const onLand = ctx.islands.some(il => insideShape(il.kind, il.args, lx, lz));
+  const onLand = ctx.islands.some(il => insideShape(il.kind, il.args, lx, lz) || (c.id==='dubai'&&il.kind==='crescent'&&il.outline&&pointInPolygon(il.outline,lx,lz)));
   if (!onLand && !onRoad) return null;
   if (!onRoad) {
     for (const r of ctx.roads) if (r.kind === 'canal' && segDist2(lx, lz, r.A, r.B) < r.hw - 0.6) return null;
@@ -3205,6 +3205,9 @@ function setReviewCamera(kind) {
     horizon: { p: [-18, 18, 53], q: [-5, 17, -30], name: '城市纵深对照' },
     east: { p: [52, 10, 3], q: [29, 3, -24], name: '东侧街区覆盖' },
     palmIsland: { p: [35, 16, 65], q: [0, 2, 43], name: '棕榈岛覆盖' },
+    crescentGarden: { p: [44, 8, 51], q: [28, 2, 41], name: '月牙岛花境', start: [27.14,39.42] },
+    atlantisGarden: { p: [9, 6, 40], q: [0, 2.5, 52], name: '亚特兰蒂斯前场' },
+    sailGarden: { p: [-65, 7, 4], q: [-50, 2.5, 12], name: '帆船酒店花庭' },
     coastWest: { p: [-79, 5, -44], q: [-63, .8, -43], name: '主岛西侧护岸' },
     palmShore: { p: [33, 12, 52], q: [17, 1.5, 37], name: '棕榈岛岸石与别墅' },
     oldLandmark: { p: [64, 10, -16], q: [41, 5, -33], name: '旧地标材质' },
@@ -3249,10 +3252,10 @@ function setupReview() {
   if (!REVIEW) return;
   document.body.classList.add('review');
   const panel = document.createElement('section'); panel.id = 'reviewPanel'; panel.setAttribute('aria-label', '视觉验收');
-  panel.innerHTML = `<strong>视觉验收 · 第二十二轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第二十二轮 · 岛屿比例与庭院</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
+  panel.innerHTML = `<strong>视觉验收 · 第二十三轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第二十三轮 · 月牙岛与酒店花园</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   const coverageShots = document.createElement('div'); coverageShots.className = 'reviewBtns reviewCoverage';
-  for (const [shot, label] of [['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
+  for (const [shot, label] of [['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
     const button = document.createElement('button'); button.dataset.shot = shot; button.textContent = label;
     coverageShots.append(button);
   }
@@ -3283,7 +3286,7 @@ function setupReview() {
     $('reviewLook').setAttribute('aria-pressed', String(review.enabled));
   };
   const updateDistrictButton = () => {
-    $('reviewDistrict').textContent = realism.districtEnabled ? '第二十二轮 · 岛屿比例与庭院' : '第二轮 · 局部样本';
+    $('reviewDistrict').textContent = realism.districtEnabled ? '第二十三轮 · 月牙岛与酒店花园' : '第二轮 · 局部样本';
     $('reviewDistrict').setAttribute('aria-pressed', String(realism.districtEnabled));
   };
   updateDistrictButton();
@@ -3308,7 +3311,7 @@ function updateReview() {
   if (!REVIEW) return;
   const ok = ALL_LM.filter(l => l.loaded).length, failed = ALL_LM.filter(l => l.failed).length;
   const xyz = v => v.toArray().map(n => n.toFixed(1)).join(', ');
-  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.islandBeds != null ? s.islandBeds + ' 处岛上花庭' : s.shoreSections != null ? s.shoreIslands + ' 岛块岸线 / ' + s.shoreSections + ' 岸段' : s.gardens != null ? s.gardens + ' 处花园（' + s.borders + ' 处长花境）/ ' + s.trees + ' 棵乔木' : s.vehicles != null ? s.vehicles + ' 辆车' : s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n${realism.lightingStatus}\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
+  $('reviewStatus').textContent = `角色：Eva 多视角图片角色 · ${girl.stats.triangles.toLocaleString()} triangles / ${girl.stats.drawCalls} calls\n状态：${GUI.ready ? '游戏运行' : '加载页面'}\n地标：成功 ${ok}/${ALL_LM.length} · 失败 ${failed}\n城市：${EX.city?.city.nameZh || '迪拜'} · ${review.camera}\n位置：${xyz(EX.pos)}\n相机：${xyz(camera.position)}\n目标：${xyz(controls.target)}\nFPS ${review.fps.toFixed(0)} · triangles ${renderer.info.render.triangles.toLocaleString()}\ndraw calls ${renderer.info.render.calls} · 精修 ${realism.enabled && realism.refinementEnabled ? '开' : '关'}\n样本 ${realism.refinementStats.map(s => s.resortBeds != null ? s.crescentBeds + ' 处月牙花境 / ' + s.hotelBeds + ' 处酒店花庭' : s.islandBeds != null ? s.islandBeds + ' 处岛上花庭' : s.shoreSections != null ? s.shoreIslands + ' 岛块岸线 / ' + s.shoreSections + ' 岸段' : s.gardens != null ? s.gardens + ' 处花园（' + s.borders + ' 处长花境）/ ' + s.trees + ' 棵乔木' : s.vehicles != null ? s.vehicles + ' 辆车' : s.buildings != null ? s.buildings + ' 栋建筑' : s.palms != null ? s.palms + ' 棵棕榈' : s.landmarks != null ? s.landmarks + ' 处地标' : s.decorations + ' 处街景').join(' / ')} · 环境 ${review.time.toFixed(1)}s${review.frozen ? '（已定格）' : ''}\n画布 ${renderer.domElement.width}×${renderer.domElement.height} · DPR ${renderer.getPixelRatio().toFixed(2)}\n阴影 ${sun.shadow.mapSize.x}×${sun.shadow.mapSize.y} · 可见城市 ${world.cities.filter(c => c.w.root.visible).length}/11\n${realism.lightingStatus}\n运行错误：${review.errors.length}${review.errors.length ? '\n' + review.errors.at(-1) : ''}`;
 }
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
