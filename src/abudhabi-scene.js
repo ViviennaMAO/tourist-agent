@@ -125,7 +125,7 @@ export function createAbuDhabiScene({city,leafTexture}){
       float abuGold=smoothstep(.06,.25,diffuseColor.r-diffuseColor.b);
       ${id==='ferrari_world'?`diffuseColor.rgb=mix(vec3(abuLum),diffuseColor.rgb,.82);`:`diffuseColor.rgb=mix(vec3(abuLum)*vec3(${id==='emirates_palace'?'1.06,.98,.85':'1.01,1.,.97'}),vec3(.29,.42,.48)*(.7+abuLum*.3),abuBlue*.8);${id==='grand_mosque'?"diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.57,.30)*(.7+abuLum*.3),abuGold*.8);":''}`}
      `).replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>\nroughnessFactor=mix(${id==='grand_mosque'?'.32':'.76'},.18,abuBlue);`).replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=mix(.02,.25,abuBlue);');};
-     a.customProgramCacheKey=()=>key+'-abu-landmark-v1-'+id;owned.push(a);return a;
+     a.customProgramCacheKey=()=>key+'-abu-landmark-v1-'+id;if(id==='emirates_palace')installSurfaceFinish(a,'limestone',{metricAttribute:true});owned.push(a);return a;
     };
     const after=Array.isArray(before)?before.map(convert):convert(before);swaps.push({mesh:o,before,after});o.material=enabled?after:before;
    });styled.add(l);

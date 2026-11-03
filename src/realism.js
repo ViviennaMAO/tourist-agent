@@ -1,3 +1,4 @@
+import {createAbuDhabiLandmarks} from './abudhabi-landmarks.js';
 import {createAbuDhabiShrubs} from './abudhabi-shrubs.js';
 import {createAbuDhabiScene} from './abudhabi-scene.js';
 import { createPromenadeGardens } from './promenade-gardens.js';
@@ -213,7 +214,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         for(let i=0;i<mesh.count;i++)new THREE.Color(palette[i%palette.length]).toArray(after,i*3);
         colors.push({mesh,before,after});mesh.instanceColor.array.set(enabled?after:before);mesh.instanceColor.needsUpdate=true;
       }
-      abuStudies.push(createAbuDhabiScene({city:c,leafTexture}),createAbuDhabiShrubs({city:c,leafTexture}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      abuStudies.push(createAbuDhabiScene({city:c,leafTexture}),createAbuDhabiLandmarks({city:c}),createAbuDhabiShrubs({city:c,leafTexture}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
       abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
       syncStudies();return;
     }
