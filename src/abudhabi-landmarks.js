@@ -1,3 +1,5 @@
+import {carveGeometryBox} from './geometry-carve.js';
+import {buildPalaceInterior,PALACE_ENTRANCE_CUT} from './palace-interior.js';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {installSurfaceFinish} from './surface-finish.js';
@@ -17,7 +19,8 @@ export function refineLandmarkGeometry(source,toHolder,id){
  const metric=new Float32Array(pos.count*3);
  for(let i=0;i<pos.count;i++){const p=new THREE.Vector3().fromBufferAttribute(pos,i).applyMatrix4(toHolder);points.push(p);p.toArray(metric,i*3);}
  for(let i=0;i<indices.length;i+=3){const tri=[indices[i],indices[i+1],indices[i+2]];if(!tri.every(v=>replacedRegion(id,points[v])))keep.push(...tri);}
- geometry.setIndex(keep);geometry.clearGroups();geometry.setAttribute('surfacePosition',new THREE.BufferAttribute(metric,3));return geometry;
+ geometry.setIndex(keep);geometry.clearGroups();geometry.setAttribute('surfacePosition',new THREE.BufferAttribute(metric,3));
+ if(id==='emirates_palace'){const cut=carveGeometryBox(geometry,PALACE_ENTRANCE_CUT.min,PALACE_ENTRANCE_CUT.max);geometry.dispose();return cut;}return geometry;
 }
 export function domeGeometry(r,h,onion=true){
  const curve=new THREE.CatmullRomCurve3((onion?[[.92,0],[.99,.16],[1,.36],[.94,.56],[.78,.76],[.5,.92],[.12,1]]:[[1,0],[.96,.22],[.82,.49],[.62,.74],[.35,.94],[.12,1]]).map(([x,y])=>new THREE.Vector3(x*r,y*h,0)));
@@ -78,6 +81,7 @@ export function createAbuDhabiLandmarks({city}){
    }
   }
   if(id==='emirates_palace'){
+   buildPalaceInterior({mat,add,box,cylinder,white,stone,gold,shade});
    // The source openings are nine bays, two rows, recessed .20 behind the face.
    const centers=[-3.97,-3.187,-2.404,-.81,0,.81,2.404,3.187,3.97];
    for(let side=0;side<4;side++){
@@ -96,7 +100,7 @@ export function createAbuDhabiLandmarks({city}){
     for(let x=-5.06;x<5.1;x+=.44)faceBox(stone,x,4.75,.13,.09,.13,.12);
    }
   }
-  for(const [m,parts] of batches){if(!parts.length)continue;const geometry=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(geometry,m);mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);stats.triangles+=geometry.attributes.position.count/3;stats.drawCalls++;}
+  for(const [m,parts] of batches){if(!parts.length)continue;const geometry=mergeGeometries(parts);parts.forEach(g=>g.dispose());const mesh=new THREE.Mesh(geometry,m);mesh.castShadow=!m.transparent;mesh.receiveShadow=true;root.add(mesh);stats.triangles+=geometry.attributes.position.count/3;stats.drawCalls++;}
   stats.landmarks++;records.push({root,swaps,materials});done.add(id);
  }
  return {stats,apply(){if(disposed)return;for(const id of ['grand_mosque','emirates_palace']){const L=city.LM?.[id];if(L?.loaded&&L.asset&&!done.has(id))build(id,L);}},setEnabled(v){enabled=!!v&&!disposed;for(const r of records){r.root.visible=enabled;r.swaps.forEach(s=>s.o.geometry=enabled?s.after:s.before);}},dispose(){if(disposed)return;this.setEnabled(false);disposed=true;for(const r of records){r.root.removeFromParent();r.root.traverse(o=>o.geometry?.dispose());r.swaps.forEach(s=>s.after.dispose());r.materials.forEach(m=>m.dispose());}}};

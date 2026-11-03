@@ -6,14 +6,14 @@ import {createCurvedLeaf} from './curved-leaf.js';
 export const PALACE_BEDS=[-63,-47.5].flatMap(x=>[16,25].map(z=>({x,z,w:4.2,d:5.2})));
 export const ARCADE_COLUMNS=[-29,-26.5,-24,-21.5,-8.5,-6,-3.5,-1].map(x=>({x,z:36.7,w:.38,d:.38}));
 export const ABU_DETAIL_OBSTACLES=[...PALACE_BEDS,...ARCADE_COLUMNS];
-export const palaceGarden=(x,z)=>x>=-69&&x<=-43&&z>=11&&z<=30;
+export const palaceGarden=(x,z)=>(x>=-69&&x<=-43&&z>=11&&z<=30)||(x>=-57&&x<=-51&&z>=9.3&&z<11);
 export function palaceShrubPosition(index){
  const b=PALACE_BEDS[index%4],t=Math.floor(index/4)*2.399963;
  return [b.x+Math.cos(t)*1.25,1.64,b.z+Math.sin(t)*1.9];
 }
 
 /** Adds batched geometry; the parent owns materials, buffers and navigation. */
-export function buildAbuDetails({add,box,marble,paving,stone,trim,bronze,green,flower,soil}){
+export function buildAbuDetails({add,box,marble,paving,pavingWarm,inlay,stone,trim,bronze,green,flower,soil}){
  const column=(x,z)=>{
   add(new THREE.CylinderGeometry(.11,.15,2.05,16).translate(x,2.17,z),marble);
   box(marble,x,1.18,z,.38,.16,.38);box(trim,x,3.23,z,.36,.13,.36);
@@ -37,8 +37,14 @@ export function buildAbuDetails({add,box,marble,paving,stone,trim,bronze,green,f
  // Palace forecourt: a clear axial approach with four planted parterres.
  box(trim,-56,1.025,20.5,26,.05,19);
  box(paving,-54,1.045,10,6,.07,3);
- for(let z=11.6;z<30;z+=1.2)for(let x=-68.4;x<-43;x+=1.2)box(paving,x,1.061,z,1.18,.018,1.18);
+ for(let z=11.6;z<30;z+=1.2)for(let x=-68.4;x<-43;x+=1.2)box((Math.round(x*5+z*7)%5===0)?pavingWarm:paving,x,1.061,z,1.19,.018,1.19);
  for(const x of [-57,-51])box(stone,x,1.075,20.5,.11,.025,19);
+ // Quiet inlaid compass medallion and drainage at the entrance edge.
+ for(const r of [1.38,1.6])add(new THREE.RingGeometry(r,r+.035,64).rotateX(-Math.PI/2).translate(-54,1.078,20.5),inlay);
+ const star=new THREE.Shape();for(let k=0;k<16;k++){const a=k*Math.PI/8,r=k%2?.48:1.12;k?star.lineTo(Math.cos(a)*r,Math.sin(a)*r):star.moveTo(Math.cos(a)*r,Math.sin(a)*r);}star.closePath();
+ add(new THREE.ShapeGeometry(star).rotateX(-Math.PI/2).translate(-54,1.079,20.5),inlay);
+ for(const x of [-57,-51])for(let z=10;z<12;z+=.12)box(inlay,x,1.084,z,.2,.008,.035);
+ for(const z of [11.1,29.8])box(inlay,-54,1.079,z,6,.008,.06);
  const leaf=createCurvedLeaf(THREE,.16,.75,true);
  for(const [i,b] of PALACE_BEDS.entries()){
   box(stone,b.x,1.2,b.z,b.w,.35,b.d);box(soil,b.x,1.385,b.z,b.w-.18,.025,b.d-.18);

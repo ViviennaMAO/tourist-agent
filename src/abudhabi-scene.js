@@ -14,6 +14,8 @@ export function createAbuDhabiScene({city,leafTexture}){
  const ctx=city.w.ctx,batches=new Map(),owned=[],saved=new Map(),swaps=[],styled=new Set();let enabled=false,disposed=false;
  const finish=(color,roughness=.8,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.55});owned.push(m);batches.set(m,[]);return m;};
  const arcade=finish('#eeeae1',.42);
+ const gardenPaving=finish('#dbd4c5',.7),gardenWarm=finish('#dfd4bf',.74),inlay=finish('#a99a7f',.65);
+ for(const m of [gardenPaving,gardenWarm,inlay]){m.userData.floorFinish=true;installSurfaceFinish(m,'paving');}
  const marble=finish('#eeeae1',.32),stone=finish('#cfbea0',.85),trim=finish('#dbd8cc',.65),bronze=finish('#796446',.35,.7),wood=finish('#826444',.72),soil=finish('#594f39',1),green=finish('#b8c49c',.9),flower=finish('#ece6cc',.85),glass=finish('#6d8792',.16,.24),roof=finish('#a29e90',.9);
  installSurfaceFinish(stone,'limestone');installSurfaceFinish(trim,'paving');installSurfaceFinish(wood,'wood');
  glass.userData.cityGlass=true;glass.userData.reflectionZone='skyline';installCurtainWallFinish(glass);
@@ -64,7 +66,7 @@ export function createAbuDhabiScene({city,leafTexture}){
    if(n%4===0)add(new THREE.SphereGeometry(.045,5,3).translate(x,y+.12,z),flower);
   }
  }leaf.dispose();
- buildAbuDetails({add,box,marble:arcade,paving:marble,stone,trim,bronze,green,flower,soil});
+ buildAbuDetails({add,box,marble:arcade,paving:gardenPaving,pavingWarm:gardenWarm,inlay,stone,trim,bronze,green,flower,soil});
  // Refine ordinary buildings within their existing footprint and collision.
  const buildings=(ctx.buildings||[]).filter(b=>b.indices&&b.w>=2.5&&b.d>=2.5);
  for(const [index,b] of buildings.entries()){
@@ -107,7 +109,7 @@ export function createAbuDhabiScene({city,leafTexture}){
    if(!tall){face(wood,0,h-.35,.38,span,.1,.8);face(bronze,0,1.05,.06,.035,1.9,.045);}
   }
  }
- for(const [m,gs] of batches){if(!gs.length)continue;const g=mergeGeometries(gs);gs.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==water&&m!==marble;mesh.receiveShadow=true;if(m===marble)mesh.userData.skipContact=true;root.add(mesh);}
+ for(const [m,gs] of batches){if(!gs.length)continue;const g=mergeGeometries(gs);gs.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==water&&m!==marble&&!m.userData.floorFinish;mesh.receiveShadow=true;if(m===marble||m.userData.floorFinish)mesh.userData.skipContact=true;root.add(mesh);}
  const mapping={body:'tower',crown:'tower',roof:'roof',pad:'pad',antenna:'ant',gable:'gable'};
  const surface=(x,z)=>enabled?(abuPromenade(x,z)?1.115:palaceGarden(x,z)?1.09:null):null;
  const obstacles=[...ABU_OBSTACLES,...ABU_DETAIL_OBSTACLES].map(o=>({...o}));let registered=false;
