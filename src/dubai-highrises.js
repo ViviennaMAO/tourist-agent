@@ -36,6 +36,10 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
   box(wall, 0, lobby - .12, 0, w - .04, .24, d - .04);
   box(recess, 0, lobby - .255, d / 2 - .36, w - .55, .025, .64);
   box(metal, 0, lobby - .13, d / 2 - .055, w - .12, .08, .035);
+  // Recessed entry mat and slim jambs make the actual doorway legible without
+  // adding a step or extending a collision envelope into the sidewalk.
+  box(recess,0,.185,d/2-.48,1.12,.012,.65);
+  for(const x of [-.57,.57])box(metalFinish,x,1.13,doorZ+.035,.028,1.98,.055);
 
   function facade(side, width, depth, ox, material, u, y, inset, bw, bh, bd) {
     const a = side * Math.PI / 2, c = Math.cos(a), s = Math.sin(a);
@@ -73,6 +77,13 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
       // Paired stone corner blades give the second family a framed silhouette.
       if (variant === 1 && side % 2 === 0) for (const sign of [-1, 1]) {
         face(trim, sign * (span / 2 - .14), (top + bottom) / 2, .085, .12, height, .17);
+      }
+      // Different solar-control rhythms distinguish tower families at street level.
+      if(variant===1&&side%2===1)for(let j=1;j<cols;j+=2){
+        face(trim,-(span-.2)/2+j*bay,(top+bottom)/2,.04,.045,height,.14);
+      }
+      if(variant===0)for(let f=3;f<floors;f+=3){
+        face(metalFinish,0,bottom+f*fh,.025,span-.08,.045,.11);
       }
       face(metalFinish, 0, top - .03, .06, span - .06, .06, .055);
     }

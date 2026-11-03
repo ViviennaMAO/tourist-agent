@@ -1,3 +1,4 @@
+import { createPromenadeGardens } from './promenade-gardens.js';
 import { createBridgeRefinement } from './bridge-refinement.js';
 import { createResortGardens } from './resort-gardens.js';
 import { createIslandGardens } from './island-gardens.js';
@@ -221,7 +222,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     districtStudies.push(createResortGardens({city:c,stoneMaterial:stone,leafTexture}));
     backdrop=createDubaiBackdrop({THREE,city:c});districtStudies.push(backdrop);
     const occupied=districtStudies.flatMap(s=>s.footprints||[]);
-    districtStudies.push(createDubaiGardens({THREE,city:c,stoneMaterial:stone,leafTexture,exclusions:occupied}));
+    const gardens=createDubaiGardens({THREE,city:c,stoneMaterial:stone,leafTexture,exclusions:occupied});
+    districtStudies.push(gardens,createPromenadeGardens({city:c,stoneMaterial:stone,leafTexture,exclusions:[...occupied,...gardens.footprints]}));
     probe=createCityReflections({renderer,scene,city:c});
     lakeSwaps.push(...swaps.filter(s => s.before === M.lake));
     syncStudies();
