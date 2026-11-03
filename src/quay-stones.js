@@ -35,18 +35,28 @@ export function quayContour(x){return .095*Math.sin((x+33)*.43)+.035*Math.sin(x*
 export function createQuayStone(cell){
   // A chipped rim, inset shoulder and off-centre crown replace the extruded
   // flat cap. All relief remains seaward of the old wall and below the coping.
-  const n=cell.polygon.length,[cx,cy]=cell.center,front=-4.405+quayContour(cx)*.18+.016*Math.sin(cell.index*7.1);
-  const crown=[cx+.025*Math.sin(cell.index),cy+.016*Math.cos(cell.index),front+.052+.009*Math.sin(cell.index*1.8)];
+  const [cx,cy]=cell.center;
+  // One shallow chipped midpoint per edge interrupts the perfect Voronoi
+  // polygon without moving the silhouette beyond the fitted stone cell.
+  const outline=cell.polygon.flatMap((p,i)=>{
+    const q=cell.polygon[(i+1)%cell.polygon.length],t=.38+.2*(.5+.5*Math.sin(cell.index*2.3+i*5.1));
+    const x=p[0]+(q[0]-p[0])*t,y=p[1]+(q[1]-p[1])*t;
+    const inset=.016+.018*(.5+.5*Math.cos(cell.index+i*3.7));
+    return [p,[x+(cx-x)*inset,y+(cy-y)*inset]];
+  });
+  const n=outline.length,front=-4.405+quayContour(cx)*.18+.016*Math.sin(cell.index*7.1);
+  const crown=[cx+.025*Math.sin(cell.index),cy+.016*Math.cos(cell.index),front+.036+.005*Math.sin(cell.index*1.8)];
   const vertices=[...crown],indices=[],colors=[];
-  for(const [i,p] of cell.polygon.entries())vertices.push(p[0],p[1],front-.012+.012*Math.sin(i*2.7+cell.index));
-  for(const [i,p] of cell.polygon.entries()){
-    const f=.72+.09*Math.sin(i*1.9+cell.index);
-    vertices.push(cx+(p[0]-cx)*f,cy+(p[1]-cy)*f,front+.040+.014*Math.sin(i*2.3+cell.index*3.1));
+  for(const [i,p] of outline.entries())vertices.push(p[0],p[1],front-.012+.012*Math.sin(i*2.7+cell.index));
+  for(const [i,p] of outline.entries()){
+    const f=.83+.05*Math.sin(i*1.9+cell.index);
+    vertices.push(cx+(p[0]-cx)*f,cy+(p[1]-cy)*f,front+.030+.005*Math.sin(i*2.3+cell.index*3.1));
   }
-  for(const p of cell.polygon)vertices.push(p[0],p[1],-5.04);
+  for(const [i,p] of outline.entries())vertices.push(p[0],p[1],front-.012+.012*Math.sin(i*2.7+cell.index));
+  for(const p of outline)vertices.push(p[0],p[1],-5.04);
   for(let k=0;k<n;k++){
     const a=1+k,b=1+(k+1)%n,ia=a+n,ib=b+n;
-    indices.push(0,ia,ib,ia,a,b,ia,b,ib,a,a+2*n,b,b,a+2*n,b+2*n);
+    indices.push(0,ia,ib,ia,a,b,ia,b,ib,a+2*n,a+3*n,b+2*n,b+2*n,a+3*n,b+3*n);
   }
   const tint=new THREE.Color(['#b6a38a','#baa88e','#c3b397','#a99880','#c7b69c'][cell.index%5]);
   for(let i=0;i<vertices.length;i+=3){

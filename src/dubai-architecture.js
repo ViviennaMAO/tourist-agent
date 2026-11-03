@@ -72,16 +72,16 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     m.roughness=m===skylineGlass?.13:.14;
     m.envMapIntensity=m===skylineGlass?1.45:1.25;
   }
-  if(skylineGlass){
-    skylineGlass.userData.reflectionZone='skyline';
-    skylineGlass.color.set('#82949e');skylineGlass.metalness=.68;
-    skylineGlass.roughness=.115;skylineGlass.envMapIntensity=1.55;
-    installCurtainWallFinish(skylineGlass);
+  const skylinePalette=skylineGlass?[skylineGlass,finish('#a1aaa8',.19,.55,{envMapIntensity:1.3}),finish('#627f83',.16,.58,{envMapIntensity:1.5})]:[];
+  for(const [i,m] of skylinePalette.entries()) {
+    m.userData.cityGlass=true;m.userData.reflectionZone='skyline';
+    if(i===0){m.color.set('#82949e');m.metalness=.68;m.roughness=.115;m.envMapIntensity=1.55;}
+    installCurtainWallFinish(m);
   }
   const skylineSpandrel=district?finish('#475f70',.38,.32,{envMapIntensity:.7}):null;
   if(skylineSpandrel){skylineSpandrel.userData.cityGlass=true;skylineSpandrel.userData.reflectionZone='skyline';}
   const skylineMetal = district ? finish('#82919a', .37, .58) : null;
-  for (const m of [skylineGlass, skylineSpandrel, skylineMetal].filter(Boolean)) installSkylineAtmosphere(m);
+  for (const m of [...skylinePalette, skylineSpandrel, skylineMetal].filter(Boolean)) installSkylineAtmosphere(m);
   const bounce={value:1};
   if(district)for(const m of [ivory,warm,trim,recess,wood])installDistrictBounce(m,city.w.root.position.clone(),bounce);
   let dressStone=false,beveledPieces=0;
@@ -114,7 +114,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     design.set(b, { treatment: traditional ? 'limestone' : 'glass', facadeHeight: h, originalHeight: b.h });
     if (!traditional) {
       Object.assign(design.get(b), appendDubaiHighrise({ THREE, b, h, index: buildingIndex,
-        finishes: { wall, trim, metal, skylineGlass, skylineSpandrel, skylineMetal, glass, amberGlass, roof, recess }, box,
+        finishes: { wall, trim, metal, skylineGlass, skylinePalette, skylineSpandrel, skylineMetal, glass, amberGlass, roof, recess }, box,
         add(geometry, material) { geometry.applyMatrix4(transform); batches.get(material).push(geometry); } }));
       return;
     }

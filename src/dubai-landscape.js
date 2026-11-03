@@ -1,3 +1,4 @@
+import { installLeafDaylight } from './leaf-daylight.js';
 import { shoreBulge, shoreSlope, promenadePolygon } from './shore-profile.js';
 import { quayCells, createQuayStone } from './quay-stones.js';
 import { createFountainSpray, fountainPoint } from './fountain-spray.js';
@@ -20,6 +21,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
   const bark=material('#6e5844',.94);
   const leafOptions={side:THREE.DoubleSide,envMapIntensity:.4,...(leafTexture ? {map:leafTexture,alphaTest:.28,alphaToCoverage:true,bumpMap:leafTexture,bumpScale:.006} : {})};
   const greens = [material(leafTexture?'#c6cbb2':'#344f28',.88,leafOptions),material(leafTexture?'#f0edd0':'#657b3b',.86,leafOptions)];
+  greens.forEach(installLeafDaylight);
   const bloom = [material('#b7446e',.88,{side:THREE.DoubleSide}),material('#f1e7c9',.9,{side:THREE.DoubleSide})];
   const grasses=exclusions.length?[material('#536d3e',.9,{side:THREE.DoubleSide}),material('#87965c',.92,{side:THREE.DoubleSide})]:[];
   for(const m of grasses)m.userData.plantFamily='fine-grass';
@@ -73,16 +75,16 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         float quarryGrain=quarryNoise(quarryPosition*29.);
         float waterline=.22+sin(quarryPosition.x*5.3)*.025;
         float wet=1.-smoothstep(waterline-.07,waterline+.18,quarryPosition.y);
-        diffuseColor.rgb*=(.92+.15*quarryGrain)*mix(1.,.56,wet);
+        diffuseColor.rgb*=(.85+.22*quarryGrain)*mix(1.,.56,wet);
       `);
       shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
-        float relief=quarryGrain*.005+quarryNoise(quarryPosition*9.)*.010;
+        float relief=quarryGrain*.004+quarryNoise(quarryPosition*13.)*.006;
         vec3 dx=dFdx(-vViewPosition),dy=dFdy(-vViewPosition);
         vec3 rx=cross(dy,normal),ry=cross(normal,dx);float det=dot(dx,rx);
         normal=normalize(abs(det)*normal-sign(det)*(dFdx(relief)*rx+dFdy(relief)*ry));
       `);
     };
-    quarry.customProgramCacheKey=()=> 'pilot-quarry-v3';
+    quarry.customProgramCacheKey=()=> 'pilot-quarry-v4';
     const mortar=material('#968873',.98);
     const backing=new THREE.BoxGeometry(26,.94,.14,96,1,1).translate(-20,.5,-4.55);
     const bp=backing.attributes.position;
@@ -111,7 +113,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       const px=x+Math.cos(angle)*radius, pz=z+Math.sin(angle)*radius;
       // Pointed elliptical leaves with a raised midrib; irregular orientation
       // catches light without looking like low-poly balls or flat confetti.
-      const length=fine?.055+random()*.05:.105+random()*.095,width=length*(.35+random()*.12);
+      const length=fine?.055+random()*.05:crown?.085+random()*.065:.105+random()*.095,width=length*(.35+random()*.12);
       let leaf;
       if(leafTexture) {
         // Alpha-tested folded cards keep visible veins and smooth leaf edges.
@@ -243,8 +245,8 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       stemPositions.setX(j,stemPositions.getX(j)+Math.sin(t*Math.PI)*.045);
     }
     stem.computeVertexNormals();add(stem,bark,x,y+1.55,z);
-    for(let branch=0;branch<9;branch++) {
-      const a=branch*2.39996+random()*.4, r=(pilot?.18:.28)+random()*(pilot?.24:.40), cy=y+2.25+random()*1.15;
+    for(let branch=0;branch<7;branch++) {
+      const a=branch*2.39996+random()*.4, r=(pilot?.22:.32)+random()*(pilot?.20:.44), cy=y+2.45+random()*.78;
       const end=new THREE.Vector3(x+Math.cos(a)*r,cy,z+Math.sin(a)*r), start=new THREE.Vector3(x,y+1.8,z);
       const delta=end.clone().sub(start), limb=new THREE.CylinderGeometry(.022,.045,delta.length(),6);
       limb.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
@@ -255,7 +257,7 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
         const twig=new THREE.CylinderGeometry(.007,.015,delta.length(),5);
         twig.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up,delta.clone().normalize()));
         add(twig,bark,...end.clone().add(tip).multiplyScalar(.5).toArray());
-        foliage(tip.x,tip.y,tip.z,pilot?.30:.39,false,false,false,pilot?64:54,false,true);
+        foliage(tip.x,tip.y,tip.z,pilot?.25:.39,false,false,false,pilot?40:38,false,true);
       }
     }
     foliage(x,y+.55,z,pilot?.6:.8,true,pilot);

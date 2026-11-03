@@ -91,17 +91,21 @@ export function appendDubaiVilla({ THREE, b, h, index, finishes, box, add }) {
         // Small real display rooms sit behind the glazing: shelves, pottery,
         // a counter and a pendant light. No painted-on interior texture.
         box(trim,x,bottom,shopZ-.56,opening-.06,.045,1.03);
-        box(wall,x,(top+bottom)/2,shopZ-1.13,opening-.06,wh,.04);
-        for (const sy of [bottom+.55,bottom+1.02,bottom+1.5]) {
+        box(finishes.interiorWall||wall,x,(top+bottom)/2,shopZ-1.13,opening-.06,wh,.04);
+        for (const sy of [bottom+.55,bottom+1.04,bottom+1.56]) {
           box(wood,x,sy,shopZ-.96,opening-.17,.045,.25);
           for(let k=0;k<3;k++) {
             const px=x+(k-1)*(opening-.35)/3;
             const profile=[[0,0],[.05,0],[.075,.035],[.065,.09],[.03,.135],[.035,.17],[.025,.17],[.022,.14]].map(([r,y])=>new THREE.Vector2(r,y));
-            add(new THREE.LatheGeometry(profile,12).scale(1,k===1?1.15:.9,1).translate(px,sy+.025,shopZ-.91),k%2?trim:amberGlass);
+            add(new THREE.LatheGeometry(profile,10).scale(k===j%3?1.15:.85,k===j%3?1.45:.72,1).translate(px,sy+.025,shopZ-.91),(k+j+index)%3===0?(finishes.ceramic||trim):k%2?trim:amberGlass);
           }
         }
         box(wood,x,bottom+.35,shopZ-.42,opening*.65,.7,.32);
         box(trim,x,bottom+.72,shopZ-.42,opening*.72,.06,.38);
+        // A folded linen runner and stacked dishes make the counter distinct
+        // from the tall shelves while staying wholly inside the display room.
+        box(finishes.linen||trim,x+.10,bottom+.755,shopZ-.42,opening*.24,.012,.36);
+        for(let dish=0;dish<3;dish++)add(new THREE.CylinderGeometry(.095,.085,.016,12).translate(x-.2,bottom+.765+dish*.019,shopZ-.42),finishes.ceramic||trim);
         box(metal,x,top-.23,shopZ-.55,.012,.4,.012);
         add(new THREE.ConeGeometry(.15,.15,16).translate(x,top-.43,shopZ-.55),metal);
         add(new THREE.SphereGeometry(.065,10,6).translate(x,top-.49,shopZ-.55),lanternGlass);

@@ -24,12 +24,13 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const metal = finish('#423c30', .42, { metalness: .65 });
   const glass = finish('#536563', .17, { metalness: .35, envMapIntensity: 1.5 });
   const shopGlass = finish('#c5d8d1', .12, { metalness: .12, transparent: true, opacity: .13, depthWrite: false, envMapIntensity: 1.4 });
-  const roof = finish('#b0a38a'), recess = finish('#635340'), wood = finish('#765231');
+  const roof = finish('#b0a38a'), recess = finish('#635340'), wood = finish('#60472f');
   const amberGlass = finish('#8f7958', .25, { emissive: '#d39b53', emissiveIntensity: .1 });
   const lanternGlass = finish('#ffdf9e', .4, { emissive: '#ffbd68', emissiveIntensity: 1.2 });
   const plantGreen = finish('#566638'), flowers = finish('#b85177');
   for(const m of [glass,shopGlass,amberGlass])m.userData.cityGlass=true;
-  const finishes = { wall, trim, metal, glass, shopGlass, roof, recess, wood, amberGlass, lanternGlass, plantGreen, flowers };
+  const interiorWall=roof,ceramic=glass,linen=trim;
+  const finishes = { interiorWall,ceramic,linen, wall, trim, metal, glass, shopGlass, roof, recess, wood, amberGlass, lanternGlass, plantGreen, flowers };
   const bounce={value:1};
   for(const m of [wall,trim,recess,wood,roof])installCourtyardBounce(m,city.w.root.position.clone(),bounce);
   let transform = new THREE.Matrix4();
@@ -74,7 +75,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
       }
     }
     // Individual dentils under the arcade's stone string course.
-    for(let k=0;k<28;k++) box(trim,-w/2+.2+k*(w-.4)/27,floor-.24,front-.05,.08,.11,.1);
+    for(let k=0;k<28;k++) box(trim,-w/2+.2+k*(w-.4)/27,floor-.24,front-.05,.055,.07,.075);
   }
   // Pale paving with modest colour variation and actual thin joints. A darker
   // border describes the square without a raised step in the walking route.

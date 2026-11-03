@@ -1,3 +1,4 @@
+import { installLeafDaylight } from './leaf-daylight.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { chamferedBox } from './chamfered-box.js';
 import { createPavingSurface } from './walk-surfaces.js';
@@ -19,6 +20,7 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
   // Preserve small-leaf coverage in mipmaps instead of clipping whole distant crowns.
   const leafOptions={side:THREE.DoubleSide,...(leafTexture?{map:leafTexture,alphaTest:.24,alphaToCoverage:true}:{}),envMapIntensity:.4};
   const greens=[finish(leafTexture?'#c3c8ad':'#4a6836',leafOptions),finish(leafTexture?'#e0dfba':'#708049',leafOptions)];
+  greens.forEach(installLeafDaylight);
   const flowers=[finish('#f2e8ce',{side:THREE.DoubleSide}),finish('#b9547a',{side:THREE.DoubleSide})];
   const paving=[finish('#c3b9a6'),finish('#c8beac'),finish('#beb5a4')];
   function add(g,m) { if(!g.index)g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));if(!batches.has(m))batches.set(m,[]);batches.get(m).push(g); }
@@ -100,7 +102,7 @@ export function createDubaiGardens({THREE,city,stoneMaterial,leafTexture=null,ex
         branch(fork,tip,.033);
         for(let twig=0;twig<3;twig++) {
           const end=tip.clone().add(new THREE.Vector3(Math.cos(angle+twig*2.1)*.30,.12+twig*.08,Math.sin(angle+twig*2.1)*.26));
-          branch(tip,end,.010);leaves(end.x,end.y,end.z,.38,.46,.36,36,.10);
+          branch(tip,end,.010);leaves(end.x,end.y,end.z,.40,.46,.38,26,.095);
         }
       }
     }

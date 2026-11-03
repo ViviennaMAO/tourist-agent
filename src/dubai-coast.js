@@ -64,19 +64,21 @@ export function createDubaiCoast({THREE,city,stoneMaterial}) {
   let seed=21073;const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const palette=['#8c806e','#9f8f75','#837967','#aa9a80','#948a77'].map(c=>new THREE.Color(c));
   function place(g,s,along,out,y=0){g.rotateY(-Math.atan2(s.tz,s.tx));g.translate(s.x+s.tx*along+s.nx*out,y,s.z+s.tz*along+s.nz*out);return g;}
-  // Each rough stone is a chipped polygon with a bulging, faceted outer face.
+  // Shallow stone crowns with independent side normals avoid inflated facets.
   function fieldstone(w,h,depth,index) {
     const outline=[[-.5,-.34],[-.34,-.5],[.32,-.48],[.5,-.24],[.46,.30],[.23,.5],[-.33,.45],[-.5,.18]];
-    const vertices=[w*(rand()-.5)*.16,h*(rand()-.5)*.16,depth+.035+rand()*.035];
+    const vertices=[w*(rand()-.5)*.16,h*(rand()-.5)*.16,depth+.018+rand()*.018];
     for(const [x,y] of outline)vertices.push(x*w*(.86+rand()*.26),y*h*(.86+rand()*.26),depth*(.94+rand()*.06));
+    const edge=vertices.slice(3);
     for(const [x,y] of outline)vertices.push(x*w,y*h,-.08);
+    vertices.push(...edge); // Side-wall rim is separate from the exposed face.
     const indices=[];
-    for(let k=0;k<8;k++){const a=k+1,b=(k+1)%8+1;indices.push(0,a,b,a,a+8,b,b,a+8,b+8);}
+    for(let k=0;k<8;k++){const a=k+1,b=(k+1)%8+1;indices.push(0,a,b,a+16,a+8,b+16,b+16,a+8,b+8);}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);
     const tint=palette[index%palette.length],colors=[];
-    for(let i=0;i<17;i++){const c=tint.clone().multiplyScalar(.95+rand()*.08);colors.push(c.r,c.g,c.b);}
+    for(let i=0;i<vertices.length/3;i++){const c=tint.clone().multiplyScalar(.95+rand()*.08);colors.push(c.r,c.g,c.b);}
     g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
-    const flat=g.toNonIndexed();g.dispose();flat.computeVertexNormals();return flat;
+    g.computeVertexNormals();const smooth=g.toNonIndexed();g.dispose();return smooth;
   }
   for(const [i,s] of samples.entries()) {
     // Caps are smaller and regular; the rubble below varies in height and depth.

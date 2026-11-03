@@ -7,6 +7,7 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
   const { w, d } = b, lobby = 2.35;
   const metalFinish = finishes.skylineMetal || metal;
   const { family: variant, name, tiers } = towerMassing(w, d, h, index, lobby);
+  const towerGlass=finishes.skylinePalette?.[(index+variant)%finishes.skylinePalette.length]||skylineGlass;
   const crown = h - .72;
   let floorCount = 0, paneCount = 0;
   // Open colonnade: recessed glazing leaves a real sheltered lobby threshold.
@@ -49,17 +50,17 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
   for (let tier = 0; tier < tiers.length; tier++) {
     const { bottom, top, w: width, d: depth, x: ox } = tiers[tier];
     const height = top - bottom;
-    box(skylineGlass, ox, (top + bottom) / 2, 0, width - .1, height, depth - .1);
-    const floors = Math.max(1, Math.round(height / .72)), fh = height / floors;
+    box(towerGlass, ox, (top + bottom) / 2, 0, width - .1, height, depth - .1);
+    const floors = Math.max(1, Math.round(height / [.82,.9,.76,.86,.8][variant])), fh = height / floors;
     floorCount += floors;
     for (let side = 0; side < 4; side++) {
       const span = side % 2 ? depth : width;
-      const cols = Math.max(3, Math.round((span - .2) / .44)), bay = (span - .2) / cols;
+      const cols = Math.max(3, Math.round((span - .2) / [.52,.68,.46,.58,.62][variant])), bay = (span - .2) / cols;
       const face = (m, u, y, inset, bw, bh, bd) => facade(side, width, depth, ox, m, u, y, inset, bw, bh, bd);
       for (let f = 0; f < floors; f++) {
         const y = bottom + f * fh;
         // Spandrel panels and a projecting drip edge make each slab legible.
-        face(spandrel, 0, y + .055, .035, span - .13, .08, .032);
+        face(spandrel, 0, y + .055, .035, span - .13, variant===2||variant===3?.045:.09, .032);
         face(metalFinish, 0, y + .018, .025, span - .1, .022, .028);
         for (let j = 0; j < cols; j++) {
           const u = -(span - .2) / 2 + (j + .5) * bay;
@@ -72,7 +73,7 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
       }
       for (let j = 0; j <= cols; j++) {
         const u = -(span - .2) / 2 + j * bay;
-        face(metalFinish, u, (top + bottom) / 2, .025, variant === 3 ? .027 : .012, height, variant === 3 ? .075 : .032);
+        face(metalFinish, u, (top + bottom) / 2, .025, variant === 3 ? .027 : variant===2?.018:.012, height, variant === 3 ? .075 : .032);
       }
       // Paired stone corner blades give the second family a framed silhouette.
       if (variant === 1 && side % 2 === 0) for (const sign of [-1, 1]) {
@@ -92,14 +93,14 @@ export function appendDubaiHighrise({ THREE, b, h, index, finishes, box, add }) 
       // Inset glass balustrades on the exposed setback terraces, with real gaps.
       for (let side = 0; side < 4; side++) {
         const span = side % 2 ? depth : width;
-        facade(side, width, depth, ox, skylineGlass, 0, top + .12, .13, span - .32, .21, .02);
+        facade(side, width, depth, ox, towerGlass, 0, top + .12, .13, span - .32, .21, .02);
         facade(side, width, depth, ox, metalFinish, 0, top + .24, .13, span - .3, .018, .025);
       }
     }
   }
   const last = tiers.at(-1), cw = last.w * .74, cd = last.d * .74, cx = last.x;
   if (variant === 4 && THREE && add) {
-    add(slopedCrown(THREE, last.w - .12, last.d - .12, h, .86).translate(cx, 0, 0), skylineGlass);
+    add(slopedCrown(THREE, last.w - .12, last.d - .12, h, .86).translate(cx, 0, 0), towerGlass);
     // A narrow raised spine catches the sun along the high side of the cap.
     box(metalFinish, cx - last.w / 2 + .09, h - .15, 0, .045, .12, last.d - .13);
   } else if (variant === 1 || variant === 3) {
