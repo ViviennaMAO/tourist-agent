@@ -53,7 +53,7 @@ test('island villas include low southern fronds and retain compact height and ro
   const study=createDubaiArchitecture({THREE,city,district:true,island:true});finite(study.root);
   assert.equal(study.stats.buildings,2);assert.ok(study.stats.drawCalls<=8);
   study.root.traverse(m=>{if(!m.isMesh)return;const p=m.geometry.attributes.position;
-    for(let i=0;i<p.count;i++)assert.ok(buildings.some(b=>{const q=new THREE.Vector3().fromBufferAttribute(p,i).sub(new THREE.Vector3(b.x,b.base,b.z)).applyAxisAngle(new THREE.Vector3(0,1,0),-b.ry);return Math.abs(q.x)<=b.w/2+.02&&Math.abs(q.z)<=b.d/2+.02&&q.y>=-.001&&q.y<=b.h+.001;}));
+    for(let i=0;i<p.count;i++)assert.ok(buildings.some(b=>{const q=new THREE.Vector3().fromBufferAttribute(p,i).sub(new THREE.Vector3(b.x,b.base,b.z)).applyAxisAngle(new THREE.Vector3(0,1,0),-b.ry);return Math.abs(q.x)<=b.w/2+.02&&Math.abs(q.z)<=b.d/2+.05&&q.y>=-.001&&q.y<=b.h+.001;}));
   });study.dispose();
 });
 

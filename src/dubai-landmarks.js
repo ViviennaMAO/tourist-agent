@@ -1,3 +1,4 @@
+import { refineLegacyBase } from './landmark-base.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { landmarkFinish } from './landmark-finish.js';
 
@@ -32,9 +33,10 @@ export function createDubaiLandmarks({ THREE, city }) {
   for(const [m,geos] of batches){const g=mergeGeometries(geos);geos.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);}
   L.holder.add(root);root.visible=false;
   let enabled=false,disposed=false;
-  const swaps=[]; const styled=new Set();
+  const swaps=[]; const styled=new Set(),bases=[];
   function styleAsset(l) {
     if(!l?.asset||styled.has(l))return;
+    const base=refineLegacyBase(l);if(base){bases.push(base);base.setEnabled(enabled);}
     l.asset.traverse(o=>{
       if(!o.isMesh)return;
       const before=o.material;
@@ -47,7 +49,7 @@ export function createDubaiLandmarks({ THREE, city }) {
     root.visible=enabled&&L.loaded;
     if(L.asset)L.asset.visible=!enabled;
     for(const [id,landmark] of Object.entries(city.LM))if(id!=='burj_khalifa')styleAsset(landmark);
-  },setEnabled(v){enabled=!!v;root.visible=enabled&&L.loaded;if(L.asset)L.asset.visible=!enabled;swaps.forEach(s=>s.mesh.material=enabled?s.after:s.before);},dispose(){
-    if(disposed)return;this.setEnabled(false);disposed=true;root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());[glass,silver,plinth].forEach(m=>m.dispose());swaps.forEach(s=>(Array.isArray(s.after)?s.after:[s.after]).forEach(m=>m.dispose()));
+  },setEnabled(v){enabled=!!v;bases.forEach(b=>b.setEnabled(enabled));root.visible=enabled&&L.loaded;if(L.asset)L.asset.visible=!enabled;swaps.forEach(s=>s.mesh.material=enabled?s.after:s.before);},dispose(){
+    if(disposed)return;this.setEnabled(false);disposed=true;bases.forEach(b=>b.dispose());root.removeFromParent();root.children.forEach(m=>m.geometry.dispose());[glass,silver,plinth].forEach(m=>m.dispose());swaps.forEach(s=>(Array.isArray(s.after)?s.after:[s.after]).forEach(m=>m.dispose()));
   }};
 }

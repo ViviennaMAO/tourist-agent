@@ -6,6 +6,7 @@ import { installSkylineAtmosphere } from './skyline-atmosphere.js';
 import { chamferedBox } from './chamfered-box.js';
 import { installDistrictBounce } from './district-bounce.js';
 import { appendIslandVilla } from './island-villa.js';
+import { planIslandVillas } from './island-layout.js';
 
 /** Reversible, footprint-preserving facade studies for the Dubai plaza and district.
  * All details are opaque PBR meshes, merged by finish. Existing actors still own
@@ -25,6 +26,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     Math.hypot(b.x + 20, b.z + 22);
   const sorted = [...candidates].sort((a, b) => rank(a) - rank(b));
   const selected = district ? sorted : sorted.slice(0, 2);
+  const islandPlots=island?planIslandVillas(city.w.ctx,selected):[];
   const design = new Map();
   const materials = [], batches = new Map(), originals = new Map();
   const finish = (color, roughness, metalness = 0, extra = {}) => {
@@ -101,7 +103,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     transform = new THREE.Matrix4().makeRotationY(b.ry || 0);
     transform.setPosition(b.x, b.base, b.z);
     const { w, d } = b;
-    if(island){dressStone=true;design.set(b,appendIslandVilla({b,index:buildingIndex,finishes:{wall,trim,glass,wood,roof,recess},box}));return;}
+    if(island){const plot=islandPlots[buildingIndex];transform.makeRotationY(plot.ry||0);transform.setPosition(plot.x,plot.base,plot.z);dressStone=true;design.set(b,appendIslandVilla({b:plot,index:buildingIndex,finishes:{wall,trim,glass,wood,roof,recess},box}));return;}
     const traditional = !district || b.z > -38 || b.h <= 8;
     dressStone=district&&traditional;
     // District pass reshapes the skyline: two-storey foreground and a lower
@@ -343,12 +345,15 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     originals.forEach(({ pool, index, matrix: before }) => { pool.set(index, before); touched.add(pool); });
     touched.forEach(pool => pool.flush()); originals.clear();
   }
-  return { root, apply, stats, setBounce(value){bounce.value=value?1:0;}, setEnabled(value) {
-    enabled = Boolean(value); root.visible = enabled && !disposed;
+  city.w.ctx.orientedObstacles??=[];let registered=false;
+  const register=value=>{if(value===registered)return;registered=value;if(value)city.w.ctx.orientedObstacles.push(...islandPlots);else for(const p of islandPlots){const i=city.w.ctx.orientedObstacles.indexOf(p);if(i>=0)city.w.ctx.orientedObstacles.splice(i,1);}};
+  register(enabled);
+  return { root, apply, stats, islandPlots, setBounce(value){bounce.value=value?1:0;}, setEnabled(value) {
+    enabled = Boolean(value); register(enabled&&!disposed); root.visible = enabled && !disposed;
     if (!enabled) restore();
   }, dispose() {
     if (disposed) return;
-    restore(); disposed = true; root.removeFromParent();
+    register(false); restore(); disposed = true; root.removeFromParent();
     root.children.forEach(mesh => mesh.geometry.dispose());
     materials.forEach(material => material.dispose());
   } };

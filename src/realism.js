@@ -1,3 +1,4 @@
+import { createIslandGardens } from './island-gardens.js';
 import { createDubaiWaterfront } from './dubai-waterfront.js';
 import { createDubaiVehicles } from './dubai-vehicles.js';
 import { createDubaiStreets } from './dubai-streets.js';
@@ -212,7 +213,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     refinements.push(createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone }), createDubaiPalms({ THREE, city: c }));
     const waterfront = createDubaiWaterfront({ THREE, city:c, stoneMaterial:waterfrontStone });
     districtStudies.push(waterfront, createDubaiVehicles({ THREE, city: c }), createDubaiStreets({ THREE, city: c }), createDubaiArchitecture({ THREE, city: c, stoneMaterial: facadeStone, district: true }), createDubaiPalms({ THREE, city: c, district: true }), createDubaiLandscape({ THREE, city: c, stoneMaterial: stone, waterMaterial: waterStudy.lakeMaterial, leafTexture, exclusions:waterfront.footprints, fullCoast:true }), createDubaiLandmarks({ THREE, city: c }));
-    districtStudies.push(createDubaiArchitecture({THREE,city:c,stoneMaterial:facadeStone,district:true,island:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+    const islandVillas=createDubaiArchitecture({THREE,city:c,stoneMaterial:facadeStone,district:true,island:true});
+    districtStudies.push(islandVillas,createIslandGardens({THREE,city:c,plots:islandVillas.islandPlots,stoneMaterial:stone,leafTexture}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
     backdrop=createDubaiBackdrop({THREE,city:c});districtStudies.push(backdrop);
     const occupied=districtStudies.flatMap(s=>s.footprints||[]);
     districtStudies.push(createDubaiGardens({THREE,city:c,stoneMaterial:stone,leafTexture,exclusions:occupied}));
