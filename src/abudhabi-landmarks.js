@@ -35,7 +35,7 @@ export function createAbuDhabiLandmarks({city}){
   const root=new THREE.Group();root.name='Abu Dhabi refined '+id;L.holder.add(root);root.visible=enabled;
   const batches=new Map(),materials=[];
   function mat(color,roughness=.5,metalness=0){const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.7});materials.push(m);batches.set(m,[]);return m;}
-  const white=mat(id==='grand_mosque'?'#eeeae2':'#e2d5b9',.46),stone=mat('#d9c8aa',.78),gold=mat('#a58b54',.38,.65),shade=mat('#bfb09a',.8),glass=mat('#40575e',.21,.2);
+  const white=mat(id==='grand_mosque'?'#edf0ee':'#e2d5b9',.46),stone=mat('#d9c8aa',.78),gold=mat('#a58b54',.38,.65),shade=mat('#bfb09a',.8),glass=mat('#40575e',.21,.2);
   installSurfaceFinish(stone,'limestone');installSurfaceFinish(white,'paving');
   const domeMat=mat(white.color,.46);
   domeMat.onBeforeCompile=sh=>{

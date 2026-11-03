@@ -9,15 +9,17 @@ import {chamferedBox} from './chamfered-box.js';
 import {installLeafDaylight} from './leaf-daylight.js';
 import {createCurvedLeaf} from './curved-leaf.js';
 import {ABU_POOLS,ABU_BEDS,ABU_BENCHES,ABU_OBSTACLES,abuPromenade} from './abudhabi-layout.js';
+import {MOSQUE_INLAY_BOUNDS} from './abudhabi-inlay.js';
 
-export function createAbuDhabiScene({city,leafTexture}){
+export function createAbuDhabiScene({city,leafTexture,extraBuildings=[]}){
  const root=new THREE.Group();root.name='Abu Dhabi — marble forecourt and Corniche';city.w.root.add(root);
  const ctx=city.w.ctx,batches=new Map(),owned=[],saved=new Map(),swaps=[],styled=new Set();let enabled=false,disposed=false;
  const finish=(color,roughness=.8,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness,envMapIntensity:.55});owned.push(m);batches.set(m,[]);return m;};
- const arcade=finish('#eeeae1',.42);
+ const arcade=finish('#edf0ee',.34);
  const gardenPaving=finish('#dbd4c5',.7),gardenWarm=finish('#dfd4bf',.74),inlay=finish('#a99a7f',.65);
  for(const m of [gardenPaving,gardenWarm,inlay]){m.userData.floorFinish=true;installSurfaceFinish(m,'paving');}
- const marble=finish('#eeeae1',.32),stone=finish('#cfbea0',.85),trim=finish('#dbd8cc',.65),bronze=finish('#796446',.35,.7),wood=finish('#826444',.72),soil=finish('#594f39',1),green=finish('#b8c49c',.9),flower=finish('#ece6cc',.85),glass=finish('#6d8792',.16,.24),roof=finish('#a29e90',.9);
+ const marble=finish('#edf0ee',.24),stone=finish('#cfbea0',.85),trim=finish('#dbd8cc',.65),bronze=finish('#796446',.35,.7),wood=finish('#826444',.72),soil=finish('#594f39',1),green=finish('#b8c49c',.9),flower=finish('#ece6cc',.85),glass=finish('#6d8792',.16,.24),roof=finish('#a29e90',.9);
+ const tileTrim=finish('#dbd8cc',.65);tileTrim.userData.floorFinish=true;installSurfaceFinish(tileTrim,'paving');
  installSurfaceFinish(stone,'limestone');installSurfaceFinish(trim,'paving');installSurfaceFinish(wood,'wood');
  glass.userData.cityGlass=true;glass.userData.reflectionZone='skyline';installCurtainWallFinish(glass);
  green.map=leafTexture||null;green.alphaTest=.42;green.side=THREE.DoubleSide;installLeafDaylight(green);
@@ -36,7 +38,13 @@ export function createAbuDhabiScene({city,leafTexture}){
  // Continuous low promenade, interrupted only at the existing canal mouth.
  for(const [a,b] of [[-66,6],[14,66]]){
   box(marble,(a+b)/2,1.025,41.35,b-a,.05,7.3);
-  for(let x=a+.6;x<b;x+=1.2)for(let z=38.3;z<45;z+=1.2)box((Math.round(x*5+z)%7)?marble:trim,x,1.059,z,1.18,.018,1.18);
+  for(let x=a+.6;x<b;x+=1.2)for(let z=38.3;z<45;z+=1.2){
+   // The continuous inlaid slab replaces these tiles. Keeping hidden trim
+   // below it still projects square shadow-map artefacts through the surface.
+   const b=MOSQUE_INLAY_BOUNDS;
+   if(Math.abs(x-b.x)<b.w/2+.59&&Math.abs(z-b.z)<b.d/2+.59)continue;
+   box((Math.round(x*5+z)%7)?marble:tileTrim,x,1.059,z,1.18,.018,1.18);
+  }
   box(stone,(a+b)/2,1.1,45,b-a,.2,.25);
   for(let x=a+1;x<b;x+=2){cyl(bronze,x,1.49,45,.025,.78);}
   box(bronze,(a+b)/2,1.87,45,b-a,.035,.035);
@@ -69,7 +77,7 @@ export function createAbuDhabiScene({city,leafTexture}){
  }leaf.dispose();
  buildAbuDetails({add,box,marble:arcade,paving:gardenPaving,pavingWarm:gardenWarm,inlay,stone,trim,bronze,green,flower,soil});
  // Refine ordinary buildings within their existing footprint and collision.
- const buildings=(ctx.buildings||[]).filter(b=>b.indices&&b.w>=2.5&&b.d>=2.5);
+ const buildings=[...(ctx.buildings||[]).filter(b=>b.indices&&b.w>=2.5&&b.d>=2.5),...extraBuildings];
  for(const [index,b] of buildings.entries()){
   const h=b.h,w=b.w,d=b.d,tall=h>8,skin=tall?glass:stone,ry=b.ry||0;
   const part=(m,x,y,z,ww,hh,dd)=>{
@@ -139,7 +147,7 @@ export function createAbuDhabiScene({city,leafTexture}){
  for(const [m,gs] of batches){if(!gs.length)continue;const g=mergeGeometries(gs);gs.forEach(g=>g.dispose());const mesh=new THREE.Mesh(g,m);mesh.castShadow=m!==water&&m!==marble&&!m.userData.floorFinish;mesh.receiveShadow=true;if(m===marble||m.userData.floorFinish)mesh.userData.skipContact=true;root.add(mesh);}
  const mapping={body:'tower',crown:'tower',roof:'roof',pad:'pad',antenna:'ant',gable:'gable'};
  const surface=(x,z)=>enabled?(abuPromenade(x,z)?1.115:palaceGarden(x,z)?1.09:null):null;
- const obstacles=[...ABU_OBSTACLES,...ABU_DETAIL_OBSTACLES].map(o=>({...o}));let registered=false;
+ const obstacles=[...ABU_OBSTACLES,...ABU_DETAIL_OBSTACLES,...extraBuildings.map(b=>({x:b.x,z:b.z,w:b.w+.2,d:b.d+.2}))].map(o=>({...o}));let registered=false;
  function register(v){if(v===registered)return;registered=v;if(v){ctx.rects.push(...obstacles);ctx.walkSurfaces.push(surface);}else{ctx.rects=ctx.rects.filter(o=>!obstacles.includes(o));const i=ctx.walkSurfaces.indexOf(surface);if(i>=0)ctx.walkSurfaces.splice(i,1);}}
  function styleAssets(){
   for(const [id,l] of Object.entries(city.LM||{})){
@@ -153,7 +161,7 @@ export function createAbuDhabiScene({city,leafTexture}){
       float abuLum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
       float abuBlue=smoothstep(.03,.2,diffuseColor.b-max(diffuseColor.r,diffuseColor.g*.85));
       float abuGold=smoothstep(.06,.25,diffuseColor.r-diffuseColor.b);
-      ${id==='ferrari_world'?`diffuseColor.rgb=mix(vec3(abuLum),diffuseColor.rgb,.82);`:`diffuseColor.rgb=mix(vec3(abuLum)*vec3(${id==='emirates_palace'?'1.06,.98,.85':'1.01,1.,.97'}),vec3(.29,.42,.48)*(.7+abuLum*.3),abuBlue*.8);${id==='grand_mosque'?"diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.57,.30)*(.7+abuLum*.3),abuGold*.8);":''}`}
+      ${id==='ferrari_world'?`diffuseColor.rgb=mix(vec3(abuLum),diffuseColor.rgb,.82);`:`diffuseColor.rgb=mix(vec3(abuLum)*vec3(${id==='emirates_palace'?'1.06,.98,.85':'.98,1.,1.'}),vec3(.29,.42,.48)*(.7+abuLum*.3),abuBlue*.8);${id==='grand_mosque'?"diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.57,.30)*(.7+abuLum*.3),abuGold*.8);":''}`}
      `).replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>\nroughnessFactor=mix(${id==='grand_mosque'?'.32':'.76'},.18,abuBlue);`).replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=mix(.02,.25,abuBlue);');};
      a.customProgramCacheKey=()=>key+'-abu-landmark-v1-'+id;if(id==='emirates_palace')installSurfaceFinish(a,'limestone',{metricAttribute:true});owned.push(a);return a;
     };

@@ -118,7 +118,7 @@ end(50)`
       capital_gate:  { key: 'AUH_CapitalGate__AUH_CapitalGate',   tex: 'AUH_CapitalGate_BaseColor.png', name: 'Capital Gate',              zh: '首都之门',         pos: [12, -63],  h: 18, base: 1.25, r: 7,  rot: 0, dur: 3 },
       ferrari_world: { key: 'AUH_Ferrari__AUH_Ferrari',           tex: 'AUH_Ferrari_BaseColor.png',     name: 'Ferrari World',             zh: '法拉利世界',       pos: [40, -62],  h: 5,  base: 1.0, r: 15, rot: 0, dur: 3 },
       etihad_towers: { parts: [['AUH_Tower__AUH_Tower01', 'AUH_Tower01_BaseColor.png'], ['AUH_Tower__AUH_Tower02', 'AUH_Tower02_BaseColor.png'], ['AUH_Tower__AUH_Tower03', 'AUH_Tower03_BaseColor.png']],
-                       normalizeHeight: true,                                                          name: 'Etihad Towers',             zh: '阿提哈德塔',       pos: [56, -20],  h: 17, base: 1.25, r: 16, rot: Math.PI / 2, dur: 3.5 },
+                       normalizeHeight: true,                                                          name: 'Etihad Towers',             zh: '阿提哈德塔',       pos: [56, -20],  h: 26, base: 1.25, r: 16, rot: Math.PI / 2, dur: 3.5 },
       emirates_palace: { key: 'AUH_Hotel__AUH_Hotel',             tex: 'AUH_Hotel_BaseColor.png',       name: 'Emirates Palace',           zh: '酋长皇宫酒店',     pos: [-54, 0],   h: 9,  base: 1.0, r: 9,  rot: 0, dur: 3 },
       abrahamic:     { key: 'AUH_Abrahamic__AUH_Abrahamic',       tex: 'AUH_Abrahamic_BaseColor.png',   name: 'Abrahamic Family House',    zh: '亚伯拉罕家族之家', pos: [44, 28],   h: 6,  base: 1.0, r: 13, rot: 0, dur: 3 },
     },

@@ -8,6 +8,8 @@ Tokyo phase 2 follows the supplied skyline/cherry-river references: 15 infill bu
 
 Tokyo phase 1 refines 35 ordinary buildings, 102 trees (66 cherry trees), street finishes and the imperial moat edge, with local reflections and contact shadows. See [scope, verification and remaining work](docs/tokyo-phase-1.md).
 
+Abu Dhabi phase 8 follows the new photo references with five curved Etihad towers, 14 floral marble inlays, a cooler mosque stone palette and eight infill buildings. See [implementation, verification and remaining gaps](docs/abudhabi-phase-8.md).
+
 Abu Dhabi phase 7 refines the Ferrari/cultural venue envelopes: reflective glazing, stone finishes, measured roof edges and entrance hardware. See [implementation, validation and limits](docs/abudhabi-phase-7.md).
 
 Abu Dhabi phase 6 adds stone edges and flower ribbons to three lagoon islands, 12 further landscape beds, two venue shade courts and entrance paving. See [scope, verification and limits](docs/abudhabi-phase-6.md).

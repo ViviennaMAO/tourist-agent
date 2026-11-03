@@ -1,3 +1,6 @@
+import {createAbuTowers} from './abudhabi-towers.js';
+import {createMosqueInlay} from './abudhabi-inlay.js';
+import {planAbuInfill} from './abudhabi-infill.js';
 import {planTokyoInfill,createTokyoInfillReservations,planTokyoRiverTrees} from './tokyo-layout.js';
 import {createTokyoSkytree} from './tokyo-skytree.js';
 import {createTokyoGround} from './tokyo-ground.js';
@@ -234,9 +237,10 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         for(let i=0;i<mesh.count;i++)new THREE.Color(palette[i%palette.length]).toArray(after,i*3);
         colors.push({mesh,before,after});mesh.instanceColor.array.set(enabled?after:before);mesh.instanceColor.needsUpdate=true;
       }
-      const realm=createAbuPublicRealm({city:c,leafTexture});
-      abuStudies.push(createAbuDhabiScene({city:c,leafTexture}),createAbuDhabiLandmarks({city:c}),createAbuVenues({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,createAbuLandscape({city:c,leafTexture,existing:realm.plots}),createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
-      abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{culture:{position:[49,5,24],min:[28,0,10],max:[70,15,46]},courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
+      const realm=createAbuPublicRealm({city:c,leafTexture}),landscape=createAbuLandscape({city:c,leafTexture,existing:realm.plots});
+      const infill=planAbuInfill(c.w.ctx,[...realm.plots,...landscape.plots]);
+      abuStudies.push(createAbuDhabiScene({city:c,leafTexture,extraBuildings:infill}),createAbuTowers({city:c}),createMosqueInlay({city:c}),createAbuDhabiLandmarks({city:c}),createAbuVenues({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,landscape,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{etihad:{position:[56,12,-20],min:[39,0,-38],max:[73,31,-2]},culture:{position:[49,5,24],min:[28,0,10],max:[70,15,46]},courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
       syncStudies();return;
     }
     if (c.id !== 'dubai') return;
