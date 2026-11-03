@@ -1,3 +1,4 @@
+import {createAbuLandscape} from './abudhabi-landscape.js';
 import {createAbuPublicRealm} from './abudhabi-public-realm.js';
 import {createAbuDhabiLandmarks} from './abudhabi-landmarks.js';
 import {createAbuDhabiShrubs} from './abudhabi-shrubs.js';
@@ -216,7 +217,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
         colors.push({mesh,before,after});mesh.instanceColor.array.set(enabled?after:before);mesh.instanceColor.needsUpdate=true;
       }
       const realm=createAbuPublicRealm({city:c,leafTexture});
-      abuStudies.push(createAbuDhabiScene({city:c,leafTexture}),createAbuDhabiLandmarks({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
+      abuStudies.push(createAbuDhabiScene({city:c,leafTexture}),createAbuDhabiLandmarks({city:c}),createAbuDhabiShrubs({city:c,leafTexture,clearedPlots:realm.plots.filter(p=>p.kind==='pergola')}),realm,createAbuLandscape({city:c,leafTexture,existing:realm.plots}),createDubaiVehicles({THREE,city:c}),createDubaiStreets({THREE,city:c,roadFilter:r=>r.kind==='road'&&!r.bridge}),createDubaiPalms({THREE,city:c,district:true}),createDubaiCoast({THREE,city:c,stoneMaterial:stone}));
       abuProbe=createCityReflections({renderer,scene,city:c,zoneSpecs:{courtyard:{position:[-15,3.5,39],min:[-37,0,13],max:[5,22,46]},skyline:{position:[5,12,-46],min:[-72,0,-80],max:[72,32,10]}}});
       syncStudies();return;
     }

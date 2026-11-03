@@ -28,12 +28,12 @@ export function planAbuPublicRealm(ctx){
   if(clearUrbanPlot(layout,p,[...ABU_OBSTACLES,...ABU_DETAIL_OBSTACLES,...selected]))selected.push({...p,y:ctx.groundY?.(p.x,p.z)||1});
  }return selected;
 }
-export function createAbuPublicRealm({city,leafTexture}){
+export function createAbuPublicRealm({city,leafTexture,plots:customPlots}){
  const ctx=city.w.ctx,root=new THREE.Group();root.name='Abu Dhabi — lake gardens and shaded seating';city.w.root.add(root);
- const plots=planAbuPublicRealm(ctx),owned=[],batches=new Map();let enabled=false,registered=false,disposed=false;
+ const plots=customPlots||planAbuPublicRealm(ctx),owned=[],batches=new Map();let enabled=false,registered=false,disposed=false;
  const mat=(color,roughness=.8,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness});owned.push(m);batches.set(m,[]);return m;};
  const stone=mat('#d0c3aa'),paving=mat('#cec6b7'),wood=mat('#7e6245'),metal=mat('#626359',.45,.65),soil=mat('#665d45'),leafMat=mat('#b9c69e',.9),white=mat('#eee7ca'),pink=mat('#ab527a'),lamp=mat('#e9cd92',.5);
- installSurfaceFinish(stone,'limestone');installSurfaceFinish(paving,'paving');installSurfaceFinish(wood,'wood');leafMat.map=leafTexture||null;leafMat.side=THREE.DoubleSide;leafMat.alphaTest=.42;installLeafDaylight(leafMat);lamp.emissive.set('#e4b872');lamp.emissiveIntensity=.3;
+ installSurfaceFinish(stone,'limestone');installSurfaceFinish(paving,'paving');installSurfaceFinish(wood,'wood');leafMat.map=leafTexture||null;leafMat.side=THREE.DoubleSide;leafMat.alphaTest=.18;installLeafDaylight(leafMat);lamp.emissive.set('#e4b872');lamp.emissiveIntensity=.3;
  const add=(g,m)=>{if(g.index){const a=g;g=g.toNonIndexed();a.dispose();}batches.get(m).push(g);};
  const box=(m,x,y,z,w,h,d)=>add(new THREE.BoxGeometry(w,h,d).translate(x,y,z),m);
  const leaf=createCurvedLeaf(THREE,.13,.8,true);let trees=0;
@@ -54,12 +54,12 @@ export function createAbuPublicRealm({city,leafTexture}){
    }
   }else{
    box(stone,x,y+.16,z,p.w,.32,p.d);box(soil,x,y+.33,z,p.w-.2,.035,p.d-.2);
-   for(let n=0;n<520;n++){
+   for(let n=0;n<(customPlots?Math.min(1400,Math.ceil(p.w*p.d*75)):520);n++){
     const px=x+(rand()-.5)*(p.w-.35),pz=z+(rand()-.5)*(p.d-.35),py=y+.44+rand()*.4;
     add(leaf.clone().rotateX(rand()*2.4-1.2).rotateY(rand()*6.28).rotateZ(rand()*1.8-.9).translate(px,py,pz),leafMat);
     if(n%12===0)add(new THREE.SphereGeometry(.05,5,3).translate(px,py+.14,pz),i%4===0?pink:white);
    }
-   if(i%3===0){
+   if(p.tree??(i%3===0)){
     trees++;branch([x,y+.3,z],[x+.16,y+2.35,z],.11);
     for(let b=0;b<5;b++){const a=b*2.399,r=.55+(b%2)*.3,tx=x+Math.cos(a)*r,tz=z+Math.sin(a)*r,ty=y+2.7+(b%3)*.26;branch([x+.12,y+1.65,z],[tx,ty,tz],.035);
      for(let n=0;n<250;n++){const angle=rand()*Math.PI*2,t=rand(),rad=Math.cbrt(rand()),rr=Math.sqrt(1-Math.pow(t*2-1,2))*.85*rad;add(leaf.clone().rotateX(rand()*Math.PI).rotateY(angle).rotateZ(rand()*Math.PI).translate(tx+Math.cos(angle)*rr,ty+(t-.5)*1.15*rad,tz+Math.sin(angle)*rr),leafMat);}
