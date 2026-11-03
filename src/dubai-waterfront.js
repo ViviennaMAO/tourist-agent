@@ -1,3 +1,4 @@
+import {installSurfaceFinish} from './surface-finish.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { installStoneWear } from './stone-wear.js';
 import { appendDubaiVilla } from './dubai-villas.js';
@@ -30,6 +31,7 @@ export function createDubaiWaterfront({ THREE, city, stoneMaterial }) {
   const plantGreen = finish('#566638'), flowers = finish('#b85177');
   for(const m of [glass,shopGlass,amberGlass])m.userData.cityGlass=true;
   const interiorWall=roof,ceramic=glass,linen=trim;
+  installSurfaceFinish(wood,'wood');
   const finishes = { interiorWall,ceramic,linen, wall, trim, metal, glass, shopGlass, roof, recess, wood, amberGlass, lanternGlass, plantGreen, flowers };
   const bounce={value:1};
   for(const m of [wall,trim,recess,wood,roof,glass,amberGlass])installCourtyardBounce(m,city.w.root.position.clone(),bounce);

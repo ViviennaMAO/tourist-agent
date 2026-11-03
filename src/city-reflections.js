@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-/** Two static, prefiltered probes sample the real courtyard and tower district.
+/** Three static, prefiltered probes sample the real courtyard and tower district.
  * Box projection supplies local parallax, rather than moving one distant sky
  * gradient across every pane. This is still an approximation, not SSR/ray tracing.
  */
@@ -8,6 +8,7 @@ export function createCityReflections({renderer,scene,city}) {
   let target=null,pmrem=null,cube=null,dirty=true,enabled=false,disposed=false,captures=0;
   const records=new Map(),hidden=[];
   const zones={
+    harbor:{position:[82,7,29],min:[34,0,-8],max:[107,36,68]},
     courtyard:{position:[-20,4.8,-9],min:[-40,0,-22],max:[0,11,4]},
     skyline:{position:[15,16,-50],min:[-64,0,-84],max:[64,32,-15]}
   };
@@ -27,7 +28,11 @@ export function createCityReflections({renderer,scene,city}) {
         Object.assign(shader.uniforms,{cityProbeOrigin:zone.origin,cityProbeMin:zone.boxMin,cityProbeMax:zone.boxMax,cityProbeActive:zone.active});
         shader.vertexShader='varying vec3 cityGlassWorld;\n'+shader.vertexShader;
         shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
-          cityGlassWorld=(modelMatrix*vec4(transformed,1.)).xyz;`);
+          vec4 cityGlassPoint=vec4(transformed,1.);
+          #ifdef USE_INSTANCING
+            cityGlassPoint=instanceMatrix*cityGlassPoint;
+          #endif
+          cityGlassWorld=(modelMatrix*cityGlassPoint).xyz;`);
         shader.fragmentShader=`varying vec3 cityGlassWorld;
           uniform vec3 cityProbeOrigin,cityProbeMin,cityProbeMax; uniform float cityProbeActive;
           vec3 cityProjectedReflection(vec3 ray){
@@ -75,7 +80,7 @@ export function createCityReflections({renderer,scene,city}) {
       for(const [o,visible] of hidden)o.visible=visible;hidden.length=0;
       renderer.shadowMap.autoUpdate=shadowAuto;renderer.setRenderTarget(previous);assignMaps();
     }
-  },get status(){return captures?`双探针 · 更新 ${captures} 次`:'等待街区资源';},dispose(){
+  },get status(){return captures?`三探针 · 更新 ${captures} 次`:'等待街区资源';},dispose(){
     if(disposed)return;disposed=true;restoreMaps();
     for(const [m,r] of records){m.onBeforeCompile=r.compile;m.customProgramCacheKey=r.key;m.needsUpdate=true;}
     records.clear();for(const zone of Object.values(zones))zone.filtered?.dispose();target?.dispose();pmrem?.dispose();

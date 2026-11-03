@@ -1,3 +1,4 @@
+import {installSurfaceFinish} from './surface-finish.js';
 import * as THREE from 'three';
 import {MARINA_PIERS,MARINA_BOATS,MARINA_CAFES,MARINA_OUTLINE,HARBOR,polar} from './dubai-marina-layout.js';
 
@@ -67,6 +68,8 @@ export function appendDubaiMarina({root,add,box,beam,rail,finish,stone,ivory,ste
   }
   const fabric=finish('#d8ccae',.92),awning=finish('#73816c',.88),terracotta=finish('#a97c61',.88);
   const interior=finish('#b9a181',.94),joint=finish('#bfb49e',.95),shopGlass=finish('#a9c6c8',.24,.12);
+  for(const m of [fabric,awning])installSurfaceFinish(m,'fabric',{metricAttribute:true});
+  shopGlass.userData.cityGlass=true;shopGlass.userData.reflectionZone='harbor';shopGlass.envMapIntensity=1.15;
   interior.emissive.set('#a17a4b');interior.emissiveIntensity=.15;
   shopGlass.transparent=true;shopGlass.opacity=.19;shopGlass.depthWrite=false;
   shopGlass.userData.noShadow=true;
@@ -80,15 +83,15 @@ export function appendDubaiMarina({root,add,box,beam,rail,finish,stone,ivory,ste
     for(const sign of [-1,1]){
       box(stone,sign*(c.w/2-.1),h/2,0,.2,h,c.d,g);
       box(glass,sign*(c.w/2+.012),1.65,0,.025,1.4,c.d*.48,g);
-      box(ivory,sign*(c.w/2+.05),.9,0,.14,.12,c.d*.52,g);
+      box(stone,sign*(c.w/2+.05),.9,0,.14,.12,c.d*.52,g);
       for(const z of [-c.d*.25,0,c.d*.25])box(bronze,sign*(c.w/2+.04),1.65,z,.06,1.45,.045,g);
       box(stone,sign*(c.w/2-.16),h/2,front,.32,h,.24,g);
     }
     box(stone,0,h-.2,front,c.w,.4,.24,g);
     box(stone,0,h+.08,0,c.w+.15,.18,c.d+.15,g);
     // Slim roof parapets and subdued rear stone coursing.
-    for(const z of [-front,front])box(ivory,0,h+.26,z,c.w+.15,.22,.16,g);
-    for(const x of [-c.w/2,c.w/2])box(ivory,x,h+.26,0,.16,.22,c.d,g);
+    for(const z of [-front,front])box(stone,0,h+.26,z,c.w+.15,.22,.16,g);
+    for(const x of [-c.w/2,c.w/2])box(stone,x,h+.26,0,.16,.22,c.d,g);
     for(let y=.65;y<h-.1;y+=.65)box(joint,0,y,-front-.006,c.w-.12,.012,.012,g);
     for(const x of [-c.w*.28,c.w*.28]){
       box(bronze,x,1.8,-front-.025,c.w*.2,1.25,.04,g);

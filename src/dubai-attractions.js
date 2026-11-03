@@ -1,3 +1,5 @@
+import {installSurfaceFinish} from './surface-finish.js';
+import {chamferedBox} from './chamfered-box.js';
 import {appendDubaiMarina} from './dubai-marina.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -9,13 +11,23 @@ export function createDubaiAttraction(kind) {
   const root=new THREE.Group();root.name=kind==='wheel'?'Dubai waterfront observation wheel':'Dubai cruise terminal';
   const textures=[],materials=[],geometries=new Set(),batches=new Map();
   const finish=(color,roughness=.7,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,roughness,metalness});materials.push(m);return m;};
-  const stone=finish('#d9ceba',.88),ivory=finish('#e1dfd1',.44,.22),steel=finish('#a5afad',.32,.7),bronze=finish('#746247',.43,.55),glass=finish('#587782',.2,.38),dark=finish('#273e47',.5,.2),teak=finish('#927751',.85),green=finish('#647c48',.95),flower=finish('#ac5277',.9),warm=finish('#f2d8a1',.5),orange=finish('#c88b4c',.65);
+  const stone=finish('#d9ceba',.88),ivory=finish('#e2dfd5',.28,0),steel=finish('#a5afad',.32,.7),bronze=finish('#746247',.43,.55),glass=finish('#52666c',.12,.18),dark=finish('#273e47',.5,.2),teak=finish('#92704d',.72),green=finish('#647c48',.95),flower=finish('#ac5277',.9),warm=finish('#f2d8a1',.5),orange=finish('#c88b4c',.65);
   const paver=finish('#d9ceba',.9),paverLight=finish('#d4cab8',.9);
   paver.userData.paving=paverLight.userData.paving=true;
+  for(const [m,k] of [[stone,'limestone'],[paver,'paving'],[paverLight,'paving'],[teak,'wood'],[ivory,'paint']])installSurfaceFinish(m,k,{metricAttribute:true});
+  stone.envMapIntensity=.3;teak.envMapIntensity=.4;
+  glass.userData.cityGlass=true;glass.userData.reflectionZone='harbor';glass.envMapIntensity=1.25;
   const cabinInstances=[];
   warm.emissive.set('#deb77b');warm.emissiveIntensity=.24;
-  function add(g,m,parent=root){if(!g.index)g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));if(!batches.has(parent))batches.set(parent,new Map());const b=batches.get(parent);if(!b.has(m))b.set(m,[]);b.get(m).push(g);}
-  function box(m,x,y,z,w,h,d,parent=root){add(new THREE.BoxGeometry(w,h,d).translate(x,y,z),m,parent);}
+  function add(g,m,parent=root){
+    const metric=g.attributes.position.clone();
+    if(m.userData.surfaceKind==='wood'){
+      g.computeBoundingBox();const size=g.boundingBox.getSize(new THREE.Vector3());
+      if(size.z>size.x&&size.z>size.y)for(let i=0;i<metric.count;i++)metric.setXYZ(i,metric.getZ(i),metric.getY(i),metric.getX(i));
+      else if(size.y>size.x)for(let i=0;i<metric.count;i++)metric.setXYZ(i,metric.getY(i),metric.getX(i),metric.getZ(i));
+    }
+    g.setAttribute('surfacePosition',metric);if(!g.index)g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));if(!batches.has(parent))batches.set(parent,new Map());const b=batches.get(parent);if(!b.has(m))b.set(m,[]);b.get(m).push(g);}
+  function box(m,x,y,z,w,h,d,parent=root){add((m===stone&&Math.min(w,h,d)>.12?chamferedBox(w,h,d,.018):new THREE.BoxGeometry(w,h,d)).translate(x,y,z),m,parent);}
   function beam(m,a,b,r=.07,parent=root){const p=new THREE.Vector3(...a),q=new THREE.Vector3(...b),v=q.clone().sub(p);const g=new THREE.CylinderGeometry(r,r,v.length(),6);g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize()));g.translate(...p.add(q).multiplyScalar(.5).toArray());add(g,m,parent);}
   function rail(x1,z1,x2,z2,y=1.1,parent=root){const n=Math.ceil(Math.hypot(x2-x1,z2-z1)/1.5);for(let i=0;i<=n;i++){const t=i/n,x=x1+(x2-x1)*t,z=z1+(z2-z1)*t;beam(bronze,[x,y,z],[x,y+.85,z],.035,parent);}for(const h of [.4,.85])beam(steel,[x1,y+h,z1],[x2,y+h,z2],.026,parent);}
   function planter(x,z,w=2,d=1,parent=root){const lift=kind==='cruise'?1.1:0;const patch=new THREE.Group();patch.position.y=lift;parent.add(patch);parent=patch;box(stone,x,.32,z,w,.64,d,parent);box(dark,x,.65,z,w-.14,.05,d-.14,parent);for(let i=0;i<12;i++){const px=x+Math.sin(i*2.4)*(w*.36),pz=z+Math.cos(i*2.4)*(d*.3);add(new THREE.IcosahedronGeometry(.22+(i%3)*.04,1).scale(1,.8,1).translate(px,.82+(i%3)*.08,pz),i%4===0?flower:green,parent);}}

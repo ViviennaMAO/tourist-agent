@@ -18,7 +18,7 @@ export function installCurtainWallFinish(material) {
       curtainVariation=mix(curtainHash(floor(curtainUv)),curtainHash(floor(curtainUv/vec2(3.,2.))),.65);
       // Suppress per-pane variation once a pane falls below a few pixels.
       float curtainDetail=1.-smoothstep(.18,.8,max(fwidth(curtainUv.x),fwidth(curtainUv.y)));
-      diffuseColor.rgb*=1.+(curtainVariation-.5)*.18*curtainDetail;
+      diffuseColor.rgb*=1.+(curtainVariation-.5)*.10*curtainDetail;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
       roughnessFactor=clamp(roughnessFactor+(curtainVariation-.5)*.035*curtainDetail,.065,1.);
@@ -33,6 +33,6 @@ export function installCurtainWallFinish(material) {
       normal=normalize(abs(det)*normal-sign(det)*(dFdx(bow)*rx+dFdy(bow)*ry));
     `);
   };
-  material.customProgramCacheKey=()=>key+'-curtain-wall-v4';
+  material.customProgramCacheKey=()=>key+'-curtain-wall-v5';
   material.needsUpdate=true;
 }

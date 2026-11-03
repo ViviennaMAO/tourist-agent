@@ -1,3 +1,4 @@
+import {installSurfaceFinish} from './surface-finish.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { appendDubaiHighrise } from './dubai-highrises.js';
 import { appendDubaiVilla } from './dubai-villas.js';
@@ -50,18 +51,7 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
   const roof = finish('#9b9688', .94);
   const recess = finish(district ? '#605746' : '#4b4b43', .95);
   const wood = district ? finish('#6b513b', .82) : null;
-  if (wood) {
-    wood.onBeforeCompile = shader => {
-      shader.vertexShader = 'varying vec3 vTimber;\n' + shader.vertexShader;
-      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvTimber = position;');
-      shader.fragmentShader = 'varying vec3 vTimber;\n' + shader.fragmentShader;
-      shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-        float grain = sin(vTimber.y * 69.0 + sin(vTimber.x * 4.3 + vTimber.z * 3.0) * 3.0);
-        diffuseColor.rgb *= 0.88 + 0.12 * grain;
-      `);
-    };
-    wood.customProgramCacheKey = () => 'dubai-timber-grain-v1';
-  }
+  if(wood)installSurfaceFinish(wood,'wood');
   const skylineGlass = district ? finish('#728f9c', .19, .48, { envMapIntensity: 1.6 }) : null;
   const amberGlass = district ? finish('#6b5b43', .2, .3, { envMapIntensity:1.3, emissive:'#bd8743', emissiveIntensity:.07 }) : null;
   const lanternGlass = district ? finish('#ffe1a0', .4, 0, { emissive:'#ffca7d', emissiveIntensity:.7 }) : null;
@@ -72,10 +62,10 @@ export function createDubaiArchitecture({ THREE, city, stoneMaterial, district =
     m.roughness=m===skylineGlass?.13:.14;
     m.envMapIntensity=m===skylineGlass?1.45:1.25;
   }
-  const skylinePalette=skylineGlass?[skylineGlass,finish('#a1aaa8',.19,.55,{envMapIntensity:1.3}),finish('#627f83',.16,.58,{envMapIntensity:1.5})]:[];
+  const skylinePalette=skylineGlass?[skylineGlass,finish('#929e9f',.17,.24,{envMapIntensity:1.3}),finish('#627b80',.16,.22,{envMapIntensity:1.5})]:[];
   for(const [i,m] of skylinePalette.entries()) {
     m.userData.cityGlass=true;m.userData.reflectionZone='skyline';
-    if(i===0){m.color.set('#82949e');m.metalness=.68;m.roughness=.115;m.envMapIntensity=1.55;}
+    if(i===0){m.color.set('#748b97');m.metalness=.24;m.roughness=.14;m.envMapIntensity=1.45;}
     installCurtainWallFinish(m);
   }
   const skylineSpandrel=district?finish('#475f70',.38,.32,{envMapIntensity:.7}):null;
