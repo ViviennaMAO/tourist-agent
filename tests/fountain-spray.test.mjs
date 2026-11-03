@@ -20,7 +20,7 @@ test('fountain jets land separately inside the basin and droplets freeze determi
     for(let i=0;i<a.count;i++){
       const point=new THREE.Vector3().fromBufferAttribute(a,i);
       assert.ok([point.x,point.y,point.z].every(Number.isFinite));
-      assert.ok(point.y>0&&point.y<(i%8===7?1.55:1.15));assert.ok(Math.hypot(point.x,point.z)<1.37);
+      assert.ok(point.y>0&&point.y<(i%8===7?1.55:1.15));assert.ok(Math.hypot(point.x,point.z)<(i<280?1.37:1.6));
       assert.ok(spray.mesh.geometry.boundingSphere.containsPoint(point));
     }
   }

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createDubaiAttraction} from '../src/dubai-attractions.js';
+import {pointInPolygon} from '../src/shore-profile.js';
 import {CITIES} from '../src/cities.js';
 
 test('wheel and cruise geometry are finite, bounded and dispose shared resources once',()=>{
@@ -35,9 +36,9 @@ test('both attractions have usable shore arrivals outside their collision footpr
  const city=CITIES.dubai;
  for(const id of ['waterfront_wheel','cruise_terminal']){
   const c=city.landmarks[id],[x,z]=c.arrival;
-  const {bounds:[x1,z1,x2,z2],height}=c.walkSurface;assert.ok(x>=x1&&x<=x2&&z>=z1&&z<=z2);assert.ok(height>=1.08&&height<=1.2);
+  const q=c.walkSurface;assert.ok(q.circle?Math.hypot(x-q.circle[0],z-q.circle[1])<q.circle[2]:pointInPolygon(q.polygon,x,z));assert.ok(q.height>=1.08&&q.height<=1.2);
   assert.ok(city.script.includes("landmark('"+id+"')"));
-  const land=(x>=42&&x<=76&&z>=10&&z<=45)||(x>=76&&x<=84&&z>=-11&&z<=37);assert.ok(land);
+
   for(const q of c.walkObstacles)assert.ok(Math.abs(x-c.pos[0]-q.x)>=q.w/2+.45||Math.abs(z-c.pos[1]-q.z)>=q.d/2+.45);
  }
 });

@@ -318,8 +318,8 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
             for(int j=0;j<7;j++){
               float angle=float(j)*6.283185/7.;vec2 impact=vec2(cos(angle),sin(angle))*1.3;
               vec2 delta=p-impact;float d=max(length(delta),.001);
-              float ripple=cos(d*43.-t*7.+float(j))*exp(-d*5.);
-              slope+=delta/d*ripple*.025;
+              float ripple=cos(d*25.-t*5.+float(j))*exp(-d*2.4);
+              slope+=delta/d*ripple*.055;
               float foamBreak=.3+.7*foamNoise(delta*75.+vec2(t*2.,-t*1.4));
               landingFoam+=exp(-d*d*100.)*(.6+.4*sin(t*9.+float(j)))*foamBreak;
             }
@@ -331,11 +331,11 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
             float caustic=pow(max(0.,1.-abs(a+b)*1.6),7.);
             // Broken flecks rather than continuous bright contour lines.
             caustic*=smoothstep(-.2,.7,sin(p.x*21.-p.y*16.+t)*sin(p.y*23.+t*.6));
-            vec3 col=mix(vec3(.028,.105,.12),vec3(.19,.32,.36),.2+fresnel*.65);
+            vec3 col=mix(vec3(.035,.145,.17),vec3(.25,.40,.45),.2+fresnel*.65);
             col+=vec3(.24,.32,.26)*caustic*.12;
             col=mix(col,vec3(.52,.65,.62),clamp(landingFoam*.60,0.,.65));
             col+=vec3(.18,.23,.22)*pow(max(wave,0.),12.)*exp(-r*.8)*.22;
-            float sun=pow(max(dot(N,normalize(V+normalize(vec3(-1.1,.72,.85)))),0.),100.);
+            float sun=pow(max(dot(N,normalize(V+normalize(vec3(-.95,.9,.75)))),0.),100.);
             col+=vec3(1.,.87,.65)*sun*.65;
             gl_FragColor=vec4(col,1.);
             #include <tonemapping_fragment>
@@ -345,17 +345,20 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
       ownedMaterials.push(basinMaterial);
       // Repeated ivory diamonds and recessed bronze-blue tesserae form a
       // continuous frieze; two restrained stone courses frame the ornament.
-      const mosaic=material('#617f79',.72);
-      for(let j=0;j<80;j++) {
-        const a=j/80*Math.PI*2, xx=fountainX+Math.sin(a)*2.555, zz=fountainZ+Math.cos(a)*2.555;
-        add(new THREE.BoxGeometry(.12,.12,.018).rotateZ(Math.PI/4),mosaic,xx,y+.235,zz,a);
+      const mosaic=material('#858b78',.85);
+      cylinder(mosaic,fountainX,y+.23,fountainZ,2.563,2.563,.27,128);
+      // Fine cream lattice over a recessed warm-grey frieze, instead of large
+      // isolated turquoise diamonds. Three offset rows follow the basin.
+      for(let row=0;row<3;row++)for(let j=0;j<144;j++) {
+        const a=(j+(row%2)*.5)/144*Math.PI*2,xx=fountainX+Math.sin(a)*2.568,zz=fountainZ+Math.cos(a)*2.568;
+        for(const angle of [-Math.PI/4,Math.PI/4])add(new THREE.PlaneGeometry(.12,.009).rotateZ(angle),stone,xx,y+.14+row*.09,zz,a);
       }
       for(const yy of [y+.075,y+.38]) add(new THREE.TorusGeometry(2.56,.025,4,80).rotateX(Math.PI/2),stone,fountainX,yy,fountainZ);
     }
     const water=new THREE.Mesh(new THREE.CircleGeometry(fountainR,64).rotateX(-Math.PI/2),basinMaterial);
     water.position.set(fountainX,y+.435,fountainZ); root.add(water);
     const rim=new THREE.TorusGeometry(2.48,.10,8,80).rotateX(Math.PI/2); add(rim,stone,fountainX,y+.46,fountainZ);
-    const spray=material('#e0eeeb',.16,{transparent:true,opacity:.52,depthWrite:false});
+    const spray=material('#cce9ed',.08,{transparent:true,opacity:.64,depthWrite:false});
     spray.onBeforeCompile=shader=>{
       shader.uniforms.uFountainTime=fountainTime;
       shader.vertexShader='varying vec2 vSprayUv;\n'+shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\nvSprayUv=uv;');
@@ -367,13 +370,13 @@ export function createDubaiLandscape({ THREE, city, stoneMaterial, waterMaterial
     spray.customProgramCacheKey=()=> 'fountain-stream-breakup-v1';
     for(let j=0;j<8;j++) {
       const curve=new THREE.CatmullRomCurve3(Array.from({length:17},(_,i)=>new THREE.Vector3(...fountainPoint(j,i/16))));
-      const geometry=new THREE.TubeGeometry(curve,24,j===7?.024:.016,4,false);
+      const geometry=new THREE.TubeGeometry(curve,24,j===7?.036:.025,6,false);
       // Narrow the flow toward its broken landing instead of a constant wire.
       const positions=geometry.attributes.position;
       for(let row=0;row<=24;row++) {
         const t=row/24,center=curve.getPointAt(t),width=1.-.56*t;
-        for(let k=0;k<=4;k++) {
-          const i=row*5+k;
+        for(let k=0;k<=6;k++) {
+          const i=row*7+k;
           positions.setXYZ(i,center.x+(positions.getX(i)-center.x)*width,center.y+(positions.getY(i)-center.y)*width,center.z+(positions.getZ(i)-center.z)*width);
         }
       }

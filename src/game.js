@@ -1,3 +1,4 @@
+import {inPier} from './dubai-marina-layout.js';
 import { createDubaiAttraction } from './dubai-attractions.js';
 import { ASSET, CITIES, CITY_ORDER, CITY_COUNT, CITY_GRID, activeCheckinKeys, overviewFrame } from './cities.js';
 import { configureExploreCamera, keepCameraAboveGround, resetWalkingCamera, EXPLORE_DISTANCE_LIMIT } from './explore-camera.js';
@@ -492,6 +493,16 @@ function arcPts(cx, cz, r, a0, a1, n) {
   return out;
 }
 const OUTLINE = {
+  polygon(points,_r=0,o=0) {
+    if(!o)return points;
+    const area=points.reduce((sum,p,i)=>{const q=points[(i+1)%points.length];return sum+p[0]*q[1]-q[0]*p[1];},0),sign=area>0?1:-1;
+    return points.map((p,i)=>{
+      const prev=points[(i+points.length-1)%points.length],next=points[(i+1)%points.length];
+      const a=[p[1]-prev[1],prev[0]-p[0]],b=[next[1]-p[1],p[0]-next[0]],la=Math.hypot(...a),lb=Math.hypot(...b);
+      const nx=a[0]/la+b[0]/lb,nz=a[1]/la+b[1]/lb,k=sign*o/Math.max(.5,1+(a[0]*b[0]+a[1]*b[1])/la/lb);
+      return [p[0]+nx*k,p[1]+nz*k];
+    });
+  },
   rect([x1, z1, x2, z2], r, o = 0) {
     x1 -= o; z1 -= o; x2 += o; z2 += o; r += o; const H = Math.PI / 2;
     return [...arcPts(x2 - r, z2 - r, r, 0, H, 8), ...arcPts(x1 + r, z2 - r, r, H, 2 * H, 8),
@@ -534,8 +545,8 @@ class Ctx {
     this.walkSurfaces = [];this.walkAreas=[];
     this.islands = [];  // 岛屿轮廓：{ kind, args }，河道据此判断哪里是陆地、哪里该降到海面
     for (const c of Object.values(city.landmarks)) {
-      if(c.walkAreas)for(const a of c.walkAreas){this.walkAreas.push(a);this.walkSurfaces.push((x,z)=>Math.abs(x-a.x)<=a.w/2&&Math.abs(z-a.z)<=a.d/2?a.height:null);}
-      if(c.walkSurface){const {bounds:[x1,z1,x2,z2],height}=c.walkSurface;this.walkSurfaces.push((x,z)=>x>=x1&&x<=x2&&z>=z1&&z<=z2?height:null);}
+      if(c.walkAreas)for(const a of c.walkAreas){this.walkAreas.push(a);this.walkSurfaces.push((x,z)=>inPier(a,x,z)?a.height:null);}
+      if(c.walkSurface){const q=c.walkSurface;this.walkSurfaces.push((x,z)=>(q.circle?Math.hypot(x-q.circle[0],z-q.circle[1])<=q.circle[2]:q.polygon?pointInPolygon(q.polygon,x,z):x>=q.bounds[0]&&x<=q.bounds[2]&&z>=q.bounds[1]&&z<=q.bounds[3])?q.height:null);}
       if(c.walkObstacles)this.rects.push(...c.walkObstacles.map(q=>({...q,x:q.x+c.pos[0],z:q.z+c.pos[1]})));
       else this.circles.push({ x: c.pos[0], z: c.pos[1], r: c.r });
     }
@@ -1799,11 +1810,11 @@ function walkable(x, z) {
   const c = exploreCityAt(x, z); if (!c) return null;
   const [ox, oz] = CITY_GRID[c.id], lx = x - ox, lz = z - oz, ctx = c.w.ctx;
   const onRoad = ctx.roads.some(r => r.kind !== 'canal' && segDist2(lx, lz, r.A, r.B) < r.hw);
-  const onLand = ctx.walkAreas.some(a=>Math.abs(lx-a.x)<=a.w/2&&Math.abs(lz-a.z)<=a.d/2)||ctx.islands.some(il => insideShape(il.kind, il.args, lx, lz) || (c.id==='dubai'&&il.kind==='crescent'&&il.outline&&pointInPolygon(il.outline,lx,lz)));
+  const onLand = ctx.walkAreas.some(a=>inPier(a,lx,lz))||ctx.islands.some(il => insideShape(il.kind, il.args, lx, lz) || (c.id==='dubai'&&il.kind==='crescent'&&il.outline&&pointInPolygon(il.outline,lx,lz)));
   if (!onLand && !onRoad) return null;
   if (!onRoad) {
     for (const r of ctx.roads) if (r.kind === 'canal' && segDist2(lx, lz, r.A, r.B) < r.hw - 0.6) return null;
-    for (const q of ctx.rects) if (Math.abs(lx - q.x) < q.w / 2 + 0.45 && Math.abs(lz - q.z) < q.d / 2 + 0.45) return null;
+    for (const q of ctx.rects) if (q.walkShape?inPlot({...q,...q.walkShape},lx,lz,.45):Math.abs(lx - q.x) < q.w / 2 + 0.45 && Math.abs(lz - q.z) < q.d / 2 + 0.45) return null;
   }
   for(const plot of ctx.orientedObstacles||[])if(inPlot(plot,lx,lz,.45))return null;
   for (const k of ctx.circles) if (Math.hypot(lx - k.x, lz - k.z) < k.r + 0.3) return null;   // 地标、湖、鸟居等
@@ -2299,11 +2310,11 @@ function setReviewCamera(kind) {
   controls.maxDistance = 3000;
   const [x, z] = CITY_GRID.dubai;
   const shots = {
-    wheel: {p:[91,28,82],q:[58,16,29],name:'滨海摩天轮',start:[58,43]},
-    cruise: {p:[124,31,62],q:[83,3,18],name:'邮轮码头',start:[82,23]},
-    marinaPier: {p:[119,8,25],q:[89,2,18],name:'泊位步行',start:[90,18]},
-    marinaDining: {p:[105,9,34],q:[77,2.7,25],name:'滨水餐饮街',start:[83,22]},
-    harbor: {p:[122,75,111],q:[58,6,13],name:'东湾全景',start:[48,14]},
+    wheel: {p:[91,28,82],q:[58,16,29],name:'滨海摩天轮',start:[58,36]},
+    cruise: {p:[130,47,88],q:[84,3,29],name:'邮轮码头',start:[79,29]},
+    marinaPier: {p:[119,8,25],q:[89,2,18],name:'泊位步行',start:[91,29]},
+    marinaDining: {p:[104,10,58],q:[82,2.7,47],name:'滨水餐饮街',start:[79,29]},
+    harbor: {p:[140,88,132],q:[70,6,26],name:'东湾全景',start:[48,14]},
     burjUp: { p: [0, 2.7, -16], q: [0, 33, -33], name: '哈利法塔底仰视', start: [0,-16] },
     panorama: { p: [-20, 49, 108], q: [0, 19, -35], name: '城市全景比例' },
     promenade: { p: [58, 4.5, -15], q: [56, 1.3, -8.1], name: '东侧滨水花境', start: [55,-11] },

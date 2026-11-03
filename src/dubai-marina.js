@@ -1,29 +1,38 @@
 import * as THREE from 'three';
-import {MARINA_PIERS,MARINA_BOATS,MARINA_CAFES} from './dubai-marina-layout.js';
+import {MARINA_PIERS,MARINA_BOATS,MARINA_CAFES,MARINA_OUTLINE,HARBOR,polar} from './dubai-marina-layout.js';
 
 /** Eight sheltered berths and a low waterfront dining strip. All coordinates
  * are baked into the terminal landmark at Dubai-local [80,13]. */
 export function appendDubaiMarina({root,add,box,beam,rail,finish,stone,ivory,steel,bronze,glass,dark,teak,green,flower,warm,paver,paverLight}){
   const textures=[];
   function groupAt(x,z,y=0,yaw=0){const g=new THREE.Group();g.position.set(x-80,y,z-13);g.rotation.y=yaw;root.add(g);return g;}
-  // The quay is a promenade with open entrances at every finger pier.
-  box(stone,0,1.03,3,7.7,.12,54);
-  for(let z=-23;z<=29;z+=2)for(const x of [-2.8,-.9,.9,2.8])box((z+23)%6?paver:paverLight,x,1.1,z,1.82,.025,1.96);
-  for(const [a,b] of [[-11,-5],[-3,6],[8,17],[19,28],[30,39],[41,43]])rail(3.7,a-13,3.7,b-13,1.16);
-  rail(-3.7,30,3.7,30,1.16);
+  function paving(points,material,y,depth=.025){
+    const shape=new THREE.Shape();points.forEach(([x,z],i)=>i?shape.lineTo(x-80,13-z):shape.moveTo(x-80,13-z));shape.closePath();
+    add(new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false}).rotateX(-Math.PI/2).translate(0,y,0),material);
+  }
+  paving(MARINA_OUTLINE,stone,1,.09);
+  // Narrow radial stone courses follow the concave harbor instead of a rectangle.
+  for(let angle=120;angle<240;angle+=2)for(let r=32;r<39;r+=1){
+    const points=[[r+.02,angle+.03],[r+.98,angle+.03],[r+.98,angle+1.97],[r+.02,angle+1.97]].map(([rad,a])=>{const p=polar(rad,a);return[p.x,p.z];});
+    paving(points,(angle/2+r)%5?paver:paverLight,1.095);
+  }
+  for(let a=120;a<240;a+=2){
+    if(MARINA_PIERS.some(p=>Math.abs(p.angle-(a+1))<2))continue;
+    const p=polar(32.15,a),q=polar(32.15,a+2);rail(p.x-80,p.z-13,q.x-80,q.z-13,1.16);
+  }
   for(const p of MARINA_PIERS){
-    const g=groupAt(p.x,p.z);g.name='finger-pier';
+    const g=groupAt(p.x,p.z,0,p.yaw);g.name='finger-pier';
     box(ivory,0,.92,0,p.w,.3,p.d,g);box(teak,0,1.08,0,p.w-.1,.05,p.d-.1,g);
-    for(let x=-9.5;x<=9.5;x+=.65)box(bronze,x,1.113,0,.018,.008,p.d-.12,g);
-    for(let x=-8;x<=9;x+=4)for(const z of [-.53,.53]){
+    for(let x=-8;x<=8;x+=.65)box(bronze,x,1.113,0,.018,.008,p.d-.12,g);
+    for(let x=-7;x<=7;x+=3.5)for(const z of [-.53,.53]){
       add(new THREE.CylinderGeometry(.08,.11,.25,8).translate(x,1.22,z),bronze,g);
       box(dark,x,.75,z*1.2,.3,.7,.22,g);
     }
-    for(const x of [-8,8]){beam(steel,[x,.3,0],[x,1.6,0],.065,g);box(warm,x,1.62,0,.16,.2,.16,g);}
+    for(const x of [-6.5,6.5]){beam(steel,[x,.3,0],[x,1.6,0],.065,g);box(warm,x,1.62,0,.16,.2,.16,g);}
   }
   // Shorter hulls point out into the harbor, leaving circulation between slips.
   for(const [i,b] of MARINA_BOATS.entries()){
-    const g=groupAt(b.x,b.z,0,Math.PI/2);g.name='berthed-'+b.kind;g.userData.boat=b;
+    const g=groupAt(b.x,b.z,0,b.yaw);g.name='berthed-'+b.kind;g.userData.boat=b;
     const l=b.length,w=b.width,s=new THREE.Shape();
     s.moveTo(-w*.42,-l*.5);s.lineTo(-w*.5,-l*.35);s.lineTo(-w*.5,l*.27);
     s.quadraticCurveTo(-w*.4,l*.44,0,l*.5);s.quadraticCurveTo(w*.4,l*.44,w*.5,l*.27);s.lineTo(w*.5,-l*.35);s.lineTo(w*.42,-l*.5);s.closePath();
@@ -52,8 +61,9 @@ export function appendDubaiMarina({root,add,box,beam,rail,finish,stone,ivory,ste
       box(glass,0,top,l*.14,w*.45,.08,l*.13,g);
     }else{box(ivory,0,freeboard+.17,l*.31,w*.5,.18,l*.15,g);}
     // Stern boarding ramp aligns with the nearby finger; not a walkable ship.
-    const pierZ=MARINA_PIERS[Math.floor(i/2)+(i%2?1:0)].z;
-    const ramp=groupAt(89,(b.z+pierZ)/2);box(teak,0,1.1,0,.75,.08,Math.abs(b.z-pierZ),ramp);
+    const nearest=MARINA_PIERS.reduce((best,p)=>Math.abs(p.angle-b.angle)<Math.abs(best.angle-b.angle)?p:best,MARINA_PIERS[0]);
+    const a=polar(29,b.angle),c=polar(29,nearest.angle),dx=c.x-a.x,dz=c.z-a.z;
+    const ramp=groupAt((a.x+c.x)/2,(a.z+c.z)/2,0,-Math.atan2(dz,dx));box(teak,0,1.1,0,Math.hypot(dx,dz),.08,.6,ramp);
   }
   const fabric=finish('#d8ccae',.92),awning=finish('#73816c',.88),terracotta=finish('#a97c61',.88);
   const interior=finish('#b9a181',.94),joint=finish('#bfb49e',.95),shopGlass=finish('#a9c6c8',.24,.12);
@@ -115,7 +125,7 @@ export function appendDubaiMarina({root,add,box,beam,rail,finish,stone,ivory,ste
       box(teak,0,2.65,front+1.65,c.w+.2,.16,.12,g);
     }else{const canopy=new THREE.BoxGeometry(c.w+.15,.08,1.65).rotateX(.12).translate(0,2.72,front+.72);add(canopy,i%3?fabric:awning,g);}
     for(const x of [-1.8,1.8]){
-      const z=front+1.5;
+      const z=front+1.3;
       add(new THREE.CylinderGeometry(.52,.52,.07,16).translate(x,.79,z),teak,g);beam(bronze,[x,.05,z],[x,.75,z],.055,g);
       for(const side of [-1,1]){
         box(fabric,x+side*.72,.46,z,.46,.09,.48,g);box(teak,x+side*.94,.77,z,.07,.53,.48,g);

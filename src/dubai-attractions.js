@@ -22,8 +22,10 @@ export function createDubaiAttraction(kind) {
   function lamp(x,z,parent=root){const lift=kind==='cruise'?1.1:0;const patch=new THREE.Group();patch.position.y=lift;parent.add(patch);parent=patch;beam(bronze,[x,.1,z],[x,2.5,z],.045,parent);box(warm,x,2.57,z,.18,.38,.18,parent);box(bronze,x,2.8,z,.27,.06,.27,parent);}
   let update=()=>{};
   if(kind==='wheel'){
+    // Circular substrate closes the clipped grid at the curved shore.
+    add(new THREE.CircleGeometry(19.85,128).rotateX(-Math.PI/2).translate(0,.012,0),paver);
     // Staggered paving sets the plaza at the island's existing walk height.
-    for(let row=0;row<18;row++)for(let col=0;col<17;col++)box((row+col)%7?paver:paverLight,-15+col*1.99,.02,-17.9+row*1.94,1.97,.04,1.92);
+    for(let row=-9;row<=9;row++)for(let col=-9;col<=9;col++){const x=col*1.99,z=row*1.99;if(Math.hypot(Math.abs(x)+1,Math.abs(z)+1)<19.8)box((row+col)%7?paver:paverLight,x,.02,z,1.97,.04,1.97);}
     // Twin rim, tension spokes, braced A-frame and 24 self-leveling cabins.
     const cy=17,r=13.5,rotor=new THREE.Group();rotor.name='wheel-rotor';rotor.position.y=cy;root.add(rotor);
     for(const z of [-1,1]){
