@@ -2,7 +2,7 @@ import { Color } from 'three';
 
 /** Distance-dependent aerial light for the skyline only. Applied in linear
  * radiance before tone mapping; near facades retain their material contrast. */
-export function installSkylineAtmosphere(material, strength = .30) {
+export function installSkylineAtmosphere(material, strength = .20) {
   const before = material.onBeforeCompile, key = material.customProgramCacheKey();
   material.onBeforeCompile = function(shader, renderer) {
     before.call(this, shader, renderer);

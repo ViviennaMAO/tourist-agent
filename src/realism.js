@@ -52,7 +52,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     ` + skyFragment.replace('gl_FragColor = vec4(c,1.);', `
       if(taAtmosphere>.5){
         vec3 d=normalize(vD);
-        float elevation=smoothstep(0.,.32,max(d.y,0.));
+        float elevation=smoothstep(0.,.19,max(d.y,0.));
         c=mix(hor,vec3(.18,.32,.55),elevation);
         vec2 uv=d.xz/max(d.y+.12,.08)*2.4;
         float wisps=smoothstep(.52,.75,taCloud(uv*vec2(.65,1.8)));
@@ -169,8 +169,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   // A low-resolution authored daylight environment: no external HDRI dependency.
   const ec = document.createElement('canvas'); ec.width = 512; ec.height = 256;
   const eg = ec.getContext('2d'), gradient = eg.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, '#9fb4c3'); gradient.addColorStop(.45, '#e5e8e4');
-  gradient.addColorStop(.52, '#c8c3b3'); gradient.addColorStop(1, '#8d887b');
+  gradient.addColorStop(0, '#8ba7c0'); gradient.addColorStop(.45, '#c6d4de');
+  gradient.addColorStop(.52, '#abaa9b'); gradient.addColorStop(1, '#61594c');
   eg.fillStyle = gradient; eg.fillRect(0, 0, 512, 256);
   const glow = eg.createRadialGradient(145, 65, 2, 145, 65, 60);
   glow.addColorStop(0, 'rgba(255,250,230,1)'); glow.addColorStop(1, 'rgba(255,250,230,0)');
@@ -183,17 +183,20 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   function applyEnvironment() {
     const district = enabled && refinementEnabled && districtEnabled;
     sky.material.uniforms.taAtmosphere.value = district ? 1 : 0;
-    renderer.toneMappingExposure = enabled ? .97 : original.exposure;
+    renderer.toneMappingExposure = enabled ? .92 : original.exposure;
     scene.environment = enabled ? envTarget.texture : original.env;
-    hemi.color.copy(enabled ? new THREE.Color('#d5e3f5') : original.hemi);
-    hemi.groundColor.copy(enabled ? new THREE.Color('#c4b9aa') : original.ground);
-    hemi.intensity = enabled ? (district ? .86 : 1.1) : original.hi;
-    sun.color.copy(enabled ? new THREE.Color('#ffe5c2') : original.sun);
-    sun.intensity = enabled ? (district ? 3.8 : 2.65) : original.si;
+    hemi.color.copy(enabled ? new THREE.Color('#bfd6f1') : original.hemi);
+    hemi.groundColor.copy(enabled ? new THREE.Color('#b6a189') : original.ground);
+    hemi.intensity = enabled ? (district ? .62 : 1.1) : original.hi;
+    sun.color.copy(enabled ? new THREE.Color('#fff0d8') : original.sun);
+    sun.intensity = enabled ? (district ? 3.25 : 2.65) : original.si;
     sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
     sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
-    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color(district ? '#bdcddd' : '#e0e1d8') : original.horizon);
+    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color(district ? '#adc5d9' : '#e0e1d8') : original.horizon);
     scene.fog.color.copy(enabled ? sky.material.uniforms.hor.value : original.fog);
+    // Static reflection captures must be refreshed after exposure/environment
+    // or detail changes, otherwise panes keep the previous lighting setup.
+    probe?.invalidate();
   }
   function enhanceCity(c) {
     if (c.id !== 'dubai') return;
@@ -299,7 +302,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       } finally {renderer.info.autoReset=reset;}
     },
     get contactEnabled(){return contactEnabled;},setContactEnabled(v){contactEnabled=!!v;},
-    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));},
+    get bounceEnabled(){return bounceEnabled;},setBounceEnabled(v){bounceEnabled=!!v;districtStudies.forEach(s=>s.setBounce?.(bounceEnabled));probe?.invalidate();},
     get reflectionsEnabled(){return reflectionsEnabled;},setReflectionsEnabled(v){reflectionsEnabled=!!v;syncStudies();},
     get skylineEnabled(){return skylineEnabled;},setSkylineEnabled(v){skylineEnabled=!!v;syncStudies();probe?.invalidate();},
     get lightingStatus(){const active=enabled&&refinementEnabled&&districtEnabled;return `接触阴影 ${active&&contactEnabled&&nearDubai?contact?.resolution||'准备中':'关'} · 反射 ${active&&reflectionsEnabled?probe?.status||'准备中':'关'}`;},

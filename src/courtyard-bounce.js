@@ -16,7 +16,7 @@ export function installCourtyardBounce(material,origin,strength){
       vec3 worldN=inverseTransformDirection(normal,viewMatrix);
       float groundFacing=clamp(.65-.45*worldN.y,0.,1.);
       float falloff=exp(-max(cp.y-1.,0.)*.28);
-      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.38,.29,.19)*porch*groundFacing*falloff*courtyardBounce;
+      reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.46,.39,.29)*porch*groundFacing*falloff*courtyardBounce;
       // Display rooms sit behind the glazing, 7.94–9.1 m from the plaza axis.
       // Suppress uniform outdoor sky fill there, then add bounded window and
       // pendant irradiance. This is a local approximation, not global GI.
@@ -27,11 +27,11 @@ export function installCourtyardBounce(material,origin,strength){
       float windowFacing=.25+.75*max(dot(worldN,vec3(-sign(cp.x+20.),0.,0.)),0.);
       float bayDistance=min(abs(cp.z+9.8),abs(abs(cp.z+9.8)-1.98));
       float lamp=exp(-1.6*(bayDistance*bayDistance+pow(depth-.55,2.))-.45*pow(cp.y-2.8,2.));
-      vec3 roomLight=vec3(.20,.23,.28)*exp(-max(depth,0.)*1.4)*windowFacing;
-      roomLight+=vec3(.32,.17,.065)*lamp;
-      reflectedLight.indirectDiffuse*=1.-room*.62*courtyardBounce;
+      vec3 roomLight=vec3(.28,.33,.40)*exp(-max(depth,0.)*1.4)*windowFacing;
+      roomLight+=vec3(.42,.24,.115)*lamp;
+      reflectedLight.indirectDiffuse*=1.-room*.52*courtyardBounce;
       reflectedLight.indirectDiffuse+=diffuseColor.rgb*roomLight*room*courtyardBounce;
     `);
   };
-  material.customProgramCacheKey=()=>key+'-courtyard-bounce-v2';
+  material.customProgramCacheKey=()=>key+'-courtyard-bounce-v3';
 }
