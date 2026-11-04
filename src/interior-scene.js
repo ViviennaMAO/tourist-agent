@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {hangCityArtwork} from './interior-art.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {prayerArchGeometry} from './mosque-prayer-hall.js';
 import {installSurfaceFinish} from './surface-finish.js';
@@ -158,6 +159,7 @@ export function createInteriorScene(spec){
  }
  const detail=refineInterior(spec,craft);
  const fitout=furnishInteriorTheme(spec,craft),labelTexture=buildInteriorLabels(fitout.labels,add,material);
+ const art=hangCityArtwork(spec,{add,box,material,captureStart,transformSince},scene);
  if(INTERIOR_SHOTS[spec.theme])points=INTERIOR_SHOTS[spec.theme].details.map((shot,i)=>({label:spec.details[i],...shot}));
  // Enclosed rooms receive cooler sky fill, warm lamps and material reflections.
  scene.add(new THREE.HemisphereLight(night?'#9bb9d6':'#e7efff','#b2a28b',night?.65:1.05));
@@ -171,7 +173,7 @@ export function createInteriorScene(spec){
  }
  const overview={p:[17,13,20],q:[0,2,0]},entry=INTERIOR_SHOTS[spec.theme]?.entry||(spec.theme==='sphere'?{p:[0,3.6,6.2],q:[0,3.2,-5.5]}:{p:[0,2.1,6],q:[0,2.3,-3]});
  let disposed=false;
- return {scene,root,points,overview,entry,obstacles,stats:{triangles,drawCalls:root.children.length,crafted:detail.crafted,fitoutFeatures:fitout.features,labelCount:fitout.labels.length,reflectingPools:pools.length,ceilingMeshes:ceilings.length},setInteriorView(on){ceilings.forEach(o=>o.visible=on);},update(t){for(const a of animated)a(t);pools.forEach(p=>p.update(t));},dispose(){if(disposed)return;disposed=true;root.traverse(o=>o.geometry?.dispose());pools.forEach(p=>p.dispose());materials.forEach(m=>m.dispose());labelTexture?.dispose();sun.shadow.map?.dispose();scene.clear();}};
+ return {scene,root,points,overview,entry,obstacles,art,stats:{triangles,drawCalls:root.children.length,crafted:detail.crafted,fitoutFeatures:fitout.features,labelCount:fitout.labels.length,reflectingPools:pools.length,ceilingMeshes:ceilings.length},setInteriorView(on){ceilings.forEach(o=>o.visible=on);},update(t){for(const a of animated)a(t);pools.forEach(p=>p.update(t));},dispose(){if(disposed)return;disposed=true;art.dispose();root.traverse(o=>o.geometry?.dispose());pools.forEach(p=>p.dispose());materials.forEach(m=>m.dispose());labelTexture?.dispose();sun.shadow.map?.dispose();scene.clear();}};
 }
 
 export function interiorOverviewShot(room,aspect){
