@@ -6,6 +6,8 @@ The active edition loads **20 landmarks across three cities**. Tokyo is removed 
 
 **15 enterable interior theme studies (5 per city)** are available from the “室内” HUD directory or “进入室内” on supported landmark cards. Each has an independent 3D scene, an overview, an inside viewpoint and three detail viewpoints. Drag to orbit, scroll/pinch to zoom, and use WASD to translate the observation camera. Returning restores the outdoor position. These are authored miniature interpretations, not surveyed interiors or seamless avatar-walking rooms. See [scope, controls and validation](docs/three-city-interiors.md).
 
+The first interior refinement adds ceiling enclosures, layered wall trim, carved/inlaid panels, upholstered furniture, patterned rugs, crystal chandeliers and real pool reflections. Abu Dhabi’s five spaces receive the deepest theme-specific detail; all fifteen share the upgraded finish and lighting system. Rooms open directly into the inside view. See [scope and verification](docs/interior-refinement-1.md).
+
 Abu Dhabi includes a white-stone prayer hall, palace garden hall, racing design gallery, bay observation lounge and light/courtyard gallery. Dubai includes five landmark-themed interiors; Las Vegas includes five theatre, atrium and observation interiors.
 
 Las Vegas phase 1 replaces the early colour-block architecture with 32 refined buildings including a new lakefront hotel, an animated LED Sphere, 36 fountain jets, 29 detailed palms and nine lakefront trees. See [scope, verification and remaining work](docs/lasvegas-phase-1.md).

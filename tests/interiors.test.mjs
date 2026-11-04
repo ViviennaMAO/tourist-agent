@@ -27,3 +27,14 @@ test('Interior overview fits every room in landscape and narrow mobile frames',a
   }room.dispose();
  }
 });
+
+test('Detailed interiors restore cutaway roofs and release reflecting water targets',()=>{
+ for(const spec of INTERIORS){const room=createInteriorScene(spec),ceilings=room.root.children.filter(o=>o.name==='Interior ceiling and upper enclosure');
+  assert.ok(room.stats.crafted);assert.ok(ceilings.length>0);assert.ok(ceilings.every(o=>!o.visible));
+  room.setInteriorView(true);assert.ok(ceilings.every(o=>o.visible));room.setInteriorView(false);assert.ok(ceilings.every(o=>!o.visible));
+  const pools=room.root.children.filter(o=>o.isReflector);let disposed=0;
+  for(const p of pools){assert.equal(p.userData.skipContact,true);assert.equal(p.getRenderTarget().width,512);p.getRenderTarget().addEventListener('dispose',()=>disposed++);}
+  room.update(1);for(const p of pools)assert.equal(p.material.uniforms.time.value,1);
+  room.dispose();room.dispose();assert.equal(disposed,pools.length);
+ }
+});

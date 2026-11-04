@@ -20,6 +20,7 @@ These are independently authored, explorable 3D dioramas, not photographs or mea
 
 - Open “室内” on the outdoor HUD to choose one of five spaces per city.
 - Supported landmark cards also show “进入室内 · 查看微景观”. Entry is available without buying a demonstration ticket.
+- Opening a room now starts inside, with its ceiling and upper enclosure visible. The overview hides the upper enclosure for inspection.
 - “微景观全景” fits the entire model to the current screen; “步入室内” places the observation camera inside. Three named detail viewpoints provide closer inspection.
 - Drag to orbit; scroll or pinch to zoom. WASD/arrows translate the observation camera. This is not collision-driven avatar walking or seamless entry through an outdoor doorway.
 - Esc or “返回城市” restores outdoor position and controls. Native dialog focus trapping and restoration keep keyboard interaction inside the viewer.
@@ -27,13 +28,13 @@ These are independently authored, explorable 3D dioramas, not photographs or mea
 
 ## Runtime and limits
 
-Only one interior is rendered at a time; outdoor simulation/rendering pauses while its dialog is open. Geometry is batched by material. Scenes, materials, controls, shadow targets and the extra WebGL context are released on exit. The viewer uses a 1024px shadow map and caps DPR at 1.5. Desktop and mobile camera fitting uses actual scene bounds.
+Only one interior is rendered at a time; outdoor simulation/rendering pauses while its dialog is open. Geometry is batched by material. Scenes, materials, controls, shadow targets and the extra WebGL context are released on exit. The viewer uses a 2048px shadow map and caps DPR at 1.5. Desktop and mobile camera fitting uses actual scene bounds.
 
-This first interior release establishes all 15 usable spaces. Water, fish, vehicles and exhibits are largely static; glazing uses stylized reflected-horizon detailing, not a live panorama. Indirect light is an approximation. Fine upholstery, unique scanned materials, moving exhibits and photorealistic interiors remain future refinement work.
+The refinement pass adds rounded upholstery, layered architectural trim, patterned rugs, crystal chandeliers, detailed themed props and restrained procedural marble. Pool surfaces reflect the actual interior with subtle animated ripples. The planet and theatre screen have animated procedural surfaces; fish and vehicles remain static. Glazing uses stylized reflected-horizon detailing, not a live panorama. Indirect light is approximated with an environment map, fill lights and screen-space contact shading. These remain authored architectural miniatures, not photorealistic scanned interiors. See [refinement details](interior-refinement-1.md).
 
 ## Verification
 
 - `npm run check` and `npm run build` pass. The existing Three.js chunk size warning remains.
-- 138 automated tests cover the three-city roster, bridge connectivity, old-save filtering, 15 distinct registered spaces, valid geometry, resource disposal and portrait/landscape camera fit, plus prior city checks.
+- 139 automated tests cover the three-city roster, bridge connectivity, old-save filtering, 15 distinct registered spaces, valid geometry, resource disposal and portrait/landscape camera fit, plus prior city checks.
 - Browser acceptance opens all 15 rooms, selects every detail viewpoint, enters inside views and returns to the city; it also checks 20/20 landmark loads, the 3-city picker, mobile directory/room layout and saved visits after reload.
 - Actual renders are captured for all room overviews and Abu Dhabi detail/inside views. These are procedural theme studies; passing functionality checks is not a claim of matching the reference photographs.
