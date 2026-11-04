@@ -1,3 +1,5 @@
+import {createInteriorExperience} from './interior-experience.js';
+import {interiorFor} from './interior-catalog.js';
 import {landmarkVisitDistance,CHECKIN_RANGE} from './landmark-proximity.js';
 import {inPier} from './dubai-marina-layout.js';
 import { createDubaiAttraction } from './dubai-attractions.js';
@@ -26,7 +28,7 @@ const QS = new URLSearchParams(location.search);
 const EXPLORE = true;
 const CITY_ID = QS.get('city') || 'dubai';
 const CITY = CITIES[CITY_ID] || CITIES.dubai;
-document.title = 'Tourist Agent · 四城自由探索';
+document.title = 'Tourist Agent · 三城自由探索';
 
 /* =====================================================================
    2. 工具：缓动、PRNG、矩阵
@@ -394,7 +396,7 @@ function labelTexture(title, sub) {
   return t;
 }
 
-// 为一座城市创建地标状态并开始加载模型；parent 可以是带偏移的城市组（宣传片里四城各占一块）
+// 为一座城市创建地标状态并开始加载模型；parent 可以是带偏移的城市组（宣传片里三城各占一块）
 function createLandmarks(city, parent) {
  const LMc = {};
  for (const id of Object.keys(city.landmarks)) {
@@ -1625,6 +1627,7 @@ function pickCity(e) {
 let cardL = null;
 function showCard(L) {
   cardL = L;
+  $('cardInterior').hidden=!interiorFor(L.city.id,L.id);
   $('cardCity').textContent = `${String(L.city.index).padStart(2, '0')} / ${CITY_COUNT} · ${L.city.name} ${L.city.nameZh}`;
   $('cardName').textContent = L.cfg.name; $('cardZh').textContent = L.cfg.zh;
   $('cardDesc').textContent = LM_DESC[L.cfg.name] || '';
@@ -1788,7 +1791,7 @@ function renderCityOptions() {
 renderCityOptions();
 
 /* =====================================================================
-   8. 自由探索：Eva 图片角色在四城之间旅行
+   8. 自由探索：Eva 图片角色在三城之间旅行
    角色依据设定图：黑色中长波浪发（中分）、绿瞳、红唇、奶黄色方领泡泡袖高腰中长裙、米白玛丽珍鞋
    ===================================================================== */
 const evaAtlasTexture = new THREE.TextureLoader().load(evaSpriteUrl, () => {
@@ -1801,6 +1804,7 @@ function evaGuideMarkup(className) {
   return `<svg class="${className}" viewBox="125 0 335 1024" role="img" aria-label="导游 Eva：黑色卷发、珍珠耳饰和奶黄色连衣裙"><image href="${evaSpriteUrl}" width="1536" height="1024"/></svg>`;
 }
 
+let interiorExperience=null;
 const EX = { on: EXPLORE, keys: new Set(), pos: V3(), y: 1, yaw: 0, city: null, auto: null, t0: performance.now() };
 function exploreCityAt(x, z) {
   let best = null, bd = 125;
@@ -1867,7 +1871,7 @@ function arrive(P, h, r, L, id) {
   $('city').value = id;
   document.querySelectorAll('#cityChips button').forEach(b => b.classList.toggle('on', b.dataset.id === id));
 }
-// 世界地图：升到高空俯瞰四座城，点击任意一座直达；再按一次 / Esc 回到小女孩身边
+// 世界地图：升到高空俯瞰三座城，点击任意一座直达；再按一次 / Esc 回到小女孩身边
 function toggleOverview(on = !EX.overview) {
   review.fixed = false; review.camera = on ? '世界地图' : '自由探索';
   EX.overview = on; document.body.classList.toggle('overview', on); hideCard(); $('worldHint').style.display = on ? 'block' : 'none';
@@ -1998,10 +2002,9 @@ function exploreStep(dt, now) {
 const CITY_DESC = {
   dubai: '沙漠里长出的未来之城：世界最高的哈利法塔、帆船酒店和伸进大海的棕榈岛都在这里。',
   abudhabi: '阿联酋首都：白色大理石的谢赫扎耶德大清真寺、红顶的法拉利乐园和海边的酋长宫殿。',
-  tokyo: '传统与未来交织的都市：浅草寺的雷门灯笼、红白东京塔和 634 米的晴空塔。',
   lasvegas: '沙漠中的娱乐之都：Sphere 球形巨屏、射出光柱的金字塔酒店和那块著名的欢迎牌。',
 };
-const TIPS = ['走近地标即可点亮城市印记，集齐一城成为「文化大使」', '门票与 PWV 余额仅为本机演示，不会发生真实付款', '探索四座城市，发现各地地标',
+const TIPS = ['走近地标即可点亮城市印记，集齐一城成为「文化大使」', '门票与 PWV 余额仅为本机演示，不会发生真实付款', '探索三座城市，发现各地地标',
   '方向键 / WASD 走动，按住 Shift 奔跑', '按 M 打开世界地图，点任意一座城直达', '右下角 GO：前往下一座城市'];
 const NPC_LOOKS = [
   { name: '模拟_Omar294', hair: '#30251e', dress: '#92a9ab', dress2: '#748f91', skin: '#c99978' },
@@ -2016,7 +2019,7 @@ const playerId = store.get(PID_KEY, null) || (() => { const id = String(1e8 + Ma
 const lmKey = L => L.city.id + ':' + L.id;
 const cityLMs = id => ALL_LM.filter(L => L.city.id === id);
 const lit = L => checkins.has(lmKey(L));
-const uiBusy = () => !!(tix || GUI.panel || GUI.pop || GUI.loading);
+const uiBusy = () => !!(interiorExperience?.active || tix || GUI.panel || GUI.pop || GUI.loading);
 const cityOrder = () => Object.values(CITIES).sort((a, b) => a.index - b.index);
 const nextCity = id => { const o = cityOrder(), i = o.findIndex(c => c.id === id); return o[(i + 1) % o.length].id; };
 const lmByKey = k => ALL_LM.find(L => lmKey(L) === k);
@@ -2088,7 +2091,7 @@ function hudRefresh() {
 function renderQuests() {
   const c = EX.city, cities = new Set(activeCheckinKeys(checkins).map(k => k.split(':')[0])), q = [];
   if (c) { const ls = cityLMs(c.id), n = ls.filter(lit).length; q.push({ ic: '📍', t: `点亮${c.city.nameZh}全部地标`, p: `${n}/${ls.length}`, done: n === ls.length, act: 'lm' }); }
-  q.push({ ic: '🌍', t: '游历四城', p: `${cities.size}/${CITY_COUNT}`, done: cities.size >= CITY_COUNT, act: 'city' });
+  q.push({ ic: '🌍', t: '游历三城', p: `${cities.size}/${CITY_COUNT}`, done: cities.size >= CITY_COUNT, act: 'city' });
   q.push({ ic: '🎫', t: '用 PWV 买一张景点门票', p: `${Math.min(1, tixOrders.filter(o=>CITIES[o.city]).length)}/1`, done: tixOrders.some(o=>CITIES[o.city]), act: 'shop' });
   $('hudQuests').innerHTML = q.map(x => `<button data-act="${x.act}" class="${x.done ? 'done' : ''}"><i>${x.done ? '✓' : x.ic}</i><span>${x.t}<b>${x.p}</b></span></button>`).join('');
 }
@@ -2264,10 +2267,11 @@ function setupGameUI() {
   GUI.myTag = tag(playerId, true);
   GUI.npcs = NPC_LOOKS.map((look, i) => { const g = makeGirl(look); g.root.visible = false; scene.add(g.root); return { g, look, pos: V3(), y: 1, yaw: i * 1.6, wait: i * 0.4, ph: i * 1.3, tag: tag(look.name) }; });
   // HUD 按钮
+  $('cardInterior').onclick=()=>{if(cardL){const r=interiorFor(cardL.city.id,cardL.id);if(r)interiorExperience.open(r.id);}};
   $('hudGo').onclick = () => { hideMenu(); travelTo(nextCity(EX.city ? EX.city.id : 'dubai')); };
   $('hudTop').onclick = () => openPanel('shop', 'topup');
   $('hudSide').onclick = e => { const b = e.target.closest('button'); if (!b) return; const a = b.dataset.act; hideMenu();
-    if (a === 'shop' || a === 'coll') openPanel(a); else if (a === 'map') toggleOverview(); else if (a === 'mine') $('myTix').click(); };
+    if(a==='interiors')interiorExperience.directory(EX.city?.id||'abudhabi');else if (a === 'shop' || a === 'coll') openPanel(a); else if (a === 'map') toggleOverview(); else if (a === 'mine') $('myTix').click(); };
   $('hudQuests').onclick = e => { const b = e.target.closest('button'); if (b) questGo(b.dataset.act); };
   $('hudMenu').onclick = () => {
     const el = $('hudMenuPop'); if (el.classList.toggle('show')) el.innerHTML = [['music', state.music ? '♪ 音乐：开（点击关闭）' : '♪ 音乐：关（点击开启）'], ['help', '？ 操作说明'], ['reset', '↺ 重置演示数据']].map(([k, t]) => `<button data-m="${k}">${t}</button>`).join('');
@@ -2277,8 +2281,8 @@ function setupGameUI() {
     else if (m === 'help') showPop(`<div class="gp-card" style="padding-left:22px"><button class="gp-x" aria-label="关闭">×</button><h2>操作说明</h2><ul class="gp-help">
       <li>方向键 / WASD 走动，按住 Shift 奔跑；手机用左下角方向键</li><li>上下拖动可俯视或仰望高楼，左右拖动环绕；滚轮或双指缩放；按 R 或点「重置视角」回到 Eva 身后</li><li>走近地标：弹出介绍并点亮城市印记；介绍卡里可用 PWV 买门票</li>
       <li>右下角 GO 前往下一座城；底部城市按钮一点直达</li><li>M 打开世界地图，Esc 关闭弹窗</li></ul><div class="gp-btns"><button class="ok" data-go="close">知道了</button></div></div>`);
-    else if (m === 'reset' && confirm('清空本浏览器里的演示数据（打卡、门票订单、PWV 余额、优惠券）并重新开始？')) {
-      [CHECK_KEY, GIFT_KEY, WALLET_KEY, ORDERS_KEY, COUPON_KEY, WATCH_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} }); location.reload();
+    else if (m === 'reset' && confirm('清空本浏览器里的演示数据（打卡、室内探索、门票订单、PWV 余额、优惠券）并重新开始？')) {
+      [CHECK_KEY, GIFT_KEY, WALLET_KEY, ORDERS_KEY, COUPON_KEY, WATCH_KEY, 'ta_interior_visits'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} }); location.reload();
     }
   };
   $('gpop').onclick = e => {
@@ -2313,7 +2317,7 @@ function setReviewCamera(kind) {
   closePanel(); hideCard(); camFly = null;
   EX.overview = false; EX.hold = true; EX.keys.clear(); document.body.classList.remove('overview');
   controls.maxDistance = 3000;
-  const cityId=kind.startsWith('vegas')?'lasvegas':kind.startsWith('tokyo')?'tokyo':kind.startsWith('abu')?'abudhabi':'dubai';
+  const cityId=kind.startsWith('vegas')?'lasvegas':kind.startsWith('abu')?'abudhabi':'dubai';
   const [x, z] = CITY_GRID[cityId];
   const shots = {
     abuTowerEntry:{p:[-32,4,-53],q:[-38,1.9,-61],name:'高楼入口收口',start:[-38,-47]},
@@ -2338,17 +2342,6 @@ function setReviewCamera(kind) {
     vegasSphere:{p:[24,15,9],q:[0,8,-18],name:'Sphere 球幕',start:[0,-6]},
     vegasSign:{p:[21,9,48],q:[7,4,32],name:'欢迎牌街景',start:[1,32]},
     vegasStrip:{p:[-42,14,17],q:[-4,8,-34],name:'酒店大道',start:[-38,12]},
-
-    tokyoRiver:{p:[-20,8,40],q:[-20,3,7],name:'东京樱花河岸',start:[-35,25]},
-    tokyoTower:{p:[-10,12,7],q:[-24,14,-22],name:'东京塔近景',start:[-24,-12]},
-    tokyoSkytree:{p:[107,31,18],q:[58,22,-62],name:'晴空塔轮廓',start:[44,-48]},
-    tokyoTemple:{p:[-12,11,-25],q:[-24,7,-44],name:'浅草寺前场',start:[-24,-34]},
-    tokyoOverview:{p:[110,86,132],q:[0,5,-16],name:'东京全景',start:[0,10]},
-    tokyoStreet:{p:[-46,8,20],q:[-57,3,4],name:'东京町屋街区',start:[-40,3]},
-    tokyoSakura:{p:[26,7,33],q:[17,3,15],name:'樱花与商店街',start:[0,16]},
-    tokyoSkyline:{p:[12,22,1],q:[13,12,-66],name:'东京北区天际线',start:[0,10]},
-    tokyoMoat:{p:[40,14,-2],q:[12,3,-30],name:'皇居护城河',start:[32,-12]},
-    tokyoAkiba:{p:[78,13,42],q:[56,5,22],name:'秋叶原街区',start:[44,8]},
     abuEtihad:{p:[99,26,20],q:[56,13,-20],name:'阿提哈德五塔群',start:[38,-20]},
 abuMarble:{p:[-12,7.5,51],q:[-17,1.1,40.5],name:'清真寺彩石嵌花',start:[-1,44]},
     abuOverview:{p:[112,92,126],q:[0,4,-12],name:'阿布扎比全景',start:[-15,44]},
@@ -2454,7 +2447,7 @@ function setupReview() {
   panel.innerHTML = `<strong>视觉验收 · 第三十六轮</strong><div class="reviewBtns"><button data-shot="island">全岛</button><button data-shot="plaza">广场</button><button data-shot="close">近景</button><button data-shot="street">街区</button><button data-shot="district">滨海</button></div><div class="reviewBtns"><button data-shot="arcade">立面细节</button><button data-shot="garden">花园细节</button><button data-shot="road">街道细节</button><button data-shot="skyline">高楼细节</button></div><div class="reviewBtns"><button data-shot="waterfront">滨水样板</button><button data-shot="shop">店铺前场</button><button data-shot="quay">岸石细节</button><button data-shot="fountain">喷泉细节</button><button data-shot="flowers">屋顶垂花</button></div><div class="reviewBtns"><button data-shot="planting">种植层次</button><button data-shot="corner">墙角细节</button></div><div class="reviewBtns"><button id="reviewLook" aria-pressed="true">After · 写实材质</button><button id="reviewDetail" aria-pressed="true">第二轮 · 建筑与棕榈</button><button id="reviewDistrict" aria-pressed="true">第三十一轮 · 石墙、树冠与侧缘花庭</button><button id="reviewFreeze" aria-pressed="false">定格环境</button></div><div class="reviewBtns"><button data-character="front">Eva 正面</button><button data-character="side">侧面</button><button data-character="back">背面</button><button id="reviewGait" aria-pressed="false">步行预览</button></div><div class="reviewBtns"><button data-character="portrait">面部特写</button><button id="reviewVehicle">车辆细节</button></div><div class="reviewBtns"><button id="reviewAO" aria-pressed="true">接触阴影 · 开</button><button id="reviewReflections" aria-pressed="true">街区反射 · 开</button><button id="reviewBounce" aria-pressed="true">拱廊反弹光 · 开</button><button id="reviewSkyline" aria-pressed="true">远景楼群 · 开</button></div><output id="reviewStatus" aria-live="polite">正在启动…</output>`;
   stageEl.append(panel);
   const coverageShots = document.createElement('div'); coverageShots.className = 'reviewBtns reviewCoverage';
-  for (const [shot, label] of [['abuPrayerEntry','主厅入口'],['abuPrayerHall','主祈祷厅'],['abuPrayerAisle','主厅侧廊'],['abuSideArch','侧拱门套'],['abuVestibule','门厅天花'],['abuVestibuleFloor','门厅地面'],['abuTowerEntry','高楼入口'],['abuPortal','中央门洞'],['abuGardenDetail','花境花叶'],['abuMosqueCraft','拱廊细部'],['abuCoastPlanting','海滨花境'],['abuRoofscape','楼顶构件'],['abuFacadeDistrict','高楼立面'],['abuCoastCurve','弧形海滨'],['abuMirror','庭院倒影'],['vegasLakeWalk','湖岸步行'],['vegasOverview','拉斯维加斯'],['vegasLake','喷泉湖'],['vegasSphere','Sphere'],['vegasSign','欢迎牌'],['vegasStrip','酒店大道'],['abuEtihad','阿提哈德塔'],['abuMarble','大理石嵌花'],['tokyoRiver','樱花河岸'],['tokyoTower','东京塔'],['tokyoSkytree','晴空塔'],['tokyoTemple','浅草寺'],['tokyoOverview','东京全景'],['tokyoStreet','町屋街区'],['tokyoSakura','樱花街景'],['tokyoSkyline','东京天际线'],['tokyoMoat','护城河'],['tokyoAkiba','秋叶原'],['abuVenueEntry','场馆入口'],['abuPavilion','场馆构件'],['abuLagoonEdge','湖岛岸缘'],['abuFerrariGrounds','场馆花园'],['abuCultureGrounds','文化场馆'],['abuLake','湖畔街区'],['abuNorth','北区街道'],['abuGround','庭院铺装'],['abuLobby','皇宫门厅'],['abuMinaret','宣礼塔'],['abuFacade','皇宫外墙'],['abuGarden','皇宫前庭'],['abuOverview','阿布扎比全景'],['abuMosque','白石清真寺'],['abuCorniche','阿布扎比海滨'],['abuPalace','皇宫花园'],['abuSkyline','阿布扎比楼群'],['marinaPier','泊位步行'],['marinaDining','滨水餐饮街'],['wheel','滨海摩天轮'],['cruise','邮轮码头'],['harbor','东湾全景'],['burjUp', '塔底仰视'], ['promenade', '步道花境'], ['sideGarden', '侧缘花庭'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
+  for (const [shot, label] of [['abuPrayerEntry','主厅入口'],['abuPrayerHall','主祈祷厅'],['abuPrayerAisle','主厅侧廊'],['abuSideArch','侧拱门套'],['abuVestibule','门厅天花'],['abuVestibuleFloor','门厅地面'],['abuTowerEntry','高楼入口'],['abuPortal','中央门洞'],['abuGardenDetail','花境花叶'],['abuMosqueCraft','拱廊细部'],['abuCoastPlanting','海滨花境'],['abuRoofscape','楼顶构件'],['abuFacadeDistrict','高楼立面'],['abuCoastCurve','弧形海滨'],['abuMirror','庭院倒影'],['vegasLakeWalk','湖岸步行'],['vegasOverview','拉斯维加斯'],['vegasLake','喷泉湖'],['vegasSphere','Sphere'],['vegasSign','欢迎牌'],['vegasStrip','酒店大道'],['abuEtihad','阿提哈德塔'],['abuMarble','大理石嵌花'],['abuVenueEntry','场馆入口'],['abuPavilion','场馆构件'],['abuLagoonEdge','湖岛岸缘'],['abuFerrariGrounds','场馆花园'],['abuCultureGrounds','文化场馆'],['abuLake','湖畔街区'],['abuNorth','北区街道'],['abuGround','庭院铺装'],['abuLobby','皇宫门厅'],['abuMinaret','宣礼塔'],['abuFacade','皇宫外墙'],['abuGarden','皇宫前庭'],['abuOverview','阿布扎比全景'],['abuMosque','白石清真寺'],['abuCorniche','阿布扎比海滨'],['abuPalace','皇宫花园'],['abuSkyline','阿布扎比楼群'],['marinaPier','泊位步行'],['marinaDining','滨水餐饮街'],['wheel','滨海摩天轮'],['cruise','邮轮码头'],['harbor','东湾全景'],['burjUp', '塔底仰视'], ['promenade', '步道花境'], ['sideGarden', '侧缘花庭'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
     const button = document.createElement('button'); button.dataset.shot = shot; button.textContent = label;
     coverageShots.append(button);
   }
@@ -2523,6 +2516,7 @@ function resize() {
 addEventListener('resize', resize);
 let fpsN = 0, fpsT = performance.now();
 function frame(now) {
+  if(interiorExperience?.active){state.last=now;interiorExperience.update(now);requestAnimationFrame(frame);return;}
   const dt = Math.max(0, Math.min(0.1, (now - state.last) / 1000)); state.last = now;
   if (!review.frozen) review.time += dt;
   world.render(review.time); seaMat.uniforms.uT.value = review.time;
@@ -2540,6 +2534,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 setupReview();
+interiorExperience=createInteriorExperience({onEnter(){EX.keys.clear();controls.enabled=false;closePanel();closePop();camFly=null;},onExit(){EX.keys.clear();controls.enabled=true;state.last=performance.now();}});
 try {
   world = buildExploreWorld('parallel-world'); scene.add(world.root);
   setupExplore(); resize();
@@ -2550,4 +2545,4 @@ try {
   if (REVIEW) $('reviewStatus').textContent = '启动失败：' + error.stack;
   console.error(error);
 }
-addEventListener('pagehide', event => { if (!event.persisted) realism.dispose(); });
+addEventListener('pagehide', event => { if (!event.persisted){interiorExperience?.dispose();realism.dispose();} });

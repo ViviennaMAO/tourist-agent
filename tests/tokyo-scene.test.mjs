@@ -43,14 +43,3 @@ test('Tokyo ground keeps existing navigation, and moat stones follow either cont
  for(const p of TOKYO_PAVING){assert.ok(p.x+p.w/2<-16||p.z+p.d/2<-35);assert.ok(p.z-p.d/2>-53);assert.ok(p.z+p.d/2<39);}
  const s=createTokyoGround({city:f.city});checkMeshes(s.root,40000);s.setEnabled(true);s.apply();s.dispose();assert.deepEqual(f.ctx.rects,[f.obstacle]);assert.deepEqual(f.ctx.walkSurfaces,[f.surface]);f.dispose();
 });
-
-test('Imperial Palace can be visited from its dry shore viewpoint without widening other landmarks',async()=>{
- const {landmarkVisitDistance,CHECKIN_RANGE}=await import('../src/landmark-proximity.js');
- const {CITIES,CITY_GRID}=await import('../src/cities.js');
- const cfg=CITIES.tokyo.landmarks.imperial_palace,origin=CITY_GRID.tokyo,center={x:origin[0]+cfg.pos[0],z:origin[1]+cfg.pos[1]};
- const point={x:origin[0]+cfg.arrival[0],z:origin[1]+cfg.arrival[1]};
- assert.ok(cfg.arrival[1]>-14+.45);assert.deepEqual(cfg.arrival,cfg.checkinSpot.pos);
- assert.ok(landmarkVisitDistance(point,center,8,cfg.checkinSpot,origin)<CHECKIN_RANGE);
- assert.ok(landmarkVisitDistance(point,center,8,null,origin)>=CHECKIN_RANGE);
- point.z+=3.1;assert.ok(landmarkVisitDistance(point,center,8,cfg.checkinSpot,origin)>=CHECKIN_RANGE);
-});

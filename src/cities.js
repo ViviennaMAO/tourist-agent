@@ -214,94 +214,6 @@ wait(3.6)
 title()
 end(50)`
   },
-  tokyo: {
-    id: 'tokyo', name: 'TOKYO', nameLocal: '東京', nameZh: '东京',
-    bgm: ASSET + 'media/tokyo/bgm.mp3',
-    landmarks: {
-      tokyo_tower:     { key: 'Tokyo_Tower__Tokyo_Tower',           tex: 'Tokyo_Tower.png',            name: 'Tokyo Tower',     zh: '东京塔',     pos: [-24, -22], h: 26, base: 1.25, r: 7,  rot: 0, dur: 5.5 },
-      imperial_palace: { arrival:[12,-12],checkinSpot:{pos:[12,-12],radius:3},key: 'Tokyo_Kokyo__Tokyo_Kokyo',           tex: 'Tokyo_Kokyo.png',            name: 'Imperial Palace', zh: '皇居',       pos: [12, -30],  h: 17, base: 1.75, r: 9, rot: 0, dur: 3 },
-      sensoji:         { key: 'Tokyo_Asakusa_2__Tokyo_Asakusa_2',   tex: 'Tokyo_Asakusa_2.png',        name: 'Sensoji Temple',  zh: '浅草寺',     pos: [-24, -44], h: 17, base: 1.25, r: 6,  rot: 0, dur: 3 },
-      skytree:         { key: 'Tokyo_Tower2__Tokyo_Tower2',         tex: 'Tokyo_Tower2.png',           name: 'Tokyo Skytree',   zh: '东京晴空塔', pos: [58, -62],  h: 42, base: 1.25, r: 6,  rot: 0, dur: 5 },
-      akihabara:       { key: 'Tokoyo_Akiba__Tokoyo_Akiba',         tex: 'Tokoyo_Akiba_BaseColor.png', name: 'Akihabara',       zh: '秋叶原',     pos: [56, 22],   h: 11, base: 1.25, r: 8,  rot: 0, dur: 3 },
-    },
-    script: `stage(1,'云层俯冲',0)
-cam([0,340,170],[0,0,-14])
-clouds(70)
-wait(2.3)
-cam([12,175,175],[0,0,-18])
-
-stage(2,'绿岛升起',4)
-island('mainland','rect',[-76,-82,76,48],14)     // 东京主岛
-cam([30,128,160],[0,0,-18])
-wait(0.8)
-grass([-72,-78,72,44],12)
-dunes(9,[-70,-82,70,-77],'grass')                // 远景青山
-
-stage(3,'护城河与河道',8.5)
-cam([-46,84,58],[10,0,-24])
-water('moat','rect',[-6,-46,30,-14],5)           // 皇居护城河
-isle('rect',[-1,-41,25,-19],3)
-canal([30,-30],[78.5,-30],6)                     // 东侧河道
-canal([-6,-22],[-41.5,50.5],7)                   // 西南河道
-cam([34,64,40],[10,2,-26])
-
-stage(4,'道路与铁轨',13.5)
-cam([66,104,96],[0,0,-18])
-road([-40,8],[-26.5,8])                          // 环城路
-road([-26.5,8],[-15,8],'bridge')
-road([-15,8],[44,8])
-road([44,8],[44,-25])
-road([44,-25],[44,-35],'bridge')
-road([44,-35],[44,-56])
-road([44,-56],[-40,-56])
-road([-40,-56],[-40,8])
-road([0,8],[0,40])                               // 参道
-cam([24,96,92],[-8,0,-16])
-redBridge([-33,33],-0.45,12)                     // 朱红拱桥
-rail([[-68,40],[68,40],[68,-74],[-68,-74]])      // 新干线环线
-
-stage(5,'东京塔与皇居',20)
-cam([6,26,18],[-24,6,-22])
-landmark('tokyo_tower')
-cam([12,50,30],[-24,20,-24])
-landmark('imperial_palace')
-cam([42,38,12],[12,4,-30])
-
-stage(6,'樱花与寺町',26.5)
-cam([-72,62,34],[-30,4,-28])
-landmark('sensoji')
-torii([12,-4],0,1)                               // 皇居前鸟居
-block([-70,-52,-48,2],8,'wa')                    // 西侧寺町
-block([-70,12,-46,38],5,'wa')
-cam([-36,84,70],[-14,4,-12])
-trees(46,[-38,-54,42,6],'sakura')                // 环内樱花
-trees(20,[2,10,40,38],'sakura')
-
-stage(7,'晴空塔与秋叶原',33.5)
-cam([92,62,-4],[58,14,-50])
-landmark('skytree')
-landmark('akihabara')
-cam([84,58,74],[40,6,6])
-block([-66,-72,40,-62],12,'mixed')
-block([50,-50,66,-38],3,'glass')
-block([48,-16,68,0],3,'mixed')
-block([12,12,40,38],4,'shops')
-trees(36,[-72,-80,72,44],'green')
-sign('TOKYO',[57,34.5],-0.35,1.25,2.8)
-
-stage(8,'城市苏醒',42)
-cam([-36,112,156],[0,4,-16])
-train([[-68,40],[68,40],[68,-74],[-68,-74]],6)
-cars(16,[[[-40,8],[44,8],[44,-56],[-40,-56]],[[0,8],[0,40]]])
-yachts(4,[[-92,-20,9],[92,10,10],[30,70,10],[-50,68,9]])
-petals(160,[-40,-56,44,8])
-gulls(10)
-wait(0.6)
-orbit([0,0,-16],155,112,7)
-wait(3.0)
-title()
-end(50)`
-  },
   lasvegas: {
     reservedPlots: VEGAS_RESERVATIONS,
     id: 'lasvegas', name: 'LAS VEGAS', nameLocal: 'Entertainment Capital', nameZh: '拉斯维加斯',
@@ -390,7 +302,7 @@ export const CITY_ORDER = Object.keys(CITIES);
 export const CITY_COUNT = CITY_ORDER.length;
 CITY_ORDER.forEach((id,i)=>Object.assign(CITIES[id],{index:i+1,total:CITY_COUNT}));
 // Keep existing city origins so Dubai's authored lighting and review views stay aligned.
-export const CITY_GRID = { dubai: [-345,-230], abudhabi: [-115,-230], tokyo: [115,-230], lasvegas: [115,0] };
+export const CITY_GRID = { dubai: [-345,-230], abudhabi: [-115,-230], lasvegas: [-115,0] };
 
 export function activeCheckinKeys(keys) {
   const valid=new Set(CITY_ORDER.flatMap(id=>Object.keys(CITIES[id].landmarks).map(k=>id+':'+k)));

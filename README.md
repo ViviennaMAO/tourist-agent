@@ -1,14 +1,16 @@
 # Tourist Agent
 
-An independent, Explore-only edition of Parallel World. Walk through four miniature cities — Dubai, Abu Dhabi, Tokyo, and Las Vegas —, visit landmarks, and collect local demonstration stamps and tickets.
+An independent, Explore-only edition of Parallel World. Walk through three miniature cities — Dubai, Abu Dhabi, and Las Vegas —, visit landmarks, and collect local demonstration stamps and tickets.
 
-The active edition loads 25 landmarks across these four cities. Dubai now includes an animated waterfront observation wheel and a circular observation-wheel island and a curved eight-vessel harbor with ten waterfront cafés/restaurants and five walkable finger piers, both connected to shore navigation and checkins. City navigation, collections, quests and the world map share the same roster; archived local checkins remain stored but are excluded from active progress. See [four-city validation](docs/four-city-edition.md).
+The active edition loads **20 landmarks across three cities**. Tokyo is removed from city selection, the world map, quests, collections and runtime asset loading. Existing local checkins remain stored but are excluded from active progress. The independent repository and Vercel deployment are unchanged.
+
+**15 enterable interior theme studies (5 per city)** are available from the “室内” HUD directory or “进入室内” on supported landmark cards. Each has an independent 3D scene, an overview, an inside viewpoint and three detail viewpoints. Drag to orbit, scroll/pinch to zoom, and use WASD to translate the observation camera. Returning restores the outdoor position. These are authored miniature interpretations, not surveyed interiors or seamless avatar-walking rooms. See [scope, controls and validation](docs/three-city-interiors.md).
+
+Abu Dhabi includes a white-stone prayer hall, palace garden hall, racing design gallery, bay observation lounge and light/courtyard gallery. Dubai includes five landmark-themed interiors; Las Vegas includes five theatre, atrium and observation interiors.
 
 Las Vegas phase 1 replaces the early colour-block architecture with 32 refined buildings including a new lakefront hotel, an animated LED Sphere, 36 fountain jets, 29 detailed palms and nine lakefront trees. See [scope, verification and remaining work](docs/lasvegas-phase-1.md).
 
-Tokyo phase 2 follows the supplied skyline/cherry-river references: 15 infill buildings, stepped rooflines, 13 riverside cherry trees, a slender lattice Skytree and revised Tokyo Tower colours. See [implementation, verification and remaining gaps](docs/tokyo-phase-2.md).
-
-Tokyo phase 1 refines 35 ordinary buildings, 102 trees (66 cherry trees), street finishes and the imperial moat edge, with local reflections and contact shadows. See [scope, verification and remaining work](docs/tokyo-phase-1.md).
+Earlier Tokyo studies remain archived in source/history and are not part of the active city roster.
 
 Abu Dhabi phase 13 opens the main prayer-hall entrance and adds column aisles, arches, a recessed mihrab, patterned carpet and tiered chandeliers. See [scope, validation and access limits](docs/abudhabi-phase-13.md).
 

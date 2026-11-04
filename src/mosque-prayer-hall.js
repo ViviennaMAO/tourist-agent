@@ -17,11 +17,11 @@ export function prayerArchGeometry(halfWidth,top,radius,height,depth){
  for(const p of prayerArchPoints(radius,height))s.lineTo(p.x,p.y);s.closePath();
  return new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:false});
 }
-export function installPrayerCarpet(material){
+export function installPrayerCarpet(material,{halfWidth=7.65,halfDepth=2.14,centerZ=-6.12}={}){
  material.onBeforeCompile=sh=>{
   sh.vertexShader='varying vec2 carpetP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ncarpetP=position.xz;');
   sh.fragmentShader='varying vec2 carpetP;\n'+sh.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-   vec2 p=carpetP;float edge=min(7.65-abs(p.x),2.14-abs(p.y+6.12));
+   vec2 p=carpetP;float edge=min(${halfWidth.toFixed(3)}-abs(p.x),${halfDepth.toFixed(3)}-abs(p.y-(${centerZ.toFixed(3)})));
    float aa=max(length(fwidth(p)),.002);
    float border=(1.-smoothstep(.05,.05+aa,abs(edge-.18)))*.5;
    vec2 cell=vec2(mod(p.x+.55,1.1)-.55,mod(p.y+.42,.84)-.42);
@@ -32,7 +32,7 @@ export function installPrayerCarpet(material){
    diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.45,.47,.28),clamp(border+flower*.25*visible,0.,.6));
    diffuseColor.rgb*=1.-(1.-row)*.06*visible;
   `);
- };material.customProgramCacheKey=()=> 'abu-prayer-carpet-v1';
+ };material.customProgramCacheKey=()=>`abu-prayer-carpet-v2-${halfWidth}-${halfDepth}-${centerZ}`;
 }
 export function buildPrayerHall({add,box,cylinder,wall,trim,gold,floor,carpet,glass}){
  const arch=(x,y,z,half,top,riseR,riseH,depth,angle=0)=>add(prayerArchGeometry(half,top,riseR,riseH,depth).rotateY(angle).translate(x,y,z),wall);
