@@ -1,3 +1,4 @@
+import {configureColorLook} from './color-look.js';
 import {createAbuCoastGardens} from './abudhabi-coast-gardens.js';
 import {createAbuCoastalWalk} from './abudhabi-coastline.js';
 import {createMarbleReflection} from './marble-reflection.js';
@@ -54,7 +55,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   leafTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
   textures.push(leafTexture);
   const original = {
-    exposure: renderer.toneMappingExposure, env: scene.environment,
+    toneMapping: renderer.toneMapping, exposure: renderer.toneMappingExposure, env: scene.environment,
     hemi: hemi.color.clone(), ground: hemi.groundColor.clone(), hi: hemi.intensity,
     sun: sun.color.clone(), si: sun.intensity,
     top: sky.material.uniforms.top.value.clone(), mid: sky.material.uniforms.mid.value.clone(),
@@ -70,11 +71,11 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
       if(taAtmosphere>.5){
         vec3 d=normalize(vD);
         float elevation=smoothstep(0.,.19,max(d.y,0.));
-        c=mix(hor,vec3(.18,.32,.55),elevation);
+        c=mix(hor,vec3(.055,.245,.58),elevation);
         vec2 uv=d.xz/max(d.y+.12,.08)*2.4;
         float wisps=smoothstep(.52,.75,taCloud(uv*vec2(.65,1.8)));
         float cloud=wisps*smoothstep(.02,.18,d.y)*.43;
-        c=mix(c,vec3(.91,.87,.79),cloud);
+        c=mix(c,vec3(.94,.95,.97),cloud);
       }
       gl_FragColor = vec4(c,1.);`);
   sky.material.needsUpdate = true;
@@ -186,8 +187,8 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   // A low-resolution authored daylight environment: no external HDRI dependency.
   const ec = document.createElement('canvas'); ec.width = 512; ec.height = 256;
   const eg = ec.getContext('2d'), gradient = eg.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, '#8ba7c0'); gradient.addColorStop(.45, '#c6d4de');
-  gradient.addColorStop(.52, '#abaa9b'); gradient.addColorStop(1, '#61594c');
+  gradient.addColorStop(0, '#82b7e1'); gradient.addColorStop(.45, '#c5e2f2');
+  gradient.addColorStop(.52, '#c9c3ab'); gradient.addColorStop(1, '#777366');
   eg.fillStyle = gradient; eg.fillRect(0, 0, 512, 256);
   const glow = eg.createRadialGradient(145, 65, 2, 145, 65, 60);
   glow.addColorStop(0, 'rgba(255,250,230,1)'); glow.addColorStop(1, 'rgba(255,250,230,0)');
@@ -200,16 +201,17 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
   function applyEnvironment() {
     const district = enabled && refinementEnabled && districtEnabled;
     sky.material.uniforms.taAtmosphere.value = district ? 1 : 0;
-    renderer.toneMappingExposure = enabled ? .90 : original.exposure;
+    if(enabled)configureColorLook(renderer,1.10);
+    else {renderer.toneMapping=original.toneMapping;renderer.toneMappingExposure=original.exposure;}
     scene.environment = enabled ? envTarget.texture : original.env;
-    hemi.color.copy(enabled ? new THREE.Color('#c4d6ef') : original.hemi);
-    hemi.groundColor.copy(enabled ? new THREE.Color('#baa68d') : original.ground);
-    hemi.intensity = enabled ? (district ? .50 : 1.1) : original.hi;
-    sun.color.copy(enabled ? new THREE.Color('#ffe8c6') : original.sun);
-    sun.intensity = enabled ? (district ? 3.55 : 2.65) : original.si;
-    sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#8eaabb') : original.top);
-    sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#bdcdd2') : original.mid);
-    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color(district ? '#adc5d9' : '#e0e1d8') : original.horizon);
+    hemi.color.copy(enabled ? new THREE.Color('#d6eaff') : original.hemi);
+    hemi.groundColor.copy(enabled ? new THREE.Color('#c9b99b') : original.ground);
+    hemi.intensity = enabled ? (district ? .68 : 1.1) : original.hi;
+    sun.color.copy(enabled ? new THREE.Color('#fff1da') : original.sun);
+    sun.intensity = enabled ? (district ? 3.4 : 2.65) : original.si;
+    sky.material.uniforms.top.value.copy(enabled ? new THREE.Color('#6ea9dc') : original.top);
+    sky.material.uniforms.mid.value.copy(enabled ? new THREE.Color('#9ac9e8') : original.mid);
+    sky.material.uniforms.hor.value.copy(enabled ? new THREE.Color(district ? '#9fc9e3' : '#e0e1d8') : original.horizon);
     scene.fog.color.copy(enabled ? sky.material.uniforms.hor.value : original.fog);
     // Static reflection captures must be refreshed after exposure/environment
     // or detail changes, otherwise panes keep the previous lighting setup.
@@ -310,7 +312,7 @@ export function createRealism({ THREE, renderer, scene, camera, sun, hemi, M, sk
     }
     sun.shadow.normalBias = .025; sun.shadow.bias = -.00012;
     const h = Math.max(0, camera.position.y);
-    scene.fog.near = 240 + h * 1.6; scene.fog.far = 920 + h * 3.2;
+    scene.fog.near = (enabled?300:240) + h * 1.6; scene.fog.far = (enabled?1180:920) + h * 3.2;
     waterStudy.update({ sunDirection: enabled ? dir : originalDir, fog: scene.fog.color, near: scene.fog.near, far: scene.fog.far });
   }
   function setEnabled(value) {

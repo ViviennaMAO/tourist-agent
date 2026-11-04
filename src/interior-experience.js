@@ -1,3 +1,4 @@
+import {configureColorLook} from './color-look.js';
 import * as THREE from 'three';
 import {createContactShadows} from './contact-shadows.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
@@ -32,7 +33,7 @@ export function createInteriorExperience({onEnter=()=>{},onExit=()=>{}}={}){
   const area=document.createElement('div');area.className='interior-stage';dialog.append(area);
   const help=document.createElement('p');help.className='interior-help';help.textContent='拖动环绕 · 滚轮 / 双指缩放 · WASD 平移观察 · Esc 返回城市';dialog.append(help);
   try{
-   room=createInteriorScene(spec);if(!renderer){renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;const env=new RoomEnvironment(renderer),pmrem=new THREE.PMREMGenerator(renderer);environment=pmrem.fromScene(env,.06);env.dispose();pmrem.dispose();}
+   room=createInteriorScene(spec);if(!renderer){renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;configureColorLook(renderer,1.04);const env=new RoomEnvironment(renderer),pmrem=new THREE.PMREMGenerator(renderer);environment=pmrem.fromScene(env,.06);env.dispose();pmrem.dispose();}
    room.scene.environment=environment.texture;
    const openedRoom=room;dialog.dataset.artState='loading';room.art.ready.then(ok=>{if(room!==openedRoom)return;dialog.dataset.artState=ok?'ready':'error';if(!ok)help.textContent='挂画暂时未能加载，请重新进入空间重试。';});
    tools.querySelector('[data-interior-art]').title=room.art.artwork.title+' · 原创城市主题画';

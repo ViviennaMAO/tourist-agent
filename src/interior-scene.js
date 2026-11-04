@@ -162,7 +162,7 @@ export function createInteriorScene(spec){
  const art=hangCityArtwork(spec,{add,box,material,captureStart,transformSince},scene);
  if(INTERIOR_SHOTS[spec.theme])points=INTERIOR_SHOTS[spec.theme].details.map((shot,i)=>({label:spec.details[i],...shot}));
  // Enclosed rooms receive cooler sky fill, warm lamps and material reflections.
- scene.add(new THREE.HemisphereLight(night?'#9bb9d6':'#e7efff','#b2a28b',night?.65:1.05));
+ scene.add(new THREE.HemisphereLight(night?'#afd4f4':'#edf4ff','#c1b29a',night?.72:1.10));
  const sun=new THREE.DirectionalLight('#fff0d5',night?.7:2.4);sun.position.set(-8,14,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.5,far:50});sun.shadow.normalBias=.015;sun.shadow.bias=-.00008;sun.shadow.radius=3;scene.add(sun);
  for(const x of [-4,4]){const l=new THREE.PointLight(night?'#9bd3ff':'#ffe0aa',65,22,2);l.position.set(x,5,1);scene.add(l);}
  let triangles=0;
