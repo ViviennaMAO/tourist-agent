@@ -70,3 +70,18 @@ export function installExhibitLight(material,kind){
  };material.customProgramCacheKey=()=>`interior-exhibit-${kind}-v1`;
  return t=>{time.value=t;};
 }
+
+// Depth cue for the aquarium's rear water volume, not a photographic backdrop.
+export function installAquariumDepth(material){
+ const time={value:0};material.onBeforeCompile=shader=>{
+  shader.uniforms.aquaticTime=time;
+  shader.vertexShader='varying vec3 aquaticP;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\naquaticP=position;');
+  shader.fragmentShader='varying vec3 aquaticP; uniform float aquaticTime;\n'+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+   vec2 p=aquaticP.xy;float depth=clamp(p.y/6.5,0.,1.);
+   float shaft=pow(.5+.5*sin(p.x*1.5+p.y*.2+sin(p.x*.7+aquaticTime*.1)),9.)*pow(depth,1.7);
+   float caustic=pow(.5+.5*sin(p.x*5.+sin(p.y*4.+aquaticTime*.3)),10.)*(1.-depth)*.025;
+   vec3 aquaticColor=mix(vec3(.009,.055,.072),vec3(.035,.25,.31),depth)+vec3(.025,.065,.07)*shaft+caustic;
+   diffuseColor.rgb=aquaticColor;totalEmissiveRadiance=aquaticColor*.25;`);
+ };material.customProgramCacheKey=()=> 'interior-aquarium-depth-v1';return t=>{time.value=t;};
+}

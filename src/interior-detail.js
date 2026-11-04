@@ -60,13 +60,20 @@ export function refineInterior(spec,k){
  if(theme==='palace'){
   roofBox(plaster,-6.55,7.15,0,4.9,.25,14);roofBox(plaster,6.55,7.15,0,4.9,.25,14);
   roofBox(plaster,0,7.15,-6,8.2,.25,2);roofBox(plaster,0,7.15,5.1,8.2,.25,3.8);
+ }else if(theme==='luxor'){
+  for(const side of [-1,1])addRoof(new THREE.BoxGeometry(10.6,.18,14).rotateZ(-side*Math.atan2(5,8)).translate(side*4.5,7.55,0),plaster);
+  const shape=new THREE.Shape();shape.moveTo(-9,5);shape.lineTo(0,10.4);shape.lineTo(9,5);shape.closePath();
+  add(new THREE.ExtrudeGeometry(shape,{depth:.2,bevelEnabled:false}).translate(0,0,-7),plaster);
+ }else if(theme==='balloon'){
+  const vault=material('#294f67',.15,.6);vault.side=THREE.DoubleSide;
+  addRoof(new THREE.SphereGeometry(6.56,32,16,0,Math.PI*2,0,Math.PI*.35).translate(0,4,0),vault);
  }else roofBox(roofM,0,theme==='future'?9.15:7.15,0,18,.25,14);
  if(theme==='future'){for(const x of [-9,9])roofBox(ink,x,8.1,0,.2,2,14);roofBox(ink,0,8.1,-7,18,2,.2);}
  for(const x of [-8.8,8.8])for(const [y,w] of [[.22,.18],[.53,.12],[4.05,.18]])box(night?ink:ornate?marble:timber,x,y,0,w,.09,13.8);
  for(const [y,h,d] of [[.2,.28,.16],[.48,.07,.2],[6.55,.13,.25],[6.72,.18,.35],[6.9,.07,.45]])box(night?ink:ornate?marble:timber,0,y,-6.8,17.8,h,d);
  // Rectangular marble slabs replace the old evenly spaced stripe floor.
  if(theme!=='mosque')box(night?ink:marble,0,.06,0,17.7,.035,13.7);
- if(!['palace','balloon','sphere','future'].includes(theme)){
+ if(!['palace','balloon','sphere','future','luxor'].includes(theme)){
   for(const x of [-6,0,6])for(const z of [-4,1,5]){
    roofBox(timber,x,6.97,z,4.9,.12,3.2);roofBox(roofM,x,6.88,z,4.7,.08,3);
    for(const dx of [-2.2,2.2])roofBox(bronze,x+dx,6.82,z,.025,.03,2.8);
@@ -97,7 +104,7 @@ export function refineInterior(spec,k){
    add(new THREE.BoxGeometry(.32,.035,.42).rotateZ(-.22).translate(x-.14,.76,1.8),plaster);add(new THREE.BoxGeometry(.32,.035,.42).rotateZ(.22).translate(x+.14,.76,1.8),plaster);
   }
  }else if(theme==='palace'||theme==='sail'||theme==='resort'){
-  for(const x of [-7.9,-4,4,7.9]){frame(x,3.4,-6.55,1.6,4.7);box(timber,x,3.4,-6.37,1.42,4.5,.08);mould(x,1.15,-6.25,.55,3.9,marble);for(let y=1.6;y<5.2;y+=.9)rosette(x,y,-6.22,.17);}
+  if(theme!=='sail')for(const x of [-7.9,-4,4,7.9]){frame(x,3.4,-6.55,1.6,4.7);box(timber,x,3.4,-6.37,1.42,4.5,.08);mould(x,1.15,-6.25,.55,3.9,marble);for(let y=1.6;y<5.2;y+=.9)rosette(x,y,-6.22,.17);}
   for(const x of [-6,6])for(const z of [-4,4]){vase(x,.1,z,.8,true);}
   for(const x of [-2.4,2.4])for(const z of [-2.75,.75])cyl(bronze,x,.36,z,.07,.5,12);
   for(const x of [-6,6]){const rug=material('#8a6e55',0,x<0?.971:.972);installInteriorRug(rug,1.65,2.2,{centerX:x});box(rug,x,.1,0,3.3,.025,4.4);}
@@ -176,7 +183,7 @@ export function refineInterior(spec,k){
  }else if(theme==='luxor'){
   for(const x of [-6,6])for(const z of [-4,0,4]){for(const y of [.24,.45,4.85])ring(bronze,x,y,z,.43,.028);for(let y=1;y<4.5;y+=.5)for(let i=0;i<4;i++)box(bronze,x-.2+i*.13,y,z+.405,.06,.18,.025);}
  }else if(theme==='harbor'){
-  for(let i=0;i<6;i++){const x=-3.5+i*1.4,z=-1+Math.sin(i)*.6;for(const dx of [-.24,-.08,.08,.24])box(ink,x+dx,1.73,z+.14,.075,.07,.012);rod(bronze,[x,1.85,z],[x,2.15,z],.012);}
+  for(let i=0;i<6;i++){const x=-3.5+i*1.4,z=-1+Math.sin(i)*.6;for(const dx of [-.24,-.08,.08,.24])box(ink,x+dx,1.73,z+.14,.075,.07,.012);rod(bronze,[x,1.7,z],[x,2.03,z],.012);}
   for(const x of [-6,6])vase(x,.1,-3,.7,true);
  }else if(theme==='balloon'){
   for(let i=0;i<32;i++){const a=i*Math.PI/16,x=Math.cos(a)*5.8,z=Math.sin(a)*5.8;cyl(bronze,x,.65,z,.025,1.3,8);}ring(bronze,0,1.28,0,5.8,.035);ring(bronze,0,.15,0,5.8,.035);

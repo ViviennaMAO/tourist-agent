@@ -38,3 +38,19 @@ test('Detailed interiors restore cutaway roofs and release reflecting water targ
   room.dispose();room.dispose();assert.equal(disposed,pools.length);
  }
 });
+
+test('Exhibit label atlas rows stay separated and rotated side labels face into the room',async()=>{
+ const THREE=await import('three');const {buildInteriorLabels}=await import('../src/interior-themes.js');const parts=[];
+ const m=new THREE.MeshStandardMaterial();const matrix=new THREE.Matrix4().makeRotationY(Math.PI/2).setPosition(-8.3,0,-2);
+ buildInteriorLabels([{text:'SIDE',x:0,y:3,z:.1,w:2,h:.3,a:0,matrix},{text:'FRONT',x:0,y:1,z:2,w:2,h:.3,a:0}],g=>parts.push(g),()=>m);
+ for(let i=0;i<parts.length;i++){const uv=parts[i].attributes.uv;for(let j=0;j<uv.count;j++){assert.ok(uv.getY(j)>=1-(i+1)/2&&uv.getY(j)<=1-i/2);}}
+ const side=parts[0];side.computeBoundingBox();assert.ok(Math.abs(side.boundingBox.min.x+8.2)<.0001);assert.ok(side.attributes.normal.getX(0)>.99);parts.forEach(g=>g.dispose());m.dispose();
+});
+
+test('Room changes dispose their exhibit atlas texture exactly once',()=>{
+ const previous=globalThis.document;
+ const context={fillRect(){},save(){},translate(){},scale(){},restore(){},fillText(){},measureText(){return {width:300};}};
+ globalThis.document={createElement:()=>({getContext:()=>context})};
+ try{for(const spec of INTERIORS){const room=createInteriorScene(spec),maps=new Set();room.root.traverse(o=>{if(o.material?.map)maps.add(o.material.map);});assert.equal(maps.size,1,spec.id);let disposed=0;maps.forEach(m=>m.addEventListener('dispose',()=>disposed++));room.dispose();room.dispose();assert.equal(disposed,1,spec.id);}}
+ finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
+});
