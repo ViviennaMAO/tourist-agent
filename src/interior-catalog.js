@@ -1,5 +1,6 @@
+import {EDITION} from './edition.js';
 // Theme studies, not surveyed reconstructions or a ticket/payment requirement.
-export const INTERIORS = [
+export const INTERIOR_LIBRARY = [
  ['abudhabi','grand_mosque','白石主祈祷厅','mosque','白石柱廊、金色壁龛与花纹地毯，沿中轴看向层叠吊灯。',['柱廊与拱梁','金色壁龛','花纹地毯']],
  ['abudhabi','emirates_palace','皇宫花园大厅','palace','在暖色石材与穹顶下，查看中央水景、会客区和室内花园。',['中央水景','穹顶与吊灯','会客花园']],
  ['abudhabi','ferrari_world','赛车设计展厅','racing','红色结构屋顶下的赛车展台、轮胎陈列与赛道微缩模型。',['赛车展台','赛道模型','机械陈列']],
@@ -16,5 +17,6 @@ export const INTERIORS = [
  ['lasvegas','strat','高塔观景酒廊','strat','环形观景窗与沙漠城市沙盘，搭配靠窗座椅与吧台。',['沙漠城市','环形观景窗','靠窗酒廊']],
  ['lasvegas','rqq','巴黎气球观景舱','balloon','球形舱架、蓝金装饰与微型铁塔，构成气球主题观景空间。',['微型铁塔','球形舱架','蓝金观景台']]
 ].map(([city,landmark,title,theme,description,details])=>({id:`${city}:${landmark}`,city,landmark,title,theme,description,details}));
+export const INTERIORS = INTERIOR_LIBRARY.filter(room=>EDITION.cities.includes(room.city));
 export const interiorFor = (city,landmark)=>INTERIORS.find(x=>x.city===city&&x.landmark===landmark);
 export const activeInteriorVisits = keys => [...new Set(keys)].filter(k=>INTERIORS.some(r=>r.id===k));

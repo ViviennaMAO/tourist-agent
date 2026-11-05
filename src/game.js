@@ -1,3 +1,6 @@
+import {travel,passport,travelEvents,connectTravelScene} from './travel-shell.js';
+import {PLACE_BY_ID} from './travel-catalog.js';
+import {EDITION} from './edition.js';
 import {createInteriorExperience} from './interior-experience.js';
 import {interiorFor} from './interior-catalog.js';
 import {landmarkVisitDistance,CHECKIN_RANGE} from './landmark-proximity.js';
@@ -28,7 +31,7 @@ const QS = new URLSearchParams(location.search);
 const EXPLORE = true;
 const CITY_ID = QS.get('city') || 'dubai';
 const CITY = CITIES[CITY_ID] || CITIES.dubai;
-document.title = 'Tourist Agent · 三城自由探索';
+document.title = EDITION.title;
 
 /* =====================================================================
    2. 工具：缓动、PRNG、矩阵
@@ -1631,129 +1634,16 @@ function showCard(L) {
   $('cardCity').textContent = `${String(L.city.index).padStart(2, '0')} / ${CITY_COUNT} · ${L.city.name} ${L.city.nameZh}`;
   $('cardName').textContent = L.cfg.name; $('cardZh').textContent = L.cfg.zh;
   $('cardDesc').textContent = LM_DESC[L.cfg.name] || '';
-  const tk = ticketOf(L); $('cardTicket').innerHTML = `🎫 购买门票 <small>· ${tk.name} · ${fmtPWV(tk.price)} 起</small>`;
+  const place=PLACE_BY_ID.get(L.city.id+':'+L.id);
+  $('cardDesc').textContent=place?.description||'主题微缩场景，实际访问信息请核对官方页面。';
+  travelEvents.record('place_open',{place:L.city.id+':'+L.id});
   $('card').style.display = 'block';
 }
 function hideCard() { $('card').style.display = 'none'; cardL = null; }
 
-/* ---------- 门票：每个地标一个购票入口，PWV 支付（原型演示：不扣真实资产，余额与订单只存在本浏览器） ---------- */
-// 票价单位 PWV（1 PWV = 1 美元）。[票名, 成人价]；儿童 = 成人 5 折，优先通道 = 成人 1.8 倍。均为占位价，按实际合作价改这里即可
-const TICKET_INFO = {
-  'Burj Khalifa': ['At the Top 观景台', 45], 'Dubai Frame': ['观景台', 15], 'Museum of the Future': ['博物馆门票', 40],
-  'Emirates Towers': ['城市导览', 20], 'Atlantis The Palm': ['Aquaventure 水上乐园', 90], 'Burj Al Arab': ['内部导览', 70],
-  'Sheikh Zayed Grand Mosque': ['导览参观', 15], 'Capital Gate': ['观景台', 25], 'Ferrari World': ['乐园门票', 85],
-  'Etihad Towers': ['300 观景台', 25], 'Emirates Palace': ['宫殿导览', 30], 'Abrahamic Family House': ['导览参观', 10],
-  'Tokyo Tower': ['主展望台', 9], 'Imperial Palace': ['东御苑导览', 8], 'Sensoji Temple': ['浅草导览', 12],
-  'Tokyo Skytree': ['天望甲板', 20], 'Akihabara': ['动漫街区导览', 25],
-  'Eiffel Tower': ['登顶票', 38], 'Louvre': ['博物馆门票', 25], 'Arc de Triomphe': ['屋顶观景', 18], 'Sacré-Cœur': ['穹顶登高', 8],
-  'Empire State Building': ['86 层观景台', 48], 'Manhattan Skyline': ['天际线游船', 40], 'Times Square': ['城市导览', 25],
-  'Brooklyn Bridge': ['步行导览', 20], 'Statue of Liberty': ['渡轮 + 基座', 25],
-  'Sphere': ['沉浸式演出', 110], 'Luxor': ['展览门票', 35], 'Resorts World': ['度假村体验', 50], 'Stratosphere Tower': ['观景台', 30],
-  'Welcome Sign': ['拍照导览', 10], 'Hot Air Balloon': ['热气球飞行', 250],
-  'Christ the Redeemer': ['登山小火车', 18], 'Maracanã Stadium': ['球场导览', 25], 'Metropolitan Cathedral': ['导览参观', 8],
-  'Museum of Tomorrow': ['博物馆门票', 6], 'Selarón Steps': ['街区导览', 15],
-  'Pyramids of Giza': ['景区门票', 30], 'Cairo Tower': ['观景台', 12], 'Mosque of Muhammad Ali': ['城堡门票', 10], 'Iconic Tower': ['新首都导览', 25],
-  'Marina Bay Sands': ['空中花园观景台', 25], 'Merlion': ['滨海游船', 20], 'ArtScience Museum': ['展览门票', 25],
-  'Gardens by the Bay': ['花穹 + 云雾林', 35], 'Singapore Flyer': ['摩天轮', 30],
-  'National Monument': ['登顶观景', 5], 'Istiqlal Mosque': ['导览参观', 5], 'Jakarta Cathedral': ['导览参观', 5],
-  'Sydney Opera House': ['剧院导览', 30], 'Sydney Harbour Bridge': ['BridgeClimb 攀桥', 200], 'Harbour Cruise': ['港湾游船', 40],
-  'Sydney Tower': ['观景台', 22], 'Queen Victoria Building': ['历史导览', 15],
-};
-const TIX_TYPES = [['adult', '成人票', 1], ['child', '儿童票（3–11 岁）', 0.5], ['fast', '优先通道', 1.8]];
-const WALLET_KEY = 'ta_demo_pwv_balance', ORDERS_KEY = 'ta_demo_ticket_orders', COUPON_KEY = 'ta_demo_coupons';
-const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
-let pwvBalance = store.get(WALLET_KEY, 500), tixOrders = store.get(ORDERS_KEY, []);
-const fmtPWV = n => `${(Math.round(n * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })} PWV`;
-const ticketOf = L => { const [name, price] = TICKET_INFO[L.cfg.name] || ['门票', 20]; return { name, price }; };
-let tix = null;   // 当前购票会话 { L, date, qty:{adult,child,fast}, step }
-
-function openTickets(L) {
-  const d = new Date(); d.setDate(d.getDate() + 1);
-  tix = { L, date: d.toISOString().slice(0, 10), qty: { adult: 1, child: 0, fast: 0 }, step: 'pick' };
-
-  $('tix').style.display = 'flex'; renderTickets();
-}
-function closeTickets() { $('tix').style.display = 'none'; tix = null; if (EXPLORE) { hudRefresh(); if (GUI.panel) renderPanel(); } }
-const tixTotal = () => { const p = ticketOf(tix.L).price; return TIX_TYPES.reduce((s, [k, , f]) => s + tix.qty[k] * Math.round(p * f * 100) / 100, 0); };
-function renderTickets() {
-  const box = $('tixBody');
-  if (EXPLORE) hudRefresh();
-  if (tix.step === 'mine') return renderMine(box);
-  const L = tix.L, t = ticketOf(L), total = tixTotal();
-  const head = `<div class="tix-city">${String(L.city.index).padStart(2, '0')} / ${CITY_COUNT} · ${L.city.name} ${L.city.nameZh}</div><h3>${L.cfg.zh} <small>${L.cfg.name}</small></h3><div class="tix-kind">🎫 ${t.name}</div>`;
-  if (tix.step === 'pick') {
-    const min = new Date().toISOString().slice(0, 10), max = new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10);
-    box.innerHTML = head + `
-      <label class="tix-row">游玩日期 <input type="date" id="tixDate" value="${tix.date}" min="${min}" max="${max}"></label>
-      ${TIX_TYPES.map(([k, label, f]) => `<div class="tix-row"><span>${label}<br><b>${fmtPWV(t.price * f)}</b></span>
-        <span class="step"><button data-k="${k}" data-d="-1" aria-label="减少">−</button><i>${tix.qty[k]}</i><button data-k="${k}" data-d="1" aria-label="增加">+</button></span></div>`).join('')}
-      <div class="tix-total">合计 <b>${fmtPWV(total)}</b></div>
-      <button class="tix-main" id="tixNext" ${total > 0 ? '' : 'disabled'}>下一步 · 选择付款方式</button>`;
-    box.querySelector('#tixDate').onchange = e => { tix.date = e.target.value; };
-    box.querySelectorAll('.step button').forEach(b => b.onclick = () => { const k = b.dataset.k; tix.qty[k] = Math.max(0, Math.min(10, tix.qty[k] + +b.dataset.d)); renderTickets(); });
-    box.querySelector('#tixNext').onclick = () => { tix.step = 'pay'; renderTickets(); };
-  } else if (tix.step === 'pay' || tix.step === 'paying') {
-    const nCp = store.get(COUPON_KEY, 0), disc = nCp > 0 && tix.useCoupon !== false ? Math.min(20, Math.round(total * 20) / 100) : 0, pay = Math.round((total - disc) * 100) / 100;
-    const enough = pwvBalance >= pay, paying = tix.step === 'paying';
-    const lines = TIX_TYPES.filter(([k]) => tix.qty[k] > 0).map(([k, label, f]) => `<div class="tix-line"><span>${label} × ${tix.qty[k]}</span><span>${fmtPWV(tix.qty[k] * t.price * f)}</span></div>`).join('');
-    box.innerHTML = head + `
-      <div class="tix-sum">${lines}<div class="tix-line"><span>游玩日期</span><span>${tix.date}</span></div>${nCp > 0 ? `<label class="tix-line"><span><input type="checkbox" id="tixCp" ${disc ? 'checked' : ''} ${paying ? 'disabled' : ''}> 门票 8 折券（最高减 20）· 剩 ${nCp} 张</span><span>${disc ? '−' + fmtPWV(disc) : '不使用'}</span></label>` : ''}<div class="tix-line big"><span>应付</span><b>${fmtPWV(pay)}</b></div></div>
-      <div class="tix-label">付款方式</div>
-      <div class="pay sel"><span class="pwv">PWV</span><span><b>PWV 钱包</b><br><small>余额 ${fmtPWV(pwvBalance)} · 1 PWV = 1 美元</small></span><span class="dot">●</span></div>
-      ${enough ? '' : `<div class="tix-warn">余额不足，还差 ${fmtPWV(pay - pwvBalance)} <button id="tixTop">演示充值 +500 PWV</button></div>`}
-      <button class="tix-main" id="tixPay" ${enough && !paying ? '' : 'disabled'}>${paying ? '支付中…' : `确认支付 ${fmtPWV(pay)}`}</button>
-      <button class="tix-sub" id="tixBack" ${paying ? 'disabled' : ''}>返回修改</button>
-      <div class="tix-note">PWV 不贬值、不过期、随时可花；门票一经售出按景区规则改退。原型演示：不产生真实扣款。</div>`;
-    const top = box.querySelector('#tixTop'); if (top) top.onclick = () => { pwvBalance += 500; store.set(WALLET_KEY, pwvBalance); renderTickets(); };
-    box.querySelector('#tixBack').onclick = () => { tix.step = 'pick'; renderTickets(); };
-    const cp = box.querySelector('#tixCp'); if (cp) cp.onchange = () => { tix.useCoupon = cp.checked; renderTickets(); };
-    box.querySelector('#tixPay').onclick = () => {
-      tix.step = 'paying'; renderTickets();
-      setTimeout(() => {
-        if (!tix) return;
-        pwvBalance = Math.round((pwvBalance - pay) * 100) / 100; store.set(WALLET_KEY, pwvBalance);
-        if (disc) store.set(COUPON_KEY, Math.max(0, store.get(COUPON_KEY, 0) - 1));
-        const code = 'PW' + Date.now().toString(36).toUpperCase().slice(-6) + Math.floor(Math.random() * 1296).toString(36).toUpperCase().padStart(2, '0');
-        const order = { code, city: L.city.id, cityZh: L.city.nameZh, name: L.cfg.name, zh: L.cfg.zh, kind: t.name, date: tix.date, qty: { ...tix.qty }, total: pay, disc, paidAt: new Date().toISOString() };
-        tixOrders.unshift(order); store.set(ORDERS_KEY, tixOrders);
-        tix.order = order; tix.step = 'done'; renderTickets();
-      }, 1100);
-    };
-  } else if (tix.step === 'done') {
-    const o = tix.order;
-    box.innerHTML = `<div class="tix-ok">✓ 支付成功</div>` + head + eTicket(o) + `
-      <div class="tix-line"><span>已付</span><b>${fmtPWV(o.total)}</b></div><div class="tix-line"><span>PWV 余额</span><span>${fmtPWV(pwvBalance)}</span></div>
-      <button class="tix-main" id="tixMine">查看我的门票</button><button class="tix-sub" id="tixDone">完成</button>`;
-    box.querySelector('#tixMine').onclick = () => { tix.step = 'mine'; renderTickets(); };
-    box.querySelector('#tixDone').onclick = closeTickets;
-  }
-}
-function renderMine(box) {
-    box.innerHTML = `<h3>我的门票</h3><div class="tix-line"><span>PWV 钱包余额</span><b>${fmtPWV(pwvBalance)}</b></div>` +
-      (tixOrders.length ? tixOrders.map(o => `<div class="tix-order"><div><b>${o.zh}</b> · ${o.kind}<br><small>${o.cityZh} · ${o.date} · ${TIX_TYPES.filter(([k]) => o.qty[k]).map(([k, l]) => l.replace(/（.*）/, '') + '×' + o.qty[k]).join(' ')}</small></div><div class="r">${fmtPWV(o.total)}<br><small>${o.code}</small></div></div>`).join('')
-        : '<p class="tix-empty">还没有门票。点开任意地标的介绍卡即可购票。</p>') +
-      `<button class="tix-sub" id="tixClose">关闭</button>`;
-    box.querySelector('#tixClose').onclick = closeTickets;
-}
-// 电子票：订单号 + 由订单号生成的入场图案（演示，不是真实二维码）
-function eTicket(o) {
-  let h = 2166136261; for (const ch of o.code) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  const rnd = mulberry32(h), n = 17, cells = [];
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    // 三个角是定位框（外框 + 中心 1 格），其余随机点阵
-    const F = [[0, 0], [n - 5, 0], [0, n - 5]].find(([a, b]) => x >= a && x < a + 5 && y >= b && y < b + 5);
-    const on = F ? (x === F[0] || x === F[0] + 4 || y === F[1] || y === F[1] + 4 || (x === F[0] + 2 && y === F[1] + 2)) : rnd() < 0.48;
-    if (on) cells.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
-  }
-  return `<div class="eticket"><svg viewBox="-1 -1 ${n + 2} ${n + 2}" aria-label="入场码"><rect x="-1" y="-1" width="${n + 2}" height="${n + 2}" fill="#fff"/><g fill="#0d1830">${cells.join('')}</g></svg>
-    <div><div class="tix-label">入场码（演示）</div><b class="code">${o.code}</b><br><small>${o.date} · ${o.kind}<br>${TIX_TYPES.filter(([k]) => o.qty[k]).map(([k, l]) => l.replace(/（.*）/, '') + ' × ' + o.qty[k]).join('、')}</small></div></div>`;
-}
-$('cardTicket').onclick = () => cardL && openTickets(cardL);
-$('myTix').onclick = () => { tix = { step: 'mine' };  $('tix').style.display = 'flex'; renderTickets(); };
-$('tixX').onclick = closeTickets;
-$('tix').addEventListener('pointerdown', e => { if (e.target.id === 'tix') closeTickets(); });
-addEventListener('keydown', e => { if (e.key === 'Escape' && tix) closeTickets(); });
+// Persistent exploration preferences only. Legacy demo financial data is not read.
+const store = {get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch{return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}};
+$('cardTravel').onclick=()=>{if(cardL)travel.open('place',cardL.city.id+':'+cardL.id);};
 
 $('cardX').onclick = hideCard;
 // 点击 = 按下后几乎没移动；拖动另作自由视角
@@ -1791,7 +1681,7 @@ function renderCityOptions() {
 renderCityOptions();
 
 /* =====================================================================
-   8. 自由探索：Eva 图片角色在三城之间旅行
+   8. 自由探索：Eva 图片角色在两城之间旅行
    角色依据设定图：黑色中长波浪发（中分）、绿瞳、红唇、奶黄色方领泡泡袖高腰中长裙、米白玛丽珍鞋
    ===================================================================== */
 const evaAtlasTexture = new THREE.TextureLoader().load(evaSpriteUrl, () => {
@@ -1871,7 +1761,7 @@ function arrive(P, h, r, L, id) {
   $('city').value = id;
   document.querySelectorAll('#cityChips button').forEach(b => b.classList.toggle('on', b.dataset.id === id));
 }
-// 世界地图：升到高空俯瞰三座城，点击任意一座直达；再按一次 / Esc 回到小女孩身边
+// 世界地图：升到高空俯瞰主题城市，点击任意一座直达；再按一次 / Esc 回到小女孩身边
 function toggleOverview(on = !EX.overview) {
   review.fixed = false; review.camera = on ? '世界地图' : '自由探索';
   EX.overview = on; document.body.classList.toggle('overview', on); hideCard(); $('worldHint').style.display = on ? 'block' : 'none';
@@ -1995,31 +1885,28 @@ function exploreStep(dt, now) {
 }
 
 /* =====================================================================
-   9. 游戏界面（自由探索）：对齐 PW 正式版的细节——加载页、头像/ID/时钟/位置、PWV 与城市印记、
-      门票商城、藏品展厅、任务、GO、小女孩向导的城市导览、打卡奖励、模拟玩家与名牌
-   演示数据（打卡、优惠券、玩家 ID）只存在本浏览器
+   9. 城市旅行界面：云游记录、现实地点与行程，和旧演示交易数据隔离。
    ===================================================================== */
 const CITY_DESC = {
   dubai: '沙漠里长出的未来之城：世界最高的哈利法塔、帆船酒店和伸进大海的棕榈岛都在这里。',
   abudhabi: '阿联酋首都：白色大理石的谢赫扎耶德大清真寺、红顶的法拉利乐园和海边的酋长宫殿。',
   lasvegas: '沙漠中的娱乐之都：Sphere 球形巨屏、射出光柱的金字塔酒店和那块著名的欢迎牌。',
 };
-const TIPS = ['走近地标即可点亮城市印记，集齐一城成为「文化大使」', '门票与 PWV 余额仅为本机演示，不会发生真实付款', '探索三座城市，发现各地地标',
-  '方向键 / WASD 走动，按住 Shift 奔跑', '按 M 打开世界地图，点任意一座城直达', '右下角 GO：前往下一座城市'];
+const TIPS = ['先云游，再把喜欢的地点加入现实行程', '云游记录不代表真实到访，也不产生消费奖励', '迪拜与阿布扎比，各有五个可进入的主题空间', '不想走地图？旅行面板可直接查看地点与行程', '真实出行请使用地点卡里的地图和官方信息'];
 const NPC_LOOKS = [
   { name: '模拟_Omar294', hair: '#30251e', dress: '#92a9ab', dress2: '#748f91', skin: '#c99978' },
   { name: '模拟_Aisha732', hair: '#9f8454', dress: '#c5a39c', dress2: '#ad8983' },
   { name: '模拟_Yuki318', hair: '#201d20', dress: '#a6b39b', dress2: '#87987a' },
   { name: '模拟_Lucas507', hair: '#5a382b', dress: '#b4acc0', dress2: '#9690a3', skin: '#deb098' },
 ];
-const CHECK_KEY = 'ta_explore_checkins', GIFT_KEY = 'ta_explore_gift', PID_KEY = 'ta_player_id';
+const PID_KEY = 'ta_player_id';
 const GUI = { loading: EXPLORE, ready: false, seen: new Set(), panel: null, pop: null, thumbs: new Map(), shots: new Map(), npcs: [] };
-let checkins = new Set(store.get(CHECK_KEY, []));
+let checkins = new Set(passport.value.cloud);
 const playerId = store.get(PID_KEY, null) || (() => { const id = String(1e8 + Math.floor(Math.random() * 9e8)); store.set(PID_KEY, id); return id; })();
 const lmKey = L => L.city.id + ':' + L.id;
 const cityLMs = id => ALL_LM.filter(L => L.city.id === id);
 const lit = L => checkins.has(lmKey(L));
-const uiBusy = () => !!(interiorExperience?.active || tix || GUI.panel || GUI.pop || GUI.loading);
+const uiBusy = () => !!(interiorExperience?.active || travel.active || GUI.panel || GUI.pop || GUI.loading);
 const cityOrder = () => Object.values(CITIES).sort((a, b) => a.index - b.index);
 const nextCity = id => { const o = cityOrder(), i = o.findIndex(c => c.id === id); return o[(i + 1) % o.length].id; };
 const lmByKey = k => ALL_LM.find(L => lmKey(L) === k);
@@ -2035,6 +1922,7 @@ function shoot(pos, look, w, h, fov = 35) {
   const pr = renderer.getPixelRatio(), cv = renderer.domElement, W = Math.min(cv.width, Math.round(w * pr)), H = Math.min(cv.height, Math.round(h * pr));
   shotCam.fov = fov; shotCam.aspect = w / h; shotCam.updateProjectionMatrix(); shotCam.position.copy(pos); shotCam.lookAt(look);
   const lbl = ALL_LM.map(L => L.label.visible); ALL_LM.forEach(L => L.label.visible = false);
+  const scaffolds = ALL_LM.map(L=>L.scaffold.visible);ALL_LM.forEach(L=>L.scaffold.visible=false);
   const visibility = world.cities.map(c => [c.w.root.visible, c.landmarkGroup.visible]);
   try {
     // Collection cards can photograph a city hidden from the player's camera.
@@ -2048,6 +1936,7 @@ function shoot(pos, look, w, h, fov = 35) {
   } finally {
     renderer.setScissorTest(false); renderer.setViewport(0, 0, cv.width / pr, cv.height / pr);
     ALL_LM.forEach((L, i) => L.label.visible = lbl[i]);
+    ALL_LM.forEach((L,i)=>L.scaffold.visible=scaffolds[i]);
     world.cities.forEach((c, i) => {
       c.w.root.visible = visibility[i][0]; c.landmarkGroup.visible = visibility[i][1];
     });
@@ -2078,34 +1967,15 @@ function makeAvatar() {
 }
 
 function hudRefresh() {
-  if (!EXPLORE) return;
-  const n = activeCheckinKeys(checkins).length;
-  $('hudPwv').textContent = (Math.round(pwvBalance * 100) / 100).toLocaleString('en-US');
-  $('hudStamps').textContent = `${n}/${ALL_LM.length}`;
-  $('hudLv').textContent = 1 + Math.floor(n / 4);
-  const cps = store.get(COUPON_KEY, 0), shopBtn = document.querySelector('#hudSide [data-act=shop]');
-  shopBtn.querySelector('.badge-n')?.remove();
-  if (cps) shopBtn.insertAdjacentHTML('beforeend', `<span class="badge-n" title="门票 8 折券">${cps}</span>`);
+  checkins=new Set(passport.value.cloud);
+  $('hudStamps').textContent=`${activeCheckinKeys(checkins).length}/${ALL_LM.length}`;
+  $('hudLv').textContent='云';
   renderQuests();
 }
 function renderQuests() {
-  const c = EX.city, cities = new Set(activeCheckinKeys(checkins).map(k => k.split(':')[0])), q = [];
-  if (c) { const ls = cityLMs(c.id), n = ls.filter(lit).length; q.push({ ic: '📍', t: `点亮${c.city.nameZh}全部地标`, p: `${n}/${ls.length}`, done: n === ls.length, act: 'lm' }); }
-  q.push({ ic: '🌍', t: '游历三城', p: `${cities.size}/${CITY_COUNT}`, done: cities.size >= CITY_COUNT, act: 'city' });
-  q.push({ ic: '🎫', t: '用 PWV 买一张景点门票', p: `${Math.min(1, tixOrders.filter(o=>CITIES[o.city]).length)}/1`, done: tixOrders.some(o=>CITIES[o.city]), act: 'shop' });
-  $('hudQuests').innerHTML = q.map(x => `<button data-act="${x.act}" class="${x.done ? 'done' : ''}"><i>${x.done ? '✓' : x.ic}</i><span>${x.t}<b>${x.p}</b></span></button>`).join('');
+  $('hudQuests').innerHTML='<button data-act="travel"><i>✧</i><span>跟 Eva 找旅行灵感<b>约 90 秒</b></span></button><button data-act="route"><i>☷</i><span>海滨半日行程<b>3 个真实地点</b></span></button>';
 }
-function questGo(act) {
-  if (act === 'shop') return openPanel('shop');
-  if (act === 'lm') {   // 走向本城最近的还没点亮的地标
-    const todo = cityLMs(EX.city.id).filter(L => L.loaded && !lit(L));
-    if (!todo.length) return openPanel('coll');
-    const dist = L => L.holder.getWorldPosition(V3()).distanceTo(EX.pos);
-    return goLandmark(todo.sort((a, b) => dist(a) - dist(b))[0]);
-  }
-  const done = new Set(activeCheckinKeys(checkins).map(k => k.split(':')[0])), o = cityOrder(), i = o.findIndex(c => c.id === (EX.city ? EX.city.id : 'dubai'));
-  for (let k = 1; k <= o.length; k++) { const c = o[(i + k) % o.length]; if (!done.has(c.id)) return travelTo(c.id); }
-}
+function questGo(act){travel.open(act==='route'?'route':'home');}
 
 // 弹窗（城市导览 / 奖励 / 说明）
 function showPop(html, { blank = false, onClose } = {}) {
@@ -2113,81 +1983,27 @@ function showPop(html, { blank = false, onClose } = {}) {
   const el = $('gpop'); el.innerHTML = html; el.style.display = 'flex';
 }
 function closePop() { const p = GUI.pop; if (!p) return; GUI.pop = null; $('gpop').style.display = 'none'; $('gpop').innerHTML = ''; p.onClose && p.onClose(); }
-function rewardPop(title, sub, items, onClose) {
-  showPop(`<div class="gp-reward"><div class="rays"></div><h2>${title}</h2><div class="sub">${sub}</div><div class="items">${items.map(it =>
-    `<div class="item"><div class="ico">${it.html}</div><b>${it.name}</b><small>×${it.n}</small></div>`).join('')}</div><div class="tip">点击空白区域关闭</div></div>`, { blank: true, onClose });
-}
-const COUPON_HTML = '<div class="coupon"><b>8折</b><span>门票券</span></div>';
-function giveCoupon(n = 1) { store.set(COUPON_KEY, store.get(COUPON_KEY, 0) + n); hudRefresh(); }
-function cityIntro(c, onClose) {
-  const ls = cityLMs(c.id), n = ls.filter(lit).length;
-  showPop(`<div class="gp-card gp-city-intro"><aside class="eva-guide" aria-label="导游 Eva"><div class="gp-eva-frame">${evaGuideMarkup("gp-eva")}</div><div class="eva-guide-copy"><strong>Eva</strong><span>你的城市导游</span><p>跟我一起逛${c.city.nameZh}吧。</p></div></aside><button class="gp-x" aria-label="关闭">×</button><div class="gp-city-content">
-    <h2>欢迎来到${c.city.nameZh}<small>${c.city.name} · ${String(c.city.index).padStart(2, '0')}/${CITY_COUNT}</small></h2>
-    <img class="gp-photo" src="${cityShot(c)}" alt="${c.city.nameZh}">
-    <p>${CITY_DESC[c.id] || ''}</p>
-    <div class="gp-sub">城市印记 <b>${n}/${ls.length}</b> · 走近地标即可点亮，点图标直达</div>
-    <div class="gp-items">${ls.map(L => `<figure class="${lit(L) ? '' : 'off'}" data-k="${lmKey(L)}"><img src="${thumbOf(L)}" alt=""><figcaption>${L.cfg.zh}</figcaption></figure>`).join('')}</div>
-    <div class="gp-btns"><button class="alt" data-go="shop">🎫 门票商城</button><button class="ok" data-go="close">开始探索</button></div></div></div>`, { onClose });
-}
+function cityIntro(c){travel.open(c.id==='dubai'?'home':'places',c.id);}
 function rewardToast(img, title, sub) {
   const el = $('rtoast'); el.innerHTML = `${img ? `<img src="${img}" alt="">` : ''}<div><b>${title}</b><small>${sub}</small></div>`;
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(rewardToast.h); rewardToast.h = setTimeout(() => el.classList.remove('show'), 2800);
 }
-// 打卡：走近地标点亮城市印记；一城集齐 → 文化大使 + 门票 8 折券
+// Visiting a miniature records cloud exploration only, never a real-world check-in.
 function checkIn(L) {
-  if (!GUI.ready || lit(L)) return;
-  checkins.add(lmKey(L)); store.set(CHECK_KEY, [...checkins]); hudRefresh();
-  const ls = cityLMs(L.city.id), n = ls.filter(lit).length;
-  rewardToast(thumbOf(L), `打卡成功 · ${L.cfg.zh}`, `城市印记 +1 · ${L.city.nameZh} ${n}/${ls.length}`);
-  if (n === ls.length) setTimeout(() => {
-    giveCoupon();
-    const show = () => rewardPop('恭喜获得', `点亮${L.city.nameZh}全部 ${n} 座地标`, [{ html: '<div class="medal">🏅</div>', name: `${L.city.nameZh}文化大使`, n: 1 }, { html: COUPON_HTML, name: '门票 8 折券', n: 1 }]);
-    (function wait() { uiBusy() ? setTimeout(wait, 800) : show(); })();
-  }, 1200);
+  if(!GUI.ready||!passport.cloud(lmKey(L)))return;
+  hudRefresh();
+  rewardToast(thumbOf(L),`云游记录 · ${L.cfg.zh}`,'主题体验纪念 · 不代表真实到访');
 }
 function onCityEnter(c) {
   $('hudLoc').textContent = '📍 ' + c.city.nameZh;
   $('hudGoTo').textContent = '下一站 · ' + CITIES[nextCity(c.id)].nameZh;
   GUI.npcs.forEach(n => npcPlace(n, c));
   renderQuests();
-  if (GUI.ready && !GUI.seen.has(c.id)) { GUI.seen.add(c.id); setTimeout(() => { if (EX.city === c && !uiBusy()) cityIntro(c); }, 900); }
+  GUI.seen.add(c.id);
 }
 
-// 全屏面板：门票商城 / 藏品展厅（左侧按城市分页）
-function openPanel(kind, city = EX.city ? EX.city.id : 'dubai') {
-  hideMenu(); EX.keys.clear();
-  document.body.classList.add('panelOpen');
-  GUI.panel = { kind, city, sel: null }; $('gpanel').style.display = 'flex'; renderPanel();
-}
-function closePanel() { document.body.classList.remove('panelOpen'); GUI.panel = null; $('gpanel').style.display = 'none'; $('gpanel').innerHTML = ''; }
-const curHTML = () => `<div class="gcur"><i class="ic stamp">印</i><span>${activeCheckinKeys(checkins).length}/${ALL_LM.length}</span></div><div class="gcur"><i class="ic pwv">PWV</i><span>${(Math.round(pwvBalance * 100) / 100).toLocaleString('en-US')}</span></div>`;
-function renderPanel() {
-  const P = GUI.panel, shop = P.kind === 'shop', topup = P.city === 'topup';
-  const tabs = cityOrder().map(c => { const ls = cityLMs(c.id), n = ls.filter(lit).length;
-    return `<button data-city="${c.id}" class="${P.city === c.id ? 'on' : ''}">${c.nameZh}${shop ? '' : `<small>${n}/${ls.length}</small>`}</button>`; }).join('') +
-    (shop ? `<button data-city="topup" class="${topup ? 'on' : ''}">充值</button>` : '');
-  let main;
-  if (shop && topup) main = `<p class="gp-note">1 PWV = 1 美元 · 不贬值、不过期、随时可花 · 充值不可退 · <b>原型演示：不产生真实扣款</b></p>
-    <div class="tp">${[100, 500, 1000, 2000].map(v => `<button data-top="${v}"><i class="ic pwv">PWV</i><b>${v.toLocaleString('en-US')}</b>演示充值</button>`).join('')}</div>`;
-  else if (shop) {
-    const ls = cityLMs(P.city); if (!P.sel || P.sel.city.id !== P.city) P.sel = ls[0];
-    const cps = store.get(COUPON_KEY, 0);
-    main = `<p class="gp-note">${CITIES[P.city].nameZh} · ${ls.length} 个景点 · PWV 支付${cps ? ` · 你有 <b>${cps} 张门票 8 折券</b>，结算时自动使用` : ''}</p>
-      <div class="sg">${ls.map((L, i) => { const t = ticketOf(L), own = tixOrders.filter(o => o.city === L.city.id && o.name === L.cfg.name).length;
-        return `<div class="sc ${P.sel === L ? 'on' : ''}" data-k="${lmKey(L)}"><div class="tag">景点门票</div>${i === 0 ? '<span class="hot">HOT</span>' : ''}${own ? `<span class="own">已购 ${own}</span>` : ''}
-          <img src="${thumbOf(L)}" alt=""><div class="nm">${L.cfg.zh}</div><span class="kd">${t.name}</span><div class="pr"><i class="ic pwv mini">PWV</i> ${t.price} 起</div></div>`; }).join('')}</div>`;
-  } else {
-    const ls = cityLMs(P.city), n = ls.filter(lit).length, rows = [];
-    for (let i = 0; i < ls.length; i += 3) rows.push(ls.slice(i, i + 3));
-    main = `<div class="coll-top"><span class="chip">展架点亮 <b>${n}</b> / ${ls.length}</span><span class="chip amb ${n === ls.length ? '' : 'off'}">🏅 ${CITIES[P.city].nameZh}文化大使</span></div>` +
-      rows.map(r => `<div class="shelf"><div class="items">${r.map(L => `<div class="ci ${lit(L) ? '' : 'off'}" data-k="${lmKey(L)}"><img src="${thumbOf(L)}" alt="">${lit(L) ? '' : '<span class="lock">🔒</span>'}<span>${L.cfg.zh}</span></div>`).join('')}</div>
-        <div class="board"></div><div class="val"><i class="ic stamp mini">印</i>${r.filter(lit).length} / ${r.length}</div></div>`).join('') +
-      `<p class="gp-note" style="text-align:center">走近地标即可点亮；点击任意藏品直达它的位置</p>`;
-  }
-  $('gpanel').innerHTML = `<header><span class="bgw">${shop ? 'TICKETS' : 'COLLECTION'}</span><h2>${shop ? '门票商城' : '藏品展厅'}</h2><div class="pcur">${curHTML()}</div><button class="close" aria-label="返回">➜</button></header>
-    <div class="gp-body"><nav>${tabs}</nav><main>${main}</main></div>${evaGuideMarkup("gp-guide")}${shop && !topup ? `<button class="buy" ${P.sel ? '' : 'disabled'}>购买</button>` : ''}`;
-}
+function closePanel(){GUI.panel=null;document.body.classList.remove('panelOpen');$('gpanel').style.display='none';}
 
 // 模拟玩家：四个使用 Eva 图片形象的角色在当前城市里闲逛
 function npcPlace(n, c) {
@@ -2239,8 +2055,11 @@ function gameLoadProgress() {
   $('glFill').style.width = (u * 100).toFixed(0) + '%'; $('glPct').textContent = (u * 100).toFixed(0) + '%';
   if (u >= 1 && $('glGo').disabled) { $('glGo').disabled = false; $('glGo').textContent = '开始探索'; }
 }
-function enterGame() {
+function enterGame(welcome=true) {
   if (GUI.ready) return;
+  // Asset promises can settle just before this click, ahead of the next frame.
+  // Refresh completed geometry before capturing any destination thumbnails.
+  world.render(review.time);realism.update({target:controls.target,overview:EX.overview,time:review.time});
   $('gameLoad').classList.add('out'); setTimeout(() => $('gameLoad').style.display = 'none', 650);
   clearInterval(GUI.tipTimer); GUI.loading = false; GUI.ready = true; document.body.classList.add('gameReady');
   if (state.music) musicNow.play().then(musicUI).catch(() => {});   // 点击即用户手势，浏览器会放行自动播放
@@ -2248,7 +2067,7 @@ function enterGame() {
   setTimeout(() => $('hint').classList.add('fade'), 15000);
   const c = EX.city || world.cities.find(c => c.id === 'dubai');
   GUI.seen.add(c.id);
-  cityIntro(c, () => { if (!store.get(GIFT_KEY, false)) { store.set(GIFT_KEY, true); giveCoupon(); rewardPop('恭喜获得', '新手礼包 · 平行世界欢迎你', [{ html: COUPON_HTML, name: '门票 8 折券', n: 1 }]); } });
+  if(welcome) {if(QS.get('entry')==='itinerary')travel.open('itinerary');else cityIntro(c);}
 }
 
 function hideMenu() { $('hudMenuPop').classList.remove('show'); }
@@ -2256,12 +2075,13 @@ function setupGameUI() {
   $('hudId').textContent = playerId;
   const tick = () => { $('hudClock').textContent = new Date().toTimeString().slice(0, 8); }; tick(); setInterval(tick, 1000);
   $('hudGoTo').textContent = '下一站 · ' + CITIES[nextCity('dubai')].nameZh;
-  // 加载页：进度 + 轮播小贴士；45 秒还没加载完也放行（缺的地标用脚手架占位）
+  // Travel cards and authored interiors do not depend on remote landmark scripts.
+  // Let visitors start promptly while those assets continue loading outdoors.
   let ti = 0; $('glTip').textContent = '💡 ' + TIPS[0];
   GUI.tipTimer = setInterval(() => { $('glTip').textContent = '💡 ' + TIPS[++ti % TIPS.length]; }, 2600);
-  setTimeout(() => { if ($('glGo').disabled) { $('glGo').disabled = false; $('glGo').textContent = '开始探索'; } }, 45000);
+  setTimeout(() => { if ($('glGo').disabled) { $('glGo').disabled = false; $('glGo').textContent = '开始旅行'; } }, 4000);
   gameLoadProgress();
-  $('glGo').onclick = enterGame;
+  $('glGo').onclick = ()=>enterGame();
   // 名牌 + 模拟玩家
   const tag = (txt, me) => { const d = document.createElement('div'); d.className = 'ntag' + (me ? ' me' : ''); d.textContent = txt; $('tags').appendChild(d); return d; };
   GUI.myTag = tag(playerId, true);
@@ -2269,41 +2089,29 @@ function setupGameUI() {
   // HUD 按钮
   $('cardInterior').onclick=()=>{if(cardL){const r=interiorFor(cardL.city.id,cardL.id);if(r)interiorExperience.open(r.id);}};
   $('hudGo').onclick = () => { hideMenu(); travelTo(nextCity(EX.city ? EX.city.id : 'dubai')); };
-  $('hudTop').onclick = () => openPanel('shop', 'topup');
-  $('hudSide').onclick = e => { const b = e.target.closest('button'); if (!b) return; const a = b.dataset.act; hideMenu();
-    if(a==='interiors')interiorExperience.directory(EX.city?.id||'abudhabi');else if (a === 'shop' || a === 'coll') openPanel(a); else if (a === 'map') toggleOverview(); else if (a === 'mine') $('myTix').click(); };
+  $('hudSide').onclick=e=>{const b=e.target.closest('button');if(!b)return;hideMenu();const a=b.dataset.act;
+    if(a==='interiors')interiorExperience.directory(EX.city?.id||'dubai');else if(a==='map')toggleOverview();else travel.open(a==='travel'?'home':a);};
   $('hudQuests').onclick = e => { const b = e.target.closest('button'); if (b) questGo(b.dataset.act); };
   $('hudMenu').onclick = () => {
-    const el = $('hudMenuPop'); if (el.classList.toggle('show')) el.innerHTML = [['music', state.music ? '♪ 音乐：开（点击关闭）' : '♪ 音乐：关（点击开启）'], ['help', '？ 操作说明'], ['reset', '↺ 重置演示数据']].map(([k, t]) => `<button data-m="${k}">${t}</button>`).join('');
+    const el = $('hudMenuPop'); if (el.classList.toggle('show')) el.innerHTML = [['music', state.music ? '♪ 音乐：开（点击关闭）' : '♪ 音乐：关（点击开启）'], ['help', '？ 操作说明'], ['reset', '↺ 清空本机旅行记录']].map(([k, t]) => `<button data-m="${k}">${t}</button>`).join('');
   };
   $('hudMenuPop').onclick = e => { const b = e.target.closest('button'); if (!b) return; hideMenu(); const m = b.dataset.m;
     if (m === 'music') $('music').click();
     else if (m === 'help') showPop(`<div class="gp-card" style="padding-left:22px"><button class="gp-x" aria-label="关闭">×</button><h2>操作说明</h2><ul class="gp-help">
-      <li>方向键 / WASD 走动，按住 Shift 奔跑；手机用左下角方向键</li><li>上下拖动可俯视或仰望高楼，左右拖动环绕；滚轮或双指缩放；按 R 或点「重置视角」回到 Eva 身后</li><li>走近地标：弹出介绍并点亮城市印记；介绍卡里可用 PWV 买门票</li>
+      <li>方向键 / WASD 走动，按住 Shift 奔跑；手机用左下角方向键</li><li>上下拖动可俯视或仰望高楼，左右拖动环绕；滚轮或双指缩放；按 R 或点「重置视角」回到 Eva 身后</li><li>走近地标可留下云游记录；旅行面板可收藏地点并打开官方信息，不代表现场到访或消费</li>
       <li>右下角 GO 前往下一座城；底部城市按钮一点直达</li><li>M 打开世界地图，Esc 关闭弹窗</li></ul><div class="gp-btns"><button class="ok" data-go="close">知道了</button></div></div>`);
-    else if (m === 'reset' && confirm('清空本浏览器里的演示数据（打卡、室内探索、门票订单、PWV 余额、优惠券）并重新开始？')) {
-      [CHECK_KEY, GIFT_KEY, WALLET_KEY, ORDERS_KEY, COUPON_KEY, WATCH_KEY, 'ta_interior_visits'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} }); location.reload();
+    else if(m==='reset'&&confirm('清空本浏览器的云游记录、收藏行程和本机体验事件？历史演示数据不会被修改。')){
+      passport.reset();travelEvents.reset();try{localStorage.removeItem('ta_interior_visits');}catch{}location.reload();
     }
   };
   $('gpop').onclick = e => {
     const P = GUI.pop; if (!P) return;
     const go = e.target.closest('[data-go]'), fig = e.target.closest('figure[data-k]');
     if (e.target.closest('.gp-x') || (go && go.dataset.go === 'close')) return closePop();
-    if (go && go.dataset.go === 'shop') { closePop(); return openPanel('shop'); }
     if (fig) { const L = lmByKey(fig.dataset.k); closePop(); if (L) goLandmark(L); return; }
     if (P.blank || e.target.id === 'gpop') closePop();
   };
-  $('gpanel').onclick = e => {
-    const P = GUI.panel; if (!P) return;
-    if (e.target.closest('.close')) return closePanel();
-    const tabB = e.target.closest('nav button'); if (tabB) { P.city = tabB.dataset.city; P.sel = null; return renderPanel(); }
-    const top = e.target.closest('[data-top]');
-    if (top) { pwvBalance += +top.dataset.top; store.set(WALLET_KEY, pwvBalance); hudRefresh(); renderPanel(); return rewardToast('', `演示充值 +${top.dataset.top} PWV`, `余额 ${fmtPWV(pwvBalance)}`); }
-    const card = e.target.closest('.sc'); if (card) { P.sel = lmByKey(card.dataset.k); return renderPanel(); }
-    if (e.target.closest('.buy') && P.sel) return openTickets(P.sel);
-    const ci = e.target.closest('.ci'); if (ci) { const L = lmByKey(ci.dataset.k); closePanel(); if (L) goLandmark(L); }
-  };
-  addEventListener('keydown', e => { if (e.key !== 'Escape' || tix) return; if (GUI.pop) closePop(); else if (GUI.panel) closePanel(); else hideMenu(); }, true);   // 捕获阶段：先于关票窗的监听判断
+  addEventListener('keydown',e=>{if(e.key!=='Escape'||travel.active||interiorExperience?.active)return;if(GUI.pop)closePop();else hideMenu();},true);
   addEventListener('pointerdown', e => { if (!e.target.closest('#hudMenuPop,#hudMenu')) hideMenu(); });
 }
 
@@ -2318,6 +2126,7 @@ function setReviewCamera(kind) {
   EX.overview = false; EX.hold = true; EX.keys.clear(); document.body.classList.remove('overview');
   controls.maxDistance = 3000;
   const cityId=kind.startsWith('vegas')?'lasvegas':kind.startsWith('abu')?'abudhabi':'dubai';
+  if(!CITY_GRID[cityId])return;
   const [x, z] = CITY_GRID[cityId];
   const shots = {
     abuTowerEntry:{p:[-32,4,-53],q:[-38,1.9,-61],name:'高楼入口收口',start:[-38,-47]},
@@ -2448,6 +2257,7 @@ function setupReview() {
   stageEl.append(panel);
   const coverageShots = document.createElement('div'); coverageShots.className = 'reviewBtns reviewCoverage';
   for (const [shot, label] of [['abuPrayerEntry','主厅入口'],['abuPrayerHall','主祈祷厅'],['abuPrayerAisle','主厅侧廊'],['abuSideArch','侧拱门套'],['abuVestibule','门厅天花'],['abuVestibuleFloor','门厅地面'],['abuTowerEntry','高楼入口'],['abuPortal','中央门洞'],['abuGardenDetail','花境花叶'],['abuMosqueCraft','拱廊细部'],['abuCoastPlanting','海滨花境'],['abuRoofscape','楼顶构件'],['abuFacadeDistrict','高楼立面'],['abuCoastCurve','弧形海滨'],['abuMirror','庭院倒影'],['vegasLakeWalk','湖岸步行'],['vegasOverview','拉斯维加斯'],['vegasLake','喷泉湖'],['vegasSphere','Sphere'],['vegasSign','欢迎牌'],['vegasStrip','酒店大道'],['abuEtihad','阿提哈德塔'],['abuMarble','大理石嵌花'],['abuVenueEntry','场馆入口'],['abuPavilion','场馆构件'],['abuLagoonEdge','湖岛岸缘'],['abuFerrariGrounds','场馆花园'],['abuCultureGrounds','文化场馆'],['abuLake','湖畔街区'],['abuNorth','北区街道'],['abuGround','庭院铺装'],['abuLobby','皇宫门厅'],['abuMinaret','宣礼塔'],['abuFacade','皇宫外墙'],['abuGarden','皇宫前庭'],['abuOverview','阿布扎比全景'],['abuMosque','白石清真寺'],['abuCorniche','阿布扎比海滨'],['abuPalace','皇宫花园'],['abuSkyline','阿布扎比楼群'],['marinaPier','泊位步行'],['marinaDining','滨水餐饮街'],['wheel','滨海摩天轮'],['cruise','邮轮码头'],['harbor','东湾全景'],['burjUp', '塔底仰视'], ['promenade', '步道花境'], ['sideGarden', '侧缘花庭'], ['panorama', '城市全景'], ['landmarkContact', '地标接地'], ['hotelRoof', '酒店屋顶'], ['bridgeDetail', '跨城桥梁'], ['sailShell', '帆船外壳'], ['sailBridge', '接驳桥梁'], ['atlantisRear', '酒店背面'], ['sailDeck', '酒店桥头'], ['crescentGarden', '月牙花境'], ['atlantisGarden', '酒店前场'], ['sailGarden', '帆船花庭'], ['coastWest', '全岛岸石'], ['palmShore', '岛上别墅'], ['oldLandmark', '地标材质'], ['border', '沿边花境'], ['ramp', '坡道检查'], ['gardenDetail', '花床近景'], ['transition', '街区花园'], ['horizon', '城市纵深'], ['east', '东侧街区'], ['palmIsland', '棕榈岛'], ['rear', '后街基座']]) {
+    if(shot.startsWith('vegas')&&!CITIES.lasvegas)continue;
     const button = document.createElement('button'); button.dataset.shot = shot; button.textContent = label;
     coverageShots.append(button);
   }
@@ -2516,6 +2326,7 @@ function resize() {
 addEventListener('resize', resize);
 let fpsN = 0, fpsT = performance.now();
 function frame(now) {
+  if(travel.active){state.last=now;requestAnimationFrame(frame);return;}
   if(interiorExperience?.active){state.last=now;interiorExperience.update(now);requestAnimationFrame(frame);return;}
   const dt = Math.max(0, Math.min(0.1, (now - state.last) / 1000)); state.last = now;
   if (!review.frozen) review.time += dt;
@@ -2534,14 +2345,32 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 setupReview();
-interiorExperience=createInteriorExperience({onEnter(){EX.keys.clear();controls.enabled=false;closePanel();closePop();camFly=null;},onExit(){EX.keys.clear();controls.enabled=true;state.last=performance.now();}});
+interiorExperience=createInteriorExperience({
+ onEnter(){travel.close();EX.keys.clear();controls.enabled=false;closePanel();closePop();hideCard();camFly=null;},
+ onExit(){EX.keys.clear();controls.enabled=true;state.last=performance.now();},
+ onVisit(id){passport.cloud(id);travelEvents.record('interior_open',{place:id});hudRefresh();},
+ onDetail(id,step){travelEvents.record('detail_view',{place:id,step});},
+ onComplete(id){travelEvents.record('guide_complete',{place:id});},
+ isSaved:id=>passport.value.saved.includes(id),
+ onSave(id){const saved=passport.toggle(id);travelEvents.record(saved?'place_saved':'place_removed',{place:id});hudRefresh();return saved;},
+ onPlace(id){travel.open('place',id);},
+});
 try {
   world = buildExploreWorld('parallel-world'); scene.add(world.root);
   setupExplore(); resize();
+  connectTravelScene({
+    onEnter(){EX.keys.clear();controls.enabled=false;closePanel();closePop();hideCard();camFly=null;},
+    onExit(){EX.keys.clear();controls.enabled=true;state.last=performance.now();},
+    onChange:hudRefresh,
+    imageFor(id){const L=lmByKey(id);if(L)return thumbOf(L);const c=world.cities.find(c=>c.id===id);if(id==='dubai'&&c){const [x,z]=CITY_GRID.dubai;return shoot(V3(x+108,57,z+93),V3(x+43,7,z+8),700,400,42);}return c?cityShot(c):'';},
+    openInterior(id){enterGame(false);interiorExperience.open(id);},
+    openPlace(id){enterGame(false);const L=lmByKey(id);if(L)goLandmark(L);},
+  });
   requestAnimationFrame(frame);
 } catch (error) {
   review.errors.push(String(error));
-  $('glTip').textContent = '场景启动失败，请刷新重试。' + error.message;
+  $('glTip').textContent = '场景暂时无法加载，可以先查看真实地点与行程。';
+  document.body.classList.add('travelOnly');travel.open('home');
   if (REVIEW) $('reviewStatus').textContent = '启动失败：' + error.stack;
   console.error(error);
 }

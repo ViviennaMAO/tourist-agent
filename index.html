@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tourist Agent · 三城自由探索</title>
+<title>Parallel World · 城市旅行护照</title>
+<meta name="description" content="云游迪拜与阿布扎比，走进十个主题微景观，收藏地点与滨水行程，连接真实旅行。">
 <link rel="stylesheet" href="/src/base.css">
 <link rel="stylesheet" href="/src/style-overrides.css">
 </head>
@@ -17,10 +18,9 @@
       <div class="city" id="cardCity"></div><h3 id="cardName"></h3><div class="zh" id="cardZh"></div>
       <p id="cardDesc"></p>
       <button id="cardInterior" hidden>进入室内 · 查看微景观</button>
-      <button class="ticket" id="cardTicket">🎫 购买门票</button>
+      <div class="travel-card-actions"><button id="cardTravel">地点详情与行程 →</button></div>
 
     </div>
-    <div id="tix" role="dialog" aria-label="购买门票"><div class="tix-panel glass"><button class="x" id="tixX" aria-label="关闭">×</button><div id="tixBody"></div></div></div>
     <div id="cityBanner" class="glass"></div>
     <div id="cityChips" class="glass"></div>
     <div id="dpad"><button data-k="u" aria-label="上">▲</button><button data-k="l" aria-label="左">◀</button><button data-k="run" aria-label="奔跑">跑</button><button data-k="r" aria-label="右">▶</button><button data-k="d" aria-label="下">▼</button></div>
@@ -34,17 +34,16 @@
         <div class="meta"><div class="id">旅行者<span id="hudId"></span></div><div class="row2"><span id="hudClock">--:--:--</span><span id="hudLoc">📍 迪拜</span></div></div>
       </div>
       <div id="hudCur">
-        <div class="gcur stampcur" title="城市印记：走近地标点亮"><i class="ic stamp">印</i><span id="hudStamps">0/0</span></div>
-        <div class="gcur" title="PWV 演示余额 · 不产生真实付款"><i class="ic pwv">PWV</i><span id="hudPwv">0</span><button class="add" id="hudTop" aria-label="充值">+</button></div>
+        <div class="gcur stampcur" title="云游记录，不代表真实到访"><i class="ic stamp">云</i><span id="hudStamps">0/0</span></div>
         <button id="hudMenu" aria-label="菜单">☰</button>
       </div>
       <div id="hudMenuPop" class="glass"></div>
       <div id="hudSide">
-        <button data-act="shop"><i>🎫</i>门票</button>
+        <button data-act="travel"><i>✧</i>旅行</button>
         <button data-act="interiors"><i>🚪</i>室内</button>
-        <button data-act="coll"><i>🏛</i>藏品</button>
-        <button data-act="map"><i>🗺</i>地图</button>
-        <button data-act="mine"><i>📋</i>订单</button>
+        <button data-act="passport"><i>▤</i>护照</button>
+        <button data-act="map"><i>🗺</i>全景</button>
+        <button data-act="itinerary"><i>☷</i>行程</button>
       </div>
       <div id="hudQuests"></div>
       <button id="hudGo">GO<small id="hudGoTo"></small></button>
@@ -53,18 +52,21 @@
     <div id="gpanel"></div>
     <div id="gpop"></div>
     <div id="gameLoad"><div class="gl-inner">
-      <img class="gl-logo" src="https://resources.parallelworld.com/assets/media/icon_logo.png" alt="">
-      <div class="gl-title">TOURIST AGENT<span>三城自由探索 · 写实微缩世界</span></div>
+      <div class="gl-logo gl-wordmark" aria-label="Parallel World">PW</div>
+      <div class="gl-title">PARALLEL WORLD<span>城市旅行护照 · 迪拜 × 阿布扎比</span></div>
       <div class="gl-bar"><i id="glFill"></i><b id="glPct">0%</b></div>
       <div class="gl-tip" id="glTip"></div>
       <button id="glGo" disabled>加载中…</button>
+      <br><a class="travel-quick-link" href="/?view=trip">先看真实地点与行程，无需等待三维场景 →</a>
     </div></div>
-    <div id="bar" hidden><button id="music">音乐</button><button id="myTix">我的门票</button><select id="city" aria-label="切换城市"></select></div>
+    <div class="travel-map-note">主题微缩世界 · 实际位置请查看地点卡中的真实地图</div>
+    <div id="bar" hidden><button id="music">音乐</button><select id="city" aria-label="切换城市"></select></div>
   </div>
 
 </div>
 <audio id="bgm" loop preload="none"></audio>
+<div id="travelFallback"><h1>Parallel World · 城市旅行护照</h1><p id="travelFallbackMessage">先收藏地点，再开启真实旅行。</p><button id="travelFallbackOpen">打开旅行护照</button><a href="/">进入三维城市 →</a></div>
 
-<script type="module" src="/src/game.js"></script>
+<script type="module" src="/src/entry.js"></script>
 </body>
 </html>

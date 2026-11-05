@@ -7,10 +7,12 @@ import {INTERIORS,activeInteriorVisits} from './interior-catalog.js';
 import {CITIES,CITY_ORDER} from './cities.js';
 import {createInteriorScene,interiorOverviewShot} from './interior-scene.js';
 import './interiors.css';
+import {ROOM_GUIDES} from './travel-catalog.js';
 
-export function createInteriorExperience({onEnter=()=>{},onExit=()=>{}}={}){
+export function createInteriorExperience({onEnter=()=>{},onExit=()=>{},onVisit=()=>{},onDetail=()=>{},onComplete=()=>{},onSave=()=>false,isSaved=()=>false,onPlace=()=>{}}={}){
  const dialog=document.createElement('dialog');dialog.id='interiorDialog';dialog.setAttribute('aria-label','城市室内探索');document.body.append(dialog);
  let current=null,room=null,contact=null,renderer=null,environment=null,camera=null,controls=null,last=0,city='abudhabi',previousFocus=null,overviewActive=false,artActive=false;const keys=new Set();
+ let guideStep=0,guideSeen=new Set(),guideComplete=false;
  let visits=[];try{visits=activeInteriorVisits(JSON.parse(localStorage.getItem('ta_interior_visits')||'[]'));}catch{}
  const size=()=>{if(!renderer)return;const area=dialog.querySelector('.interior-stage');if(!area)return;renderer.setSize(area.clientWidth,area.clientHeight,false);camera.aspect=area.clientWidth/Math.max(1,area.clientHeight);camera.updateProjectionMatrix();if(overviewActive&&room)frame(interiorOverviewShot(room,camera.aspect),true);else if(artActive&&room)frame(room.art.shot(camera.aspect),false,true);};
  const observer=new ResizeObserver(size);observer.observe(dialog);
@@ -19,7 +21,14 @@ export function createInteriorExperience({onEnter=()=>{},onExit=()=>{}}={}){
  function frame(shot,isOverview=false,isArt=false){overviewActive=isOverview;artActive=isArt;dialog.querySelector("[data-interior-art]")?.setAttribute("aria-pressed",String(isArt));camera.position.fromArray(shot.p);controls.target.fromArray(shot.q);controls.update();
   dialog.querySelectorAll('[data-interior-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.interiorView==='overview'?isOverview:shot===room?.entry)));
  }
- function header(title,subtitle){dialog.innerHTML=`<header class="interior-head"><div><span class="interior-kicker">室内探索 · 主题微景观</span><h2>${title}</h2><p>${subtitle}</p></div><button data-interior-close aria-label="返回城市">返回城市 ↗</button></header>`;}
+ function header(title,subtitle){dialog.innerHTML=`<header class="interior-head"><div><span class="interior-kicker">EVA 带你看 · 主题微景观，非实景复刻</span><h2>${title}</h2><p>${subtitle}</p></div><button data-interior-close aria-label="返回城市">返回城市 ↗</button></header>`;}
+ function detail(index){if(!room||!current||!Number.isInteger(index)||index<0||index>2)return;guideStep=index;frame(room.points[index]);guideSeen.add(index);onDetail(current.id,index);
+  dialog.querySelectorAll('[data-interior-detail]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.interiorDetail)===index)));
+  const story=dialog.querySelector('.interior-story');story.querySelector('[data-guide-step]').textContent=`EVA · ${index+1} / 3 · ${current.details[index]}`;
+  story.querySelector('[data-guide-copy]').textContent=ROOM_GUIDES[current.id]?.[index]||current.description;
+  story.querySelector('[data-guide-next]').textContent=index<2?'下一处细节 →':'查看现实地点 →';
+  if(guideSeen.size===3&&!guideComplete){guideComplete=true;onComplete(current.id);}
+ }
  function directory(id=city){
   release();if(renderer){environment?.dispose();environment=null;renderer.dispose();renderer.forceContextLoss();renderer=null;}city=CITIES[id]?id:'abudhabi';activate();header('走进城市的另一面','每座城市 5 个空间，进入后可环绕、缩放并选择细节观察点。');
   const nav=document.createElement('nav');nav.className='interior-cities';nav.setAttribute('aria-label','室内目的地城市');
@@ -28,9 +37,11 @@ export function createInteriorExperience({onEnter=()=>{},onExit=()=>{}}={}){
  }
  function open(id){
   const spec=INTERIORS.find(r=>r.id===id);if(!spec)return false;release();activate();city=spec.city;current=spec;
+  guideStep=0;guideSeen=new Set();guideComplete=false;
   header(`${CITIES[city].nameZh} · ${spec.title}`,spec.description);
   const tools=document.createElement('div');tools.className='interior-tools';tools.innerHTML='<button data-interior-list>← 选择空间</button><button data-interior-view="overview">微景观全景</button><button data-interior-view="entry">步入室内</button>'+spec.details.map((t,i)=>`<button data-interior-detail="${i}">${t}</button>`).join('')+'<button data-interior-art aria-pressed="false">城市艺术</button>';dialog.append(tools);
   const area=document.createElement('div');area.className='interior-stage';dialog.append(area);
+  const story=document.createElement('section');story.className='interior-story';story.setAttribute('aria-label','Eva 主题导览');story.innerHTML=`<div><small data-guide-step></small><p data-guide-copy aria-live="polite"></p><div class="interior-story-note">随时可跳过导览，直接查看地点信息。云游不代表真实到访。</div></div><div class="interior-story-actions"><button data-guide-next>下一处细节 →</button><button data-guide-save aria-pressed="${isSaved(id)}">${isSaved(id)?'已加入行程 ✓':'加入行程 ＋'}</button><button data-guide-place>地点与官方信息 ↗</button></div>`;dialog.append(story);
   const help=document.createElement('p');help.className='interior-help';help.textContent='拖动环绕 · 滚轮 / 双指缩放 · WASD 平移观察 · Esc 返回城市';dialog.append(help);
   try{
    room=createInteriorScene(spec);if(!renderer){renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;configureColorLook(renderer,1.04);const env=new RoomEnvironment(renderer),pmrem=new THREE.PMREMGenerator(renderer);environment=pmrem.fromScene(env,.06);env.dispose();pmrem.dispose();}
@@ -40,12 +51,16 @@ export function createInteriorExperience({onEnter=()=>{},onExit=()=>{}}={}){
    area.append(renderer.domElement);renderer.domElement.setAttribute('aria-label',spec.title+'三维场景');renderer.domElement.tabIndex=0;
    camera=new THREE.PerspectiveCamera(48,1,.08,120);controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=.8;controls.maxDistance=90;controls.minPolarAngle=.12;controls.maxPolarAngle=Math.PI-.12;controls.enablePan=true;controls.addEventListener('start',()=>{overviewActive=false;artActive=false;});frame(room.entry);size();room.setInteriorView(true);contact=createContactShadows({renderer,scene:room.scene,camera});renderer.render(room.scene,camera);contact.render();
    visits=activeInteriorVisits([...visits,id]);try{localStorage.setItem('ta_interior_visits',JSON.stringify(visits));}catch{}
-   dialog.dataset.room=id;dialog.dataset.ready='true';renderer.domElement.focus();return true;
+   dialog.dataset.room=id;dialog.dataset.ready='true';onVisit(id);detail(0);renderer.domElement.focus();return true;
   }catch(e){release();dialog.dataset.ready='false';area.textContent='这个空间暂时无法打开，请返回列表重试。';console.error(e);return false;}
  }
  function close(){if(!dialog.open)return;release();if(renderer){environment?.dispose();environment=null;renderer.dispose();renderer.forceContextLoss();renderer=null;}dialog.close();dialog.innerHTML='';delete dialog.dataset.room;delete dialog.dataset.ready;onExit();previousFocus?.focus?.();}
  dialog.addEventListener('cancel',e=>{e.preventDefault();close();});
- dialog.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-interior-close'))close();else if(b.dataset.interiorRoom)open(b.dataset.interiorRoom);else if(b.dataset.interiorCity)directory(b.dataset.interiorCity);else if(b.hasAttribute('data-interior-list'))directory();else if(b.dataset.interiorView&&room)frame(b.dataset.interiorView==='overview'?interiorOverviewShot(room,camera.aspect):room.entry,b.dataset.interiorView==='overview');else if(b.hasAttribute('data-interior-art')&&room)frame(room.art.shot(camera.aspect),false,true);else if(b.hasAttribute('data-interior-detail')&&room)frame(room.points[Number(b.dataset.interiorDetail)]);});
+ dialog.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.hasAttribute('data-guide-save')&&current){const yes=onSave(current.id);b.textContent=yes?'已加入行程 ✓':'加入行程 ＋';b.setAttribute('aria-pressed',String(yes));return;}
+  if(b.hasAttribute('data-guide-place')||(b.hasAttribute('data-guide-next')&&guideStep===2)){const id=current?.id;close();if(id)onPlace(id);return;}
+  if(b.hasAttribute('data-guide-next')){detail(guideStep+1);return;}
+  if(b.hasAttribute('data-interior-close'))close();else if(b.dataset.interiorRoom)open(b.dataset.interiorRoom);else if(b.dataset.interiorCity)directory(b.dataset.interiorCity);else if(b.hasAttribute('data-interior-list'))directory();else if(b.dataset.interiorView&&room)frame(b.dataset.interiorView==='overview'?interiorOverviewShot(room,camera.aspect):room.entry,b.dataset.interiorView==='overview');else if(b.hasAttribute('data-interior-art')&&room)frame(room.art.shot(camera.aspect),false,true);else if(b.hasAttribute('data-interior-detail')&&room)detail(Number(b.dataset.interiorDetail));});
  dialog.addEventListener('keydown',e=>{if(room&&['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){keys.add(e.code);e.preventDefault();e.stopPropagation();}if(e.code==='Escape'){e.preventDefault();e.stopPropagation();close();}});
  dialog.addEventListener('keyup',e=>keys.delete(e.code));dialog.addEventListener('focusout',()=>keys.clear());const blur=()=>keys.clear();addEventListener('blur',blur);
  return {get active(){return dialog.open;},open,directory,close,update(now){const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;if(!room||!renderer)return;

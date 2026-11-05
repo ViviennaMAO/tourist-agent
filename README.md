@@ -1,10 +1,20 @@
 # Tourist Agent
 
-An independent, Explore-only edition of Parallel World. Walk through three miniature cities — Dubai, Abu Dhabi, and Las Vegas —, visit landmarks, and collect local demonstration stamps and tickets.
+Independent Explore-only tourism prototype for Parallel World. The current **City Travel Passport cooperation edition** features **Dubai and Abu Dhabi**, 14 landmarks and 10 enterable themed interiors. Las Vegas and Tokyo studies remain archived; their assets are not loaded by this edition. This repository never merges into `parallel-world-cities-opening`.
 
-The active edition loads **20 landmarks across three cities**. Tokyo is removed from city selection, the world map, quests, collections and runtime asset loading. Existing local checkins remain stored but are excluded from active progress. The independent repository and Vercel deployment are unchanged.
+Eva guides three observation points in each room. Visitors can open a real destination card, save and reorder places, download an itinerary, and follow real map / official information links. The Dubai Marina half-day draft connects Marina Mall, its nearby promenade and Pier 7. Miniature scenes are authored interpretations, not surveyed venue replicas or real navigation maps.
 
-**15 enterable interior theme studies (5 per city)** are available from the “室内” HUD directory or “进入室内” on supported landmark cards. Each has an independent 3D scene, an overview, an inside viewpoint and three detail viewpoints. Drag to orbit, scroll/pinch to zoom, and use WASD to translate the observation camera. Returning restores the outdoor position. These are authored miniature interpretations, not surveyed interiors or seamless avatar-walking rooms. See [scope, controls and validation](docs/three-city-interiors.md).
+Cloud exploration and saved places persist only in the current browser. Real visits, merchant payments, bookings and PWC rewards are **not integrated**. Historical simulated balances/tickets are neither displayed nor migrated. Public destinations are not represented as contracted partners.
+
+- `/`: 3D city and travel experience.
+- `/?view=trip`: itinerary entry without loading Three.js or landmark models.
+- `/?view=pilot-review`: local UI event counts/export; no central analytics or transaction statistics.
+- `/partner-brief.html`: printable English partner proposal.
+- [Pilot scope, demo script and user-test plan](docs/cooperation-pilot-v1.md).
+
+## Earlier visual-development milestones
+
+The following notes describe the earlier three-city edition; active runtime scope is the two-city cooperation edition above.
 
 All **15 interiors now have theme-specific architectural and exhibit detail**, including the aquarium's coral/ruins, the sail hotel's balconies/cascade, the harbor's cruise models/cafe, Luxor's carved galleries and Sphere's acoustic walls/lighting trusses. Dubai and Las Vegas also have individually composed close-up viewpoints. Abu Dhabi's five rooms receive further detail. See [room-by-room scope and validation](docs/interior-refinement-2.md).
 

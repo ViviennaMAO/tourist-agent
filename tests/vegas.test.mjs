@@ -5,7 +5,7 @@ import {createVegasLake,vegasJet} from '../src/vegas-lake.js';
 import {createVegasSphere} from '../src/vegas-sphere.js';
 import {createVegasScene} from '../src/vegas-scene.js';
 import {VEGAS_LAKE,VEGAS_HOTEL,VEGAS_RESERVATIONS,vegasLakeObstacles} from '../src/vegas-layout.js';
-import {CITIES} from '../src/cities.js';
+import {CITY_LIBRARY as CITIES} from '../src/cities.js';
 const fixture=()=>({w:{root:new THREE.Group(),ctx:{rects:[],walkSurfaces:[],buildings:[],pools:{}}},LM:{}});
 const contains=(r,x,z)=>Math.abs(x-r.x)<r.w/2&&Math.abs(z-r.z)<r.d/2;
 test('Vegas reserves the lake and hotel before scatter and leaves sign/road outside the lake',()=>{

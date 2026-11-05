@@ -1,9 +1,10 @@
 import {ABU_COAST} from './abudhabi-coastline.js';
+import {EDITION} from './edition.js';
 import {VEGAS_RESERVATIONS} from './vegas-layout.js';
 import {MARINA_OBSTACLES,MARINA_PIERS,MARINA_OUTLINE} from './dubai-marina-layout.js';
 // Active Explore edition. Removed recipes remain available in Git history.
 export const ASSET = 'https://resources.parallelworld.com/assets/';
-export const CITIES = {
+export const CITY_LIBRARY = {
   dubai: {
     id: 'dubai', name: 'DUBAI', nameLocal: 'دبي', nameZh: '迪拜',
     bgm: ASSET + 'media/dubai/bgm.mp3',
@@ -298,11 +299,13 @@ title()
 end(50)`
   }
 };
+export const CITIES = Object.fromEntries(EDITION.cities.map(id=>[id,CITY_LIBRARY[id]]));
 export const CITY_ORDER = Object.keys(CITIES);
 export const CITY_COUNT = CITY_ORDER.length;
 CITY_ORDER.forEach((id,i)=>Object.assign(CITIES[id],{index:i+1,total:CITY_COUNT}));
 // Keep existing city origins so Dubai's authored lighting and review views stay aligned.
-export const CITY_GRID = { dubai: [-345,-230], abudhabi: [-115,-230], lasvegas: [-115,0] };
+const CITY_ORIGINS = { dubai: [-345,-230], abudhabi: [-115,-230], lasvegas: [-115,0] };
+export const CITY_GRID = Object.fromEntries(CITY_ORDER.map(id=>[id,CITY_ORIGINS[id]]));
 
 export function activeCheckinKeys(keys) {
   const valid=new Set(CITY_ORDER.flatMap(id=>Object.keys(CITIES[id].landmarks).map(k=>id+':'+k)));
